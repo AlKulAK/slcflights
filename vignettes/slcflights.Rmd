@@ -1,0 +1,275 @@
+---
+title: "slcflights"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{slcflights}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, message=FALSE, warning=FALSE}
+library(slcflights)
+library(arrow)
+```
+
+## Overview
+
+`slcflights` packages Salt Lake City-focused U.S. flight records as Parquet
+files, along with a standalone airport lookup table derived from BTS
+coordinate data.
+
+This vignette introduces the main workflow:
+
+1. understand the package's time coverage
+2. inspect which years are packaged
+3. inspect packaged Parquet files lazily
+4. read selected data into memory
+5. access the standalone airport lookup table when you want airport metadata
+   on its own
+
+The package includes two flight-data groupings:
+
+- **main records**: flights where Salt Lake City appears in the primary
+  origin or destination airport fields
+- **diversion-only records**: flights where Salt Lake City appears only in
+  diversion airport fields and not in the primary origin or destination
+  fields
+
+## Coverage and an important caveat
+
+The packaged flight data cover the period from **October 1, 1987** through
+**June 30, 2024**, meaning that:
+
+- **1987 is a partial year**
+- **2024 is a partial year**
+
+Therefore, while `available_years()` reports 1987 through 2024 as packaged
+years, those endpoint years do **not** contain a full January-through-December
+span of records.
+
+This matters for year-over-year comparisons. If you want a run of full years,
+the cleanest span is **1988 through 2023**.
+
+You can see the partial-year behavior directly for 1987:
+
+```{r}
+x_1987 <- slcflights::read_year_main(1987)
+range(x_1987$FlightDate)
+```
+
+## See what years are packaged
+
+Start by checking which years are available.
+
+```{r}
+slcflights::available_years("main")
+```
+
+Diversion-only coverage does differ from main-record coverage, so inspect it
+separately:
+
+```{r}
+slcflights::available_years("div")
+```
+
+Again, keep in mind that availability is not the same as full-year completeness.
+
+## Inspect packaged Parquet files lazily
+
+A good first step is often to open the packaged Parquet files lazily with
+Arrow.
+
+Use `open_main()` or `open_div()` when you want to inspect the packaged data
+at a high level without immediately reading all selected rows into memory.
+
+```{r}
+ds_main <- slcflights::open_main(1988:1989)
+ds_main
+```
+
+You can inspect the dataset schema directly:
+
+```{r}
+arrow::schema(ds_main)
+```
+
+This is a convenient way to understand the overall structure of the packaged
+data before deciding what subset you want to materialize.
+
+## Read data into memory when you are ready to work with it directly
+
+Once you know what years you want and are ready to manipulate the data as an
+ordinary in-memory object, use the `read_*()` helpers.
+
+Use `read_year_main()` or `read_year_div()` for a single year:
+
+```{r}
+x_1988 <- slcflights::read_year_main(1988)
+
+dim(x_1988)
+names(x_1988)
+```
+
+Here is a very small subset of potentially useful columns:
+
+```{r}
+head(x_1988[, c(
+  "FlightDate",
+  "Reporting_Airline",
+  "OriginCityName",
+  "DestCityName"
+)])
+```
+
+Use `read_main()` or `read_div()` when you want multiple years combined
+row-wise into a single in-memory data frame.
+
+```{r}
+x_main <- slcflights::read_main(1988:1989)
+
+dim(x_main)
+unique(x_main$Year)
+```
+
+Likewise, use `read_div()` for diversion-only records.
+
+```{r}
+x_div <- slcflights::read_div(2015:2016)
+dim(x_div)
+```
+
+In short:
+
+- use `open_*()` to inspect and explore the packaged Parquet files lazily
+- use `read_*()` to load the data you actually want to analyze in memory
+
+## Airport coordinates are already in the flight records
+
+In many workflows, you do not need a separate join just to recover airport
+coordinates. The packaged flight Parquet files already include airport
+location and date-bounded airport metadata associated with the flight record.
+
+You can inspect the coordinate-related fields directly:
+
+```{r}
+grep("lat|lon", names(x_1988), value = TRUE, ignore.case = TRUE)
+```
+
+And you can inspect those columns in the in-memory data you read:
+
+```{r}
+coord_cols <- grep("Latitude|Longitude", names(x_1988), value = TRUE)
+coord_cols
+head(x_1988[, coord_cols, drop = FALSE])
+```
+
+This is often the simplest way to work with airport locations in analyses of
+routes, origins, destinations, and diversions.
+
+## Work with diversion-only records
+
+Diversion-only records are packaged separately because they answer a different
+question from the main origin/destination files.
+
+Use them when Salt Lake City is relevant because of a diversion event rather
+than because it was the scheduled origin or destination.
+
+```{r}
+x_div_2015 <- slcflights::read_year_div(2015)
+
+dim(x_div_2015)
+names(x_div_2015)
+head(x_div_2015[, c(
+  "FlightDate",
+  "Origin",
+  "Dest"
+)])
+```
+
+## Access the airport lookup table directly
+
+Although the flight Parquet files already include airport coordinates and
+related airport metadata, `slcflights` also provides a standalone airport
+lookup table.
+
+This is useful when you want airport metadata on its own, without first
+reading any flight records.
+
+```{r}
+coords <- slcflights::read_coords()
+
+dim(coords)
+names(coords)
+head(coords)
+```
+
+Use `read_coords()` when you want a compact airport reference table keyed by
+airport sequence identifier, or when you want to inspect the packaged lookup
+data directly.
+
+## Choosing among the main entry points
+
+Use `available_years()` when you want to discover coverage.
+
+Use `open_main()` or `open_div()` when you want to inspect the packaged data
+lazily without immediately materializing it.
+
+Use `read_year_main()` or `read_year_div()` when you want one year's data in
+memory.
+
+Use `read_main()` or `read_div()` when you want multiple years combined into a
+single in-memory data frame.
+
+Use `read_coords()` when you want the standalone airport lookup table as its
+own data object.
+
+## Rebuilding the packaged data
+
+The package also preserves the data-build workflow in `data-raw/`.
+
+```{r, eval = FALSE}
+# NOT EXECUTED
+source("data-raw/build_data.R")
+build_slc_data()
+```
+
+By default, `build_slc_data()` rebuilds data for years 1987 through 2024,
+uses Salt Lake City's BTS airport ID, caches downloaded source files during
+the build, writes packaged outputs into `inst/extdata/`, and removes the
+build cache when finished.
+
+You can also rebuild a subset of years.
+
+```{r, eval = FALSE}
+# NOT EXECUTED
+source("data-raw/build_data.R")
+build_slc_data(years = 2019:2024)
+```
+
+Rebuilding requires large downloads and substantial disk space, so most users
+should work directly with the packaged files instead.
+
+## Summary
+
+`slcflights` is built around packaged Parquet files for Salt Lake City-related
+flight records and a standalone airport lookup table.
+
+The most important usage caveat is that the package covers **October 1, 1987**
+through **June 30, 2024**, so **1987 and 2024 are partial years**. For
+analyses that require full calendar years, focus on **1988 through 2023**.
+
+From there, the package gives you three main access patterns:
+
+- `available_years()` to inspect coverage
+- `open_*()` helpers for lazy inspection
+- `read_*()` helpers for eager in-memory access
+
+And when you want airport metadata on its own, `read_coords()` provides the
+packaged lookup table directly.

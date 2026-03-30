@@ -1,0 +1,154 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# slcflights
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of slcflights is to provide packaged Parquet files for Salt Lake 
+City-related U.S. flight records, along with a CSV table of airport coordinates 
+used to support those records.
+
+The packaged flight data are derived from the U.S. commercial flight data used
+in the 2025 ASA Data Expo Challenge. The underlying flight records originate
+from the Bureau of Transportation Statistics (BTS) TranStats On-Time
+Performance data, and the packaged coordinate table is derived from the BTS
+TranStats Master Coordinate support table.
+
+The package includes two flight-data groupings:
+
+* **main records**: flights where Salt Lake City appears in the core origin or
+  destination airport fields
+* **diversion-only records**: flights where Salt Lake City appears only in
+  diversion airport fields and not in the core origin or destination airport
+  fields
+
+## Installation
+
+You can install the development version of slcflights like so:
+
+``` r
+# install.packages("remotes")
+remotes::install_github("AlKulAK/slcflights")
+```
+
+## Package contents
+
+The main user-facing functions are
+
+* `available_years()` to list packaged years for main or diversion-only records
+* `read_year_main()` to read one year's main flight records into memory
+* `read_year_div()` to read one year's diversion-only flight records into memory
+* `read_main()` to read one, many, or all years of main records into memory
+* `read_div()` to read one, many, or all years of diversion-only records into
+  memory
+* `open_main()` to open one, many, or all years of main records lazily as an
+  Arrow dataset
+* `open_div()` to open one, many, or all years of diversion-only records lazily
+  as an Arrow dataset
+* `read_coords()` to read the packaged airport coordinate table
+
+## Examples
+
+Load the package:
+
+```{r}
+library(slcflights)
+```
+
+List the packaged years available for main records:
+
+```{r}
+available_years("main")
+```
+
+Read the airport coordinate table:
+
+```{r}
+coords <- read_coords()
+head(coords)
+```
+
+Read one year's main flight records into memory:
+
+```{r}
+x_1987 <- read_year_main(1987)
+head(x_1987)
+```
+
+Read multiple years of main records into memory:
+
+```{r}
+x_main <- read_main(1987:1988)
+dim(x_main)
+```
+
+Open main records lazily with Arrow when you want to defer reading until later:
+
+```{r}
+ds_main <- open_main(1987:1988)
+ds_main
+```
+
+Read diversion-only records for one year:
+
+```{r, eval = FALSE}
+x_div <- read_year_div(2015)
+head(x_div)
+```
+
+## Rebuilding the packaged data
+
+The packaged Parquet files and coordinate CSV can be rebuilt from source data.
+
+The rebuild workflow is implemented in `data-raw/build_data.R`. 
+To rebuild, run from a source checkout of the package:
+
+```r
+source("data-raw/build_data.R")
+build_slc_data()
+```
+
+By default, `build_slc_data()`
+
+* rebuilds data for years 1987 through 2024
+* uses Salt Lake City's BTS airport ID (`14869`)
+* downloads source Parquet files into `data-raw/cache/`
+* writes the reduced coordinate CSV into the build cache
+* copies final packaged outputs into `inst/extdata/`
+* deletes the build cache when finished
+
+Note that you can rebuild a subset of years, for example:
+
+```r
+source("data-raw/build_data.R")
+build_slc_data(years = 2019:2024)
+```
+
+Because rebuilding requires large downloads and substantial disk space, it is recommended to work with the packaged files directly.
+
+## Data provenance
+
+This package repackages a Salt Lake City-focused subset of the flight data used
+in the 2025 ASA Data Expo Challenge. The challenge centered on analysis and
+visualization of U.S. commercial flight arrival and departure records, while
+the underlying data ultimately come from BTS TranStats On-Time Performance
+data.
+
+The packaged coordinate table is derived from the BTS TranStats Master
+Coordinate support table and contains the airport sequence identifiers needed
+to enrich the flight records with airport latitude, longitude, and date-bounded
+airport metadata.

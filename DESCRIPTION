@@ -1,11 +1,30 @@
 Package: slcflights
-Title: What the Package Does (One Line, Title Case)
+Title: Salt Lake City Flight Records and Supporting Airport Coordinates
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    person("Aleksey", "Kulyukin", , "aleksey.kulyukin.2022@gmail.com", 
+    role = c("aut", "cre"))
+Description: Provides packaged Parquet files for Salt Lake City-related U.S. 
+    flight records and a CSV table containing coordinates for the airports 
+    referenced in those records. The flight records are derived from the Bureau 
+    of Transportation Statistics (BTS) TranStats On-Time Performance data, and
+    the coordinate table is derived from the BTS TranStats Master Coordinate
+    support table. Includes helper functions to list available years, read 
+    selected years into memory, and open the packaged Parquet files lazily for 
+    downstream analysis. 
+License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
+Suggests: 
+    curl,
+    DBI,
+    duckdb,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Imports: 
+    arrow,
+    readr
+VignetteBuilder: knitr
