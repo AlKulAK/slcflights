@@ -2,7 +2,7 @@
 % Please edit documentation in R/readers.R
 \name{available_years}
 \alias{available_years}
-\title{List Available Packaged Flight-Data Years}
+\title{List Available Flight-Data Years}
 \usage{
 available_years(type = c("main", "div"))
 }
@@ -14,7 +14,11 @@ or \code{"div"} for diversion-only records.}
 An integer vector of available years, sorted in ascending order.
 }
 \description{
-Lists the years for which packaged Parquet files are available.
+Lists the years for which slcflights Parquet files are available.
+}
+\details{
+Available years may come from the packaged data installed with the package
+or, in later update workflows, from a validated local user cache.
 }
 \examples{
 available_years("main")

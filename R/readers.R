@@ -1,6 +1,9 @@
-#' List Available Packaged Flight-Data Years
+#' List Available Flight-Data Years
 #'
-#' Lists the years for which packaged Parquet files are available.
+#' Lists the years for which slcflights Parquet files are available.
+#'
+#' Available years may come from the packaged data installed with the package
+#' or, in later update workflows, from a validated local user cache.
 #'
 #' @param type Which flight-data grouping to inspect: `"main"` for main records
 #'   or `"div"` for diversion-only records.
@@ -18,7 +21,7 @@
 #' @export
 available_years <- function(type = c("main", "div")) {
   type <- match.arg(type)
-  .available_years_internal(type)
+  slc_available_data_years(type)
 }
 
 #' Read One Year's Main Salt Lake City Flight Records
