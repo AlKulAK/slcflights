@@ -1,3 +1,8 @@
+# Maintainer-only data build script.
+#
+# This script rebuilds the bundled data in inst/extdata/.
+# Runtime user updates must not use this script and must not write to inst/.
+#
 # Before running, ensure that T_MASTER_CORD.csv has been downloaded from
 # https://transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=N8vn6v10+f722146+gnoyr5&gnoyr_VQ=FLL
 # and placed in data-raw/
@@ -5,7 +10,7 @@
 years_default <- 1987:2024
 slc_id_default <- 14869L
 base_url_default <- "https://blobs.duckdb.org/flight-data-partitioned/"
-build_dir_default <- file.path("data-raw", "cache")
+build_dir_default <- tempfile("slcflights-build-")
 
 safe_replace_file <- function(src_tmp, dest) {
   bak <- paste0(dest, ".bak")
@@ -217,7 +222,10 @@ rewrite_with_slc_only <- function(path, slc_id, con) {
   ))
 
   if (!length(cols)) {
-    stop(sprintf("No readable columns found in file: %s", path), call. = FALSE)
+    stop(
+      sprintf("No readable columns found in file: %s", path),
+      call. = FALSE
+    )
   }
 
   slc_cols <- c(
@@ -265,7 +273,10 @@ rewrite_with_slc_only <- function(path, slc_id, con) {
 }
 
 pass_keep_slc_rows <- function(files, slc_id, con) {
-  vapply(files, rewrite_with_slc_only, logical(1), slc_id = slc_id, con = con)
+  vapply(
+    files, rewrite_with_slc_only, logical(1),
+    slc_id = slc_id, con = con
+  )
 }
 
 rewrite_sorted <- function(path, con) {
@@ -281,7 +292,10 @@ rewrite_sorted <- function(path, con) {
   ))
 
   if (!length(cols)) {
-    stop(sprintf("No readable columns found in file: %s", path), call. = FALSE)
+    stop(
+      sprintf("No readable columns found in file: %s", path),
+      call. = FALSE
+    )
   }
 
   sel <- paste(DBI::dbQuoteIdentifier(con, cols), collapse = ", ")
@@ -353,7 +367,10 @@ rewrite_split_slc <- function(path, slc_id, con) {
   ))
 
   if (!length(cols)) {
-    stop(sprintf("No readable columns found in file: %s", path), call. = FALSE)
+    stop(
+      sprintf("No readable columns found in file: %s", path),
+      call. = FALSE
+    )
   }
 
   main_cols <- intersect(c("OriginAirportID", "DestAirportID"), cols)
@@ -539,7 +556,10 @@ rewrite_coords_with_used_seqids <-
 
 pass_reduce_coords_csv <- function(files, coords_in, coords_out, con) {
   if (!length(files)) {
-    stop("No final parquet files found for coordinate reduction", call. = FALSE)
+    stop(
+      "No final parquet files found for coordinate reduction",
+      call. = FALSE
+    )
   }
 
   if (!file.exists(coords_in)) {
@@ -662,7 +682,10 @@ rewrite_with_coords <- function(path, coords_in, con) {
   ))
 
   if (!length(cols)) {
-    stop(sprintf("No readable columns found in file: %s", path), call. = FALSE)
+    stop(
+      sprintf("No readable columns found in file: %s", path),
+      call. = FALSE
+    )
   }
 
   seq_cols <- c(
@@ -810,29 +833,59 @@ pass_enrich_with_coords <- function(files, coords_in, con) {
   )
 }
 
-copy_outputs_into_inst <- function(
+copy_outputs <- function(
   years = years_default,
-  coords_out = file.path(build_dir_default, "T_MASTER_CORD_reduced.csv"),
-  build_dir = build_dir_default
+  coords_out,
+  build_dir,
+  output_root = file.path("inst", "extdata")
 ) {
   main_files <- year_main_files(years, build_dir = build_dir)
   div_files <- year_div_files(years, build_dir = build_dir)
 
+  missing_main <- main_files[!file.exists(main_files)]
+  if (length(missing_main)) {
+    stop(
+      sprintf(
+        "Expected main Parquet file was not built: %s",
+        missing_main[[1]]
+      ),
+      call. = FALSE
+    )
+  }
+
+  if (!file.exists(coords_out)) {
+    stop(
+      sprintf("Reduced coordinate CSV was not built: %s", coords_out),
+      call. = FALSE
+    )
+  }
+
   for (yr in years) {
+    target_year_dir <- file.path(
+      output_root,
+      "parquet",
+      sprintf("Year=%s", yr)
+    )
+
+    if (dir.exists(target_year_dir)) {
+      unlink(target_year_dir, recursive = TRUE, force = TRUE)
+    }
+
     dir.create(
-      file.path("inst", "extdata", "parquet", sprintf("Year=%s", yr)),
+      target_year_dir,
       recursive = TRUE,
       showWarnings = FALSE
     )
   }
 
-  for (path in main_files[file.exists(main_files)]) {
+  for (path in main_files) {
     yr_dir <- basename(dirname(path))
-    target <- file.path("inst", "extdata", "parquet", yr_dir, basename(path))
+    target <- file.path(output_root, "parquet", yr_dir, basename(path))
+
     ok <- file.copy(path, target, overwrite = TRUE)
     if (!ok) {
       stop(
-        sprintf("Failed to copy file into inst/extdata: %s", path),
+        sprintf("Failed to copy file into output root: %s", target),
         call. = FALSE
       )
     }
@@ -840,30 +893,41 @@ copy_outputs_into_inst <- function(
 
   for (path in div_files[file.exists(div_files)]) {
     yr_dir <- basename(dirname(path))
-    target <- file.path("inst", "extdata", "parquet", yr_dir, basename(path))
+    target <- file.path(output_root, "parquet", yr_dir, basename(path))
+
     ok <- file.copy(path, target, overwrite = TRUE)
     if (!ok) {
       stop(
-        sprintf("Failed to copy file into inst/extdata: %s", path),
+        sprintf("Failed to copy file into output root: %s", target),
         call. = FALSE
       )
     }
   }
 
+  csv_dir <- file.path(output_root, "csv")
+
+  if (dir.exists(csv_dir)) {
+    unlink(csv_dir, recursive = TRUE, force = TRUE)
+  }
+
   dir.create(
-    file.path("inst", "extdata", "csv"),
-    recursive = TRUE, showWarnings = FALSE
+    csv_dir,
+    recursive = TRUE,
+    showWarnings = FALSE
   )
+
+  coords_target <- file.path(csv_dir, basename(coords_out))
 
   ok <- file.copy(
     coords_out,
-    file.path("inst", "extdata", "csv", basename(coords_out)),
+    coords_target,
     overwrite = TRUE
   )
   if (!ok) {
     stop(
       sprintf(
-        "Failed to copy coordinate CSV into inst/extdata: %s", coords_out
+        "Failed to copy coordinate CSV into output root: %s",
+        coords_target
       ),
       call. = FALSE
     )
@@ -884,11 +948,12 @@ build_slc_data <- function(
   slc_id = slc_id_default,
   base_url = base_url_default,
   coords_in = file.path("data-raw", "T_MASTER_CORD.csv"),
-  coords_out = file.path(build_dir_default, "T_MASTER_CORD_reduced.csv"),
   build_dir = build_dir_default,
-  clean_cache = TRUE
+  output_root = file.path("inst", "extdata"),
+  coords_out = file.path(build_dir, "T_MASTER_CORD_reduced.csv")
 ) {
   dir.create(build_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(clean_build_cache(build_dir), add = TRUE)
 
   files <- year_files(years, build_dir = build_dir)
 
@@ -916,15 +981,12 @@ build_slc_data <- function(
   pass_reduce_coords_csv(final_files, coords_in, coords_out, con)
   pass_enrich_with_coords(final_files, coords_out, con)
 
-  copy_outputs_into_inst(
+  copy_outputs(
     years = years,
     coords_out = coords_out,
-    build_dir = build_dir
+    build_dir = build_dir,
+    output_root = output_root
   )
-
-  if (isTRUE(clean_cache)) {
-    clean_build_cache(build_dir)
-  }
 
   invisible(TRUE)
 }
