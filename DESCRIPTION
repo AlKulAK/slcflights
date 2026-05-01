@@ -21,6 +21,7 @@ RoxygenNote: 7.3.3
 Imports: 
     arrow,
     httr2,
+    jsonlite,
     readr,
     xml2
 Suggests: 
