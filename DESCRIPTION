@@ -20,14 +20,14 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports: 
     arrow,
+    DBI,
+    duckdb,
     httr2,
     jsonlite,
     readr,
     xml2
 Suggests: 
     curl,
-    DBI,
-    duckdb,
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
