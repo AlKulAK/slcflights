@@ -232,7 +232,7 @@ own data object.
 
 ## Rebuilding the packaged data
 
-The package also preserves the data-build workflow in `data-raw/`.
+The package preserves the maintainer data-build workflow in `data-raw/`.
 
 ```{r, eval = FALSE}
 # NOT EXECUTED
@@ -240,10 +240,13 @@ source("data-raw/build_data.R")
 build_slc_data()
 ```
 
-By default, `build_slc_data()` rebuilds data for years 1987 through 2024,
-uses Salt Lake City's BTS airport ID, caches downloaded source files during
-the build, writes packaged outputs into `inst/extdata/`, and removes the
-build cache when finished.
+By default, `build_slc_data()` rebuilds data for years 1987 through 2024, uses
+Salt Lake City's BTS airport ID, downloads annual source Parquet files into a
+temporary build directory, writes packaged outputs into `inst/extdata/`, and
+removes the temporary build directory when finished.
+
+The temporary build directory is a maintainer-side build artifact. It is not
+part of the installed package.
 
 You can also rebuild a subset of years.
 

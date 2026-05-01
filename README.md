@@ -25,6 +25,11 @@ The package includes two flight-data groupings:
   in diversion airport fields and not in the core origin or destination
   airport fields
 
+The packaged data cover **October 1, 1987 through June 30, 2024**. This
+means that 1987 and 2024 are partial years. For analyses requiring
+complete calendar years, the cleanest full-year span is 1988 through
+2023.
+
 ## Installation
 
 You can install the development version of slcflights like so:
@@ -169,7 +174,7 @@ head(x_div)
 The packaged Parquet files and coordinate CSV can be rebuilt from source
 data.
 
-The rebuild workflow is implemented in `data-raw/build_data.R`. To
+This is a maintainer workflow implemented in `data-raw/build_data.R`. To
 rebuild, run from a source checkout of the package:
 
 ``` r
@@ -181,12 +186,21 @@ By default, `build_slc_data()`
 
 - rebuilds data for years 1987 through 2024
 - uses Salt Lake City’s BTS airport ID (`14869`)
-- downloads source Parquet files into `data-raw/cache/`
-- writes the reduced coordinate CSV into the build cache
+- downloads the annual source Parquet files into a temporary build
+  directory
+- filters the data to Salt Lake City-related records
+- splits the filtered data into main and diversion-only files
+- reduces the BTS Master Coordinate table to the airport sequence IDs
+  used by the packaged flight data
+- enriches the final Parquet files with airport coordinate metadata
 - copies final packaged outputs into `inst/extdata/`
-- deletes the build cache when finished
+- removes the temporary build directory when finished
 
-Note that you can rebuild a subset of years, for example:
+The temporary build directory is a maintainer-side build artifact. It is
+not part of the installed package and should not be confused with a user
+cache.
+
+You can also rebuild a subset of years, for example:
 
 ``` r
 source("data-raw/build_data.R")
