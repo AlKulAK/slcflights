@@ -8,19 +8,22 @@ open_main(years = NULL)
 }
 \arguments{
 \item{years}{Integer vector of years to open. Use \code{NULL} to open all
-available packaged main Parquet files.}
+available main Parquet files.}
 }
 \value{
-An Arrow dataset over the selected packaged main Parquet files.
+An Arrow dataset over the selected main Parquet files.
 }
 \description{
-Opens one, many, or all packaged main Parquet files as a lazy Arrow dataset.
+Opens one, many, or all available main Parquet files as a lazy Arrow dataset.
 }
 \details{
 Main records are flights where Salt Lake City appears in the primary origin
 or destination airport fields.
 
 This function does not read all rows into memory immediately.
+
+Selected files may come from the packaged data installed with the package,
+from a validated local user cache, or both.
 
 It is intended for workflows where you want to filter rows, select columns,
 or otherwise work lazily before collecting results into memory. Use

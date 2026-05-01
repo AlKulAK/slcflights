@@ -8,25 +8,27 @@ read_main(years = NULL)
 }
 \arguments{
 \item{years}{Integer vector of years to read. Use \code{NULL} to read all
-available packaged main Parquet files.}
+available main Parquet files.}
 }
 \value{
-A data frame containing the row-bound contents of the selected packaged main
-flight records.
+A data frame containing the row-bound contents of the selected main flight
+records.
 }
 \description{
-Reads one, many, or all packaged main Parquet files into memory and combines
+Reads one, many, or all available main Parquet files into memory and combines
 them row-wise into a single data frame.
 }
 \details{
 Main records are flights where Salt Lake City appears in the primary origin
 or destination airport fields.
 
-This function reads all selected files eagerly into memory.
+This function reads all selected files eagerly into memory. Selected files
+may come from the packaged data installed with the package, from a validated
+local user cache, or both.
 
 For larger workflows, \code{\link[=open_main]{open_main()}} may be more appropriate because it opens
-the same packaged files lazily as an Arrow dataset, allowing filtering or
-column selection before materializing results in memory.
+the same files lazily as an Arrow dataset, allowing filtering or column
+selection before materializing results in memory.
 }
 \examples{
 x1 <- read_main(1987)

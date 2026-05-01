@@ -10,11 +10,10 @@ read_year_div(year)
 \item{year}{Integer year to read.}
 }
 \value{
-A data frame containing the selected year's packaged diversion-only flight
-records.
+A data frame containing the selected year's diversion-only flight records.
 }
 \description{
-Reads one packaged Parquet file of diversion-only Salt Lake City flight
+Reads one available Parquet file of diversion-only Salt Lake City flight
 records into memory.
 }
 \details{
@@ -22,10 +21,11 @@ Diversion-only records are flights where Salt Lake City appears only in
 diversion airport fields and not in the primary origin or destination
 airport fields.
 
-This function reads the selected year's packaged diversion-only Parquet file
-eagerly into memory.
+This function reads the selected year's diversion-only Parquet file eagerly
+into memory. The file may come from the packaged data installed with the
+package or from a validated local user cache.
 
-It errors if the requested year does not have a packaged diversion-only
+It errors if the requested year does not have an available diversion-only
 Parquet file.
 
 Use \code{\link[=read_div]{read_div()}} to read multiple years at once. Use \code{\link[=open_div]{open_div()}} to work

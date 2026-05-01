@@ -8,13 +8,13 @@ open_div(years = NULL)
 }
 \arguments{
 \item{years}{Integer vector of years to open. Use \code{NULL} to open all
-available packaged diversion-only Parquet files.}
+available diversion-only Parquet files.}
 }
 \value{
-An Arrow dataset over the selected packaged diversion-only Parquet files.
+An Arrow dataset over the selected diversion-only Parquet files.
 }
 \description{
-Opens one, many, or all packaged diversion-only Parquet files as a lazy
+Opens one, many, or all available diversion-only Parquet files as a lazy
 Arrow dataset.
 }
 \details{
@@ -24,11 +24,14 @@ airport fields.
 
 This function does not read all rows into memory immediately.
 
+Selected files may come from the packaged data installed with the package,
+from a validated local user cache, or both.
+
 It is intended for workflows where you want to filter rows, select columns,
 or otherwise work lazily before collecting results into memory. Use
 \code{\link[=read_div]{read_div()}} when you want an in-memory data frame instead.
 
-It errors if any requested year does not have a packaged diversion-only
+It errors if any requested year does not have an available diversion-only
 Parquet file.
 }
 \examples{

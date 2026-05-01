@@ -2,29 +2,32 @@
 % Please edit documentation in R/readers.R
 \name{read_coords}
 \alias{read_coords}
-\title{Read the Packaged Airport Coordinate Table}
+\title{Read the Airport Coordinate Table}
 \usage{
 read_coords()
 }
 \value{
 A data frame containing airport sequence identifiers and associated airport
-metadata for airports referenced by the packaged flight data.
+metadata for airports referenced by the available flight data.
 }
 \description{
-Reads the packaged CSV table of airport coordinates used to support the
-packaged flight records.
+Reads the airport coordinate table supporting the currently available
+slcflights data.
 }
 \details{
-The packaged coordinate table is derived from the BTS TranStats Master
-Coordinate support table.
+Before any local data update, this function reads the coordinate table
+installed with the package. After a successful local data update, it reads
+the validated cached coordinate table.
+
+The coordinate table is derived from the BTS TranStats Master Coordinate
+support table.
 
 It is intended for joins against airport sequence identifier fields in the
 flight data, including fields such as \code{OriginAirportSeqID},
 \code{DestAirportSeqID}, and diversion airport sequence identifier fields.
 
-The table contains the airport-level metadata used to enrich the packaged
-flight records with latitude, longitude, and date-bounded airport
-information.
+The table contains the airport-level metadata used to enrich the flight
+records with latitude, longitude, and date-bounded airport information.
 }
 \examples{
 x <- read_coords()

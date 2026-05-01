@@ -10,18 +10,19 @@ read_year_main(year)
 \item{year}{Integer year to read.}
 }
 \value{
-A data frame containing the selected year's packaged main flight records.
+A data frame containing the selected year's main flight records.
 }
 \description{
-Reads one packaged Parquet file of main Salt Lake City flight records into
+Reads one available Parquet file of main Salt Lake City flight records into
 memory.
 }
 \details{
 Main records are flights where Salt Lake City appears in the primary origin
 or destination airport fields.
 
-This function reads the selected year's packaged main Parquet file eagerly
-into memory.
+This function reads the selected year's main Parquet file eagerly into
+memory. The file may come from the packaged data installed with the package
+or from a validated local user cache.
 
 Use \code{\link[=read_main]{read_main()}} to read multiple years at once. Use \code{\link[=open_main]{open_main()}} to work
 lazily with one or more years as an Arrow dataset.

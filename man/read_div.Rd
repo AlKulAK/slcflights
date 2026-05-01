@@ -8,14 +8,14 @@ read_div(years = NULL)
 }
 \arguments{
 \item{years}{Integer vector of years to read. Use \code{NULL} to read all
-available packaged diversion-only Parquet files.}
+available diversion-only Parquet files.}
 }
 \value{
-A data frame containing the row-bound contents of the selected packaged
+A data frame containing the row-bound contents of the selected
 diversion-only flight records.
 }
 \description{
-Reads one, many, or all packaged diversion-only Parquet files into memory
+Reads one, many, or all available diversion-only Parquet files into memory
 and combines them row-wise into a single data frame.
 }
 \details{
@@ -23,14 +23,16 @@ Diversion-only records are flights where Salt Lake City appears only in
 diversion airport fields and not in the primary origin or destination
 airport fields.
 
-This function reads all selected files eagerly into memory.
+This function reads all selected files eagerly into memory. Selected files
+may come from the packaged data installed with the package, from a validated
+local user cache, or both.
 
-It errors if any requested year does not have a packaged diversion-only
+It errors if any requested year does not have an available diversion-only
 Parquet file.
 
 For larger workflows, \code{\link[=open_div]{open_div()}} may be more appropriate because it opens
-the same packaged files lazily as an Arrow dataset, allowing filtering or
-column selection before materializing results in memory.
+the same files lazily as an Arrow dataset, allowing filtering or column
+selection before materializing results in memory.
 }
 \examples{
 \dontrun{

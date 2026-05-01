@@ -26,7 +26,7 @@ available_years <- function(type = c("main", "div")) {
 
 #' Read One Year's Main Salt Lake City Flight Records
 #'
-#' Reads one packaged Parquet file of main Salt Lake City flight records into
+#' Reads one available Parquet file of main Salt Lake City flight records into
 #' memory.
 #'
 #' Main records are flights where Salt Lake City appears in the primary origin
@@ -35,11 +35,12 @@ available_years <- function(type = c("main", "div")) {
 #' @param year Integer year to read.
 #'
 #' @returns
-#' A data frame containing the selected year's packaged main flight records.
+#' A data frame containing the selected year's main flight records.
 #'
 #' @details
-#' This function reads the selected year's packaged main Parquet file eagerly
-#' into memory.
+#' This function reads the selected year's main Parquet file eagerly into
+#' memory. The file may come from the packaged data installed with the package
+#' or from a validated local user cache.
 #'
 #' Use [read_main()] to read multiple years at once. Use [open_main()] to work
 #' lazily with one or more years as an Arrow dataset.
@@ -57,7 +58,7 @@ read_year_main <- function(year) {
 
 #' Read One Year's Diversion-Only Salt Lake City Flight Records
 #'
-#' Reads one packaged Parquet file of diversion-only Salt Lake City flight
+#' Reads one available Parquet file of diversion-only Salt Lake City flight
 #' records into memory.
 #'
 #' Diversion-only records are flights where Salt Lake City appears only in
@@ -67,14 +68,14 @@ read_year_main <- function(year) {
 #' @param year Integer year to read.
 #'
 #' @returns
-#' A data frame containing the selected year's packaged diversion-only flight
-#' records.
+#' A data frame containing the selected year's diversion-only flight records.
 #'
 #' @details
-#' This function reads the selected year's packaged diversion-only Parquet file
-#' eagerly into memory.
+#' This function reads the selected year's diversion-only Parquet file eagerly
+#' into memory. The file may come from the packaged data installed with the
+#' package or from a validated local user cache.
 #'
-#' It errors if the requested year does not have a packaged diversion-only
+#' It errors if the requested year does not have an available diversion-only
 #' Parquet file.
 #'
 #' Use [read_div()] to read multiple years at once. Use [open_div()] to work
@@ -95,25 +96,27 @@ read_year_div <- function(year) {
 
 #' Read Main Salt Lake City Flight Records for One, Many, or All Years
 #'
-#' Reads one, many, or all packaged main Parquet files into memory and combines
+#' Reads one, many, or all available main Parquet files into memory and combines
 #' them row-wise into a single data frame.
 #'
 #' Main records are flights where Salt Lake City appears in the primary origin
 #' or destination airport fields.
 #'
 #' @param years Integer vector of years to read. Use `NULL` to read all
-#'   available packaged main Parquet files.
+#'   available main Parquet files.
 #'
 #' @returns
-#' A data frame containing the row-bound contents of the selected packaged main
-#' flight records.
+#' A data frame containing the row-bound contents of the selected main flight
+#' records.
 #'
 #' @details
-#' This function reads all selected files eagerly into memory.
+#' This function reads all selected files eagerly into memory. Selected files
+#' may come from the packaged data installed with the package, from a validated
+#' local user cache, or both.
 #'
 #' For larger workflows, [open_main()] may be more appropriate because it opens
-#' the same packaged files lazily as an Arrow dataset, allowing filtering or
-#' column selection before materializing results in memory.
+#' the same files lazily as an Arrow dataset, allowing filtering or column
+#' selection before materializing results in memory.
 #'
 #' @seealso [open_main()], [read_year_main()], [read_div()]
 #'
@@ -141,7 +144,7 @@ read_main <- function(years = NULL) {
 
 #' Read Diversion-Only Salt Lake City Flight Records for One, Many, or All Years
 #'
-#' Reads one, many, or all packaged diversion-only Parquet files into memory
+#' Reads one, many, or all available diversion-only Parquet files into memory
 #' and combines them row-wise into a single data frame.
 #'
 #' Diversion-only records are flights where Salt Lake City appears only in
@@ -149,21 +152,23 @@ read_main <- function(years = NULL) {
 #' airport fields.
 #'
 #' @param years Integer vector of years to read. Use `NULL` to read all
-#'   available packaged diversion-only Parquet files.
+#'   available diversion-only Parquet files.
 #'
 #' @returns
-#' A data frame containing the row-bound contents of the selected packaged
+#' A data frame containing the row-bound contents of the selected
 #' diversion-only flight records.
 #'
 #' @details
-#' This function reads all selected files eagerly into memory.
+#' This function reads all selected files eagerly into memory. Selected files
+#' may come from the packaged data installed with the package, from a validated
+#' local user cache, or both.
 #'
-#' It errors if any requested year does not have a packaged diversion-only
+#' It errors if any requested year does not have an available diversion-only
 #' Parquet file.
 #'
 #' For larger workflows, [open_div()] may be more appropriate because it opens
-#' the same packaged files lazily as an Arrow dataset, allowing filtering or
-#' column selection before materializing results in memory.
+#' the same files lazily as an Arrow dataset, allowing filtering or column
+#' selection before materializing results in memory.
 #'
 #' @seealso [open_div()], [read_year_div()], [read_main()]
 #'
@@ -194,19 +199,22 @@ read_div <- function(years = NULL) {
 
 #' Open Main Salt Lake City Flight Records Lazily as an Arrow Dataset
 #'
-#' Opens one, many, or all packaged main Parquet files as a lazy Arrow dataset.
+#' Opens one, many, or all available main Parquet files as a lazy Arrow dataset.
 #'
 #' Main records are flights where Salt Lake City appears in the primary origin
 #' or destination airport fields.
 #'
 #' @param years Integer vector of years to open. Use `NULL` to open all
-#'   available packaged main Parquet files.
+#'   available main Parquet files.
 #'
 #' @returns
-#' An Arrow dataset over the selected packaged main Parquet files.
+#' An Arrow dataset over the selected main Parquet files.
 #'
 #' @details
 #' This function does not read all rows into memory immediately.
+#'
+#' Selected files may come from the packaged data installed with the package,
+#' from a validated local user cache, or both.
 #'
 #' It is intended for workflows where you want to filter rows, select columns,
 #' or otherwise work lazily before collecting results into memory. Use
@@ -225,7 +233,7 @@ open_main <- function(years = NULL) {
 
 #' Open Diversion-Only Salt Lake City Flight Records Lazily as an Arrow Dataset
 #'
-#' Opens one, many, or all packaged diversion-only Parquet files as a lazy
+#' Opens one, many, or all available diversion-only Parquet files as a lazy
 #' Arrow dataset.
 #'
 #' Diversion-only records are flights where Salt Lake City appears only in
@@ -233,19 +241,22 @@ open_main <- function(years = NULL) {
 #' airport fields.
 #'
 #' @param years Integer vector of years to open. Use `NULL` to open all
-#'   available packaged diversion-only Parquet files.
+#'   available diversion-only Parquet files.
 #'
 #' @returns
-#' An Arrow dataset over the selected packaged diversion-only Parquet files.
+#' An Arrow dataset over the selected diversion-only Parquet files.
 #'
 #' @details
 #' This function does not read all rows into memory immediately.
+#'
+#' Selected files may come from the packaged data installed with the package,
+#' from a validated local user cache, or both.
 #'
 #' It is intended for workflows where you want to filter rows, select columns,
 #' or otherwise work lazily before collecting results into memory. Use
 #' [read_div()] when you want an in-memory data frame instead.
 #'
-#' It errors if any requested year does not have a packaged diversion-only
+#' It errors if any requested year does not have an available diversion-only
 #' Parquet file.
 #'
 #' @seealso [read_div()], [read_year_div()], [open_main()]
@@ -261,26 +272,29 @@ open_div <- function(years = NULL) {
   arrow::open_dataset(.parquet_paths("div", years), format = "parquet")
 }
 
-#' Read the Packaged Airport Coordinate Table
+#' Read the Airport Coordinate Table
 #'
-#' Reads the packaged CSV table of airport coordinates used to support the
-#' packaged flight records.
+#' Reads the airport coordinate table supporting the currently available
+#' slcflights data.
 #'
 #' @returns
 #' A data frame containing airport sequence identifiers and associated airport
-#' metadata for airports referenced by the packaged flight data.
+#' metadata for airports referenced by the available flight data.
 #'
 #' @details
-#' The packaged coordinate table is derived from the BTS TranStats Master
-#' Coordinate support table.
+#' Before any local data update, this function reads the coordinate table
+#' installed with the package. After a successful local data update, it reads
+#' the validated cached coordinate table.
+#'
+#' The coordinate table is derived from the BTS TranStats Master Coordinate
+#' support table.
 #'
 #' It is intended for joins against airport sequence identifier fields in the
 #' flight data, including fields such as `OriginAirportSeqID`,
 #' `DestAirportSeqID`, and diversion airport sequence identifier fields.
 #'
-#' The table contains the airport-level metadata used to enrich the packaged
-#' flight records with latitude, longitude, and date-bounded airport
-#' information.
+#' The table contains the airport-level metadata used to enrich the flight
+#' records with latitude, longitude, and date-bounded airport information.
 #'
 #' @seealso [read_main()], [read_div()], [open_main()], [open_div()]
 #'
