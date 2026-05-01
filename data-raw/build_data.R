@@ -482,7 +482,7 @@ pass_split_main_vs_diversion <- function(files, slc_id, con) {
   vapply(files, rewrite_split_slc, logical(1), slc_id = slc_id, con = con)
 }
 
-rewrite_coords_with_used_seqids <-
+rewrite_used_seqid_coords <-
   function(path_in, path_out, parquet_files, seq_cols, con) {
     qpath_in <- DBI::dbQuoteString(
       con,
@@ -603,7 +603,7 @@ pass_reduce_coords_csv <- function(files, coords_in, coords_out, con) {
     stop("T_MASTER_CORD.csv does not contain AIRPORT_SEQ_ID", call. = FALSE)
   }
 
-  rewrite_coords_with_used_seqids(
+  rewrite_used_seqid_coords(
     path_in = coords_in,
     path_out = coords_out,
     parquet_files = files,
