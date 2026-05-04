@@ -91,15 +91,9 @@ download_update_months <- function(months, overwrite = FALSE) {
   out <- vector("list", nrow(months))
 
   for (i in seq_len(nrow(months))) {
-    year <- months$year[[i]]
-    month <- months$month[[i]]
-    ym <- as_year_month(year, month)
-
-    message("Downloading flight data for ", format_year_month(ym), "...")
-
     out[[i]] <- download_bts_ontime_month(
-      year = year,
-      month = month,
+      year = months$year[[i]],
+      month = months$month[[i]],
       overwrite = overwrite,
       keep_zip = TRUE
     )
