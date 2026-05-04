@@ -143,7 +143,8 @@ test_that("staging build creates annual files, coordinates, and manifest", {
     root = root,
     coords_in = coords,
     csv_files = list("2024" = csv),
-    include_installed = FALSE
+    include_installed = FALSE,
+    finalize_schema = FALSE
   )
 
   main <- slcflights:::slc_cache_parquet_path(
@@ -211,7 +212,8 @@ test_that("staging promotion moves validated staging to active", {
     root = staging,
     coords_in = coords,
     csv_files = list("2024" = csv),
-    include_installed = FALSE
+    include_installed = FALSE,
+    finalize_schema = FALSE
   )
 
   out <- slcflights:::cache_stage_promote(

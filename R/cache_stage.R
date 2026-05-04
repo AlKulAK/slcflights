@@ -90,7 +90,8 @@ cache_stage_build <- function(
   slc_id = 14869L,
   coords_in = slc_cache_raw_coords_path(create = FALSE),
   csv_files = NULL,
-  include_installed = TRUE
+  include_installed = TRUE,
+  finalize_schema = include_installed
 ) {
   months <- validate_cache_months(months)
   root <- cache_stage_prepare(root)
@@ -99,7 +100,14 @@ cache_stage_build <- function(
   years <- as.integer(names(by_year))
 
   con <- cache_build_connect()
-  on.exit(cache_build_disconnect(con), add = TRUE)
+  on.exit(
+    {
+      if (!is.null(con)) {
+        cache_build_disconnect(con)
+      }
+    },
+    add = TRUE
+  )
 
   built_files <- character()
 
@@ -147,6 +155,15 @@ cache_stage_build <- function(
     coords_in = coords_out,
     con = con
   )
+
+  if (isTRUE(finalize_schema)) {
+    cache_build_disconnect(con)
+    con <- NULL
+
+    cache_schema_align_files(
+      files = built_files
+    )
+  }
 
   manifest <- write_cache_manifest(
     months = months,
