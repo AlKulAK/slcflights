@@ -298,7 +298,39 @@ rewrite_sorted <- function(path, con) {
     )
   }
 
+  if (!("FlightDate" %in% cols)) {
+    stop("Missing required column for sorting: FlightDate", call. = FALSE)
+  }
+
   sel <- paste(DBI::dbQuoteIdentifier(con, cols), collapse = ", ")
+
+  order_terms <- c("FlightDate")
+
+  if ("CRSDepTime" %in% cols) {
+    order_terms <- c(
+      order_terms,
+      "CRSDepTime IS NULL",
+      "lpad(CAST(CRSDepTime AS VARCHAR), 4, '0')"
+    )
+  }
+
+  tie_cols <- intersect(
+    c(
+      "OriginAirportID",
+      "DestAirportID",
+      "Reporting_Airline",
+      "Flight_Number_Reporting_Airline",
+      "OriginAirportSeqID",
+      "DestAirportSeqID",
+      "DOT_ID_Reporting_Airline"
+    ),
+    cols
+  )
+
+  order_terms <- c(
+    order_terms,
+    as.character(DBI::dbQuoteIdentifier(con, tie_cols))
+  )
 
   sql <- sprintf(
     "
@@ -306,14 +338,14 @@ rewrite_sorted <- function(path, con) {
       SELECT %s
       FROM read_parquet(%s)
       ORDER BY
-        FlightDate,
-        lpad(CRSDepTime, 4, '0')
+        %s
     )
     TO %s
     (FORMAT parquet)
     ",
     sel,
     qpath,
+    paste(order_terms, collapse = ",\n        "),
     DBI::dbQuoteString(con, tmp)
   )
 
@@ -334,7 +366,7 @@ pass_sort_rows <- function(files, con) {
     )
   ))
 
-  needed_cols <- c("FlightDate", "CRSDepTime")
+  needed_cols <- "FlightDate"
   missing_cols <- setdiff(needed_cols, existing_cols)
 
   if (length(missing_cols)) {
@@ -980,6 +1012,10 @@ build_slc_data <- function(
 
   pass_reduce_coords_csv(final_files, coords_in, coords_out, con)
   pass_enrich_with_coords(final_files, coords_out, con)
+
+  # Coordinate enrichment rewrites the final Parquet files. Sort again after
+  # enrichment so reader-facing files are chronologically ordered.
+  pass_sort_rows(final_files, con)
 
   copy_outputs(
     years = years,

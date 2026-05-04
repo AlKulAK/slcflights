@@ -19,15 +19,42 @@ cache_build_csv_relation <- function(con, csv_files) {
   )
 }
 
-cache_build_order_clause <- function(cols) {
-  if (!cache_build_has_req_sort_cols(cols)) {
+cache_build_order_clause <- function(cols, con) {
+  if (!("FlightDate" %in% cols)) {
     return("")
   }
 
-  paste(
-    "ORDER BY",
-    "FlightDate,",
-    "lpad(CAST(CRSDepTime AS VARCHAR), 4, '0')"
+  order_terms <- c("FlightDate")
+
+  if ("CRSDepTime" %in% cols) {
+    order_terms <- c(
+      order_terms,
+      "CRSDepTime IS NULL",
+      "lpad(CAST(CRSDepTime AS VARCHAR), 4, '0')"
+    )
+  }
+
+  tie_cols <- intersect(
+    c(
+      "OriginAirportID",
+      "DestAirportID",
+      "Reporting_Airline",
+      "Flight_Number_Reporting_Airline",
+      "OriginAirportSeqID",
+      "DestAirportSeqID",
+      "DOT_ID_Reporting_Airline"
+    ),
+    cols
+  )
+
+  order_terms <- c(
+    order_terms,
+    as.character(DBI::dbQuoteIdentifier(con, tie_cols))
+  )
+
+  sprintf(
+    "ORDER BY %s",
+    paste(order_terms, collapse = ", ")
   )
 }
 
@@ -106,7 +133,7 @@ cache_build_write_main_file <- function(
     slc_id
   )
 
-  order_clause <- cache_build_order_clause(cols)
+  order_clause <- cache_build_order_clause(cols, con)
 
   DBI::dbExecute(
     con,
@@ -223,7 +250,7 @@ cache_build_write_div_file <- function(
     slc_id
   )
 
-  order_clause <- cache_build_order_clause(cols)
+  order_clause <- cache_build_order_clause(cols, con)
 
   DBI::dbExecute(
     con,
