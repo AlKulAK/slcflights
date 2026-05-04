@@ -98,24 +98,21 @@ cache_schema_align_file <- function(path, con = NULL) {
   }
 
   sel <- cache_build_sql_ider_list(con, template_cols)
-  order_clause <- cache_build_order_clause(cached_cols)
   tmp <- paste0(path, ".tmp")
 
   DBI::dbExecute(
     con,
     sprintf(
       "
-      COPY (
-        SELECT %s
-        FROM read_parquet(%s)
-        %s
-      )
-      TO %s
-      (FORMAT parquet)
-      ",
+    COPY (
+      SELECT %s
+      FROM read_parquet(%s)
+    )
+    TO %s
+    (FORMAT parquet)
+    ",
       sel,
       cache_build_quote_path(con, path),
-      order_clause,
       DBI::dbQuoteString(
         con,
         normalizePath(tmp, winslash = "/", mustWork = FALSE)
