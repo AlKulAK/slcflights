@@ -27,12 +27,13 @@ coordinate data.
 
 This vignette introduces the main workflow:
 
-1. understand the package's time coverage
-2. inspect which years are packaged
-3. inspect packaged Parquet files lazily
+1. understand the package's installed time coverage
+2. inspect which years are available
+3. inspect Parquet files lazily
 4. read selected data into memory
 5. access the standalone airport lookup table when you want airport metadata
    on its own
+6. optionally update beyond the installed endpoint with a local cache
 
 The package includes two flight-data groupings:
 
@@ -44,18 +45,19 @@ The package includes two flight-data groupings:
 
 ## Coverage and an important caveat
 
-The packaged flight data cover the period from **October 1, 1987** through
+The installed flight data cover the period from **October 1, 1987** through
 **June 30, 2024**, meaning that:
 
 - **1987 is a partial year**
 - **2024 is a partial year**
 
-Therefore, while `available_years()` reports 1987 through 2024 as packaged
-years, those endpoint years do **not** contain a full January-through-December
-span of records.
+Therefore, while `available_years()` reports 1987 through 2024 after
+installation, those endpoint years do **not** contain a full
+January-through-December span of installed records.
 
-This matters for year-over-year comparisons. If you want a run of full years,
-the cleanest span is **1988 through 2023**.
+This matters for year-over-year comparisons. If you want a run of full years
+using only the installed package data, the cleanest span is **1988 through
+2023**.
 
 You can see the partial-year behavior directly for 1987:
 
@@ -64,7 +66,11 @@ x_1987 <- slcflights::read_year_main(1987)
 range(x_1987$FlightDate)
 ```
 
-## See what years are packaged
+The package can also use a local cache of newer BTS data. If you activate a
+cache with `update_slcflights_data()`, the reader functions automatically read
+compatible cached records together with the installed package records.
+
+## See what years are available
 
 Start by checking which years are available.
 
@@ -79,15 +85,18 @@ separately:
 slcflights::available_years("div")
 ```
 
-Again, keep in mind that availability is not the same as full-year completeness.
+Again, keep in mind that availability is not the same as full-year
+completeness.
 
-## Inspect packaged Parquet files lazily
+If a local cache is active, `available_years()` includes years from both the
+installed package data and the local cache.
 
-A good first step is often to open the packaged Parquet files lazily with
-Arrow.
+## Inspect Parquet files lazily
 
-Use `open_main()` or `open_div()` when you want to inspect the packaged data
-at a high level without immediately reading all selected rows into memory.
+A good first step is often to open the Parquet files lazily with Arrow.
+
+Use `open_main()` or `open_div()` when you want to inspect the data at a high
+level without immediately reading all selected rows into memory.
 
 ```{r}
 ds_main <- slcflights::open_main(1988:1989)
@@ -100,8 +109,11 @@ You can inspect the dataset schema directly:
 arrow::schema(ds_main)
 ```
 
-This is a convenient way to understand the overall structure of the packaged
-data before deciding what subset you want to materialize.
+This is a convenient way to understand the overall structure before deciding
+what subset you want to materialize.
+
+The `open_*()` helpers are cache-aware. If a local cache is active, they open
+both installed and cached Parquet files where needed.
 
 ## Read data into memory when you are ready to work with it directly
 
@@ -147,14 +159,70 @@ dim(x_div)
 
 In short:
 
-- use `open_*()` to inspect and explore the packaged Parquet files lazily
+- use `open_*()` to inspect and explore the Parquet files lazily
 - use `read_*()` to load the data you actually want to analyze in memory
+
+## Update beyond the installed endpoint
+
+The installed package data end on **June 30, 2024**. To extend the available
+data with newer BTS monthly releases, use `update_slcflights_data()`.
+
+```{r, eval = FALSE}
+update_slcflights_data()
+```
+
+By default, `update_slcflights_data()` checks BTS for the latest available
+monthly On-Time Performance data and downloads all available months after June
+2024.
+
+You can also specify an explicit endpoint. This is useful when you want a small
+or reproducible update.
+
+```{r, eval = FALSE}
+update_slcflights_data(until = "2024-07")
+update_slcflights_data(until = c(2024, 12))
+```
+
+Local updates always begin with July 2024 and must form a consecutive extension
+of the installed package data.
+
+The update process stores data in the user cache directory returned by
+`tools::R_user_dir("slcflights", "cache")`. It does not modify the installed
+package files.
+
+You can inspect the active local cache with:
+
+```{r, eval = FALSE}
+slcflights_cache_info()
+```
+
+A typical cache report looks like this:
+
+```text
+Local slcflights cache is active.
+Cache location: <user-cache-path>
+Cached data through: 2024-07
+Cache status: complete
+```
+
+After the cache is active, the ordinary readers use it automatically. For
+example, after updating through July 2024, `read_year_main(2024)` reads the
+installed January-through-June 2024 records and the cached July 2024 records
+as one combined data frame.
+
+Remove the local cache with:
+
+```{r, eval = FALSE}
+clear_slcflights_cache()
+```
+
+Use this when you want to return to installed-package data only.
 
 ## Airport coordinates are already in the flight records
 
 In many workflows, you do not need a separate join just to recover airport
-coordinates. The packaged flight Parquet files already include airport
-location and date-bounded airport metadata associated with the flight record.
+coordinates. The flight Parquet files already include airport location and
+date-bounded airport metadata associated with the flight record.
 
 You can inspect the coordinate-related fields directly:
 
@@ -211,15 +279,18 @@ head(coords)
 ```
 
 Use `read_coords()` when you want a compact airport reference table keyed by
-airport sequence identifier, or when you want to inspect the packaged lookup
-data directly.
+airport sequence identifier, or when you want to inspect the lookup data
+directly.
+
+If a local cache is active, `read_coords()` reads the cached reduced coordinate
+table. Otherwise, it reads the installed coordinate table.
 
 ## Choosing among the main entry points
 
 Use `available_years()` when you want to discover coverage.
 
-Use `open_main()` or `open_div()` when you want to inspect the packaged data
-lazily without immediately materializing it.
+Use `open_main()` or `open_div()` when you want to inspect the data lazily
+without immediately materializing it.
 
 Use `read_year_main()` or `read_year_div()` when you want one year's data in
 memory.
@@ -229,6 +300,12 @@ single in-memory data frame.
 
 Use `read_coords()` when you want the standalone airport lookup table as its
 own data object.
+
+Use `update_slcflights_data()` when you want to extend the installed data with
+newer BTS monthly releases.
+
+Use `slcflights_cache_info()` to inspect the active cache and
+`clear_slcflights_cache()` to remove it.
 
 ## Rebuilding the packaged data
 
@@ -245,8 +322,13 @@ Salt Lake City's BTS airport ID, downloads annual source Parquet files into a
 temporary build directory, writes packaged outputs into `inst/extdata/`, and
 removes the temporary build directory when finished.
 
+The maintainer build also removes globally all-NULL columns before and after
+Salt Lake City filtering. This is part of the installed schema contract that
+local cache updates preserve.
+
 The temporary build directory is a maintainer-side build artifact. It is not
-part of the installed package.
+part of the installed package and should not be confused with the user cache
+created by `update_slcflights_data()`.
 
 You can also rebuild a subset of years.
 
@@ -257,22 +339,25 @@ build_slc_data(years = 2019:2024)
 ```
 
 Rebuilding requires large downloads and substantial disk space, so most users
-should work directly with the packaged files instead.
+should work directly with the installed files and use `update_slcflights_data()`
+when they need newer monthly data.
 
 ## Summary
 
-`slcflights` is built around packaged Parquet files for Salt Lake City-related
-flight records and a standalone airport lookup table.
+`slcflights` is built around Parquet files for Salt Lake City-related flight
+records and a standalone airport lookup table.
 
-The most important usage caveat is that the package covers **October 1, 1987**
-through **June 30, 2024**, so **1987 and 2024 are partial years**. For
-analyses that require full calendar years, focus on **1988 through 2023**.
+The installed package covers **October 1, 1987** through **June 30, 2024**, so
+**1987 and 2024 are partial years** in the installed data. For analyses that
+require full calendar years using only installed data, focus on **1988 through
+2023**.
 
-From there, the package gives you three main access patterns:
+From there, the package gives you four main access patterns:
 
 - `available_years()` to inspect coverage
 - `open_*()` helpers for lazy inspection
 - `read_*()` helpers for eager in-memory access
+- `update_slcflights_data()` to extend the data with a local cache
 
 And when you want airport metadata on its own, `read_coords()` provides the
-packaged lookup table directly.
+lookup table directly.

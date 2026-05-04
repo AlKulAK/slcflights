@@ -18,8 +18,8 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of slcflights is to provide packaged Parquet files for Salt Lake 
-City-related U.S. flight records, along with a CSV table of airport coordinates 
+The goal of slcflights is to provide packaged Parquet files for Salt Lake
+City-related U.S. flight records, along with a CSV table of airport coordinates
 used to support those records.
 
 The packaged flight data are derived from the U.S. commercial flight data used
@@ -36,9 +36,14 @@ The package includes two flight-data groupings:
   diversion airport fields and not in the core origin or destination airport
   fields
 
-The packaged data cover **October 1, 1987 through June 30, 2024**. This means
-that 1987 and 2024 are partial years. For analyses requiring complete
-calendar years, the cleanest full-year span is 1988 through 2023.
+The installed package data cover **October 1, 1987 through June 30, 2024**.
+This means that 1987 and 2024 are partial years. For analyses requiring
+complete calendar years using only installed data, the cleanest full-year span
+is 1988 through 2023.
+
+Users can optionally extend the data beyond June 2024 by building a local
+cache with `update_slcflights_data()`. The installed package files are never
+modified.
 
 ## Installation
 
@@ -53,9 +58,11 @@ remotes::install_github("AlKulAK/slcflights")
 
 The main user-facing functions are
 
-* `available_years()` to list packaged years for main or diversion-only records
+* `available_years()` to list available years for main or diversion-only
+  records
 * `read_year_main()` to read one year's main flight records into memory
-* `read_year_div()` to read one year's diversion-only flight records into memory
+* `read_year_div()` to read one year's diversion-only flight records into
+  memory
 * `read_main()` to read one, many, or all years of main records into memory
 * `read_div()` to read one, many, or all years of diversion-only records into
   memory
@@ -63,7 +70,14 @@ The main user-facing functions are
   Arrow dataset
 * `open_div()` to open one, many, or all years of diversion-only records lazily
   as an Arrow dataset
-* `read_coords()` to read the packaged airport coordinate table
+* `read_coords()` to read the airport coordinate table
+* `update_slcflights_data()` to download newer BTS data into a local user cache
+* `slcflights_cache_info()` to inspect the local user cache
+* `clear_slcflights_cache()` to remove the local user cache
+
+The reader functions are cache-aware. If no local cache is active, they read the
+installed package data. If a local cache is active, they read the installed data
+together with compatible cached data.
 
 ## Examples
 
@@ -73,7 +87,7 @@ Load the package:
 library(slcflights)
 ```
 
-List the packaged years available for main records:
+List the available years for main records:
 
 ```{r}
 available_years("main")
@@ -114,12 +128,62 @@ x_div <- read_year_div(2015)
 head(x_div)
 ```
 
+## Updating local data
+
+The installed package includes flight records through June 2024. To extend the
+available data beyond the installed endpoint, use:
+
+```{r, eval = FALSE}
+update_slcflights_data()
+```
+
+By default, `update_slcflights_data()` checks BTS for the latest available
+monthly data and downloads every available month after June 2024. You can also
+request an explicit endpoint:
+
+```{r, eval = FALSE}
+update_slcflights_data(until = "2024-07")
+update_slcflights_data(until = c(2024, 12))
+```
+
+Local updates always begin with July 2024 and form a consecutive extension of
+the installed data.
+
+The local update workflow
+
+* downloads monthly BTS On-Time Performance files into the user cache
+* downloads the BTS Master Coordinate table into the user cache
+* builds annual main and diversion-only Parquet files in a staging directory
+* reduces the coordinate table to airports used by installed and cached records
+* enriches cached Parquet files with coordinate metadata
+* finalizes cached Parquet schemas so they match the installed schema contract
+* activates the completed cache atomically
+
+The installed package files are not changed. The local cache is stored in the
+user cache directory returned by `tools::R_user_dir("slcflights", "cache")`.
+
+Inspect the active cache with:
+
+```{r, eval = FALSE}
+slcflights_cache_info()
+```
+
+After a cache is active, the ordinary readers automatically use it. For example,
+after updating through July 2024, `read_year_main(2024)` reads both the
+installed January-through-June records and the cached July records.
+
+Remove the local cache with:
+
+```{r, eval = FALSE}
+clear_slcflights_cache()
+```
+
 ## Rebuilding the packaged data
 
 The packaged Parquet files and coordinate CSV can be rebuilt from source data.
 
-This is a maintainer workflow implemented in `data-raw/build_data.R`. 
-To rebuild, run from a source checkout of the package:
+This is a maintainer workflow implemented in `data-raw/build_data.R`. To
+rebuild, run from a source checkout of the package:
 
 ```r
 source("data-raw/build_data.R")
@@ -131,7 +195,10 @@ By default, `build_slc_data()`
 * rebuilds data for years 1987 through 2024
 * uses Salt Lake City's BTS airport ID (`14869`)
 * downloads the annual source Parquet files into a temporary build directory
+* removes columns that are globally all `NULL`
 * filters the data to Salt Lake City-related records
+* removes columns that are all `NULL` after Salt Lake City filtering
+* sorts rows by flight date and scheduled departure time
 * splits the filtered data into main and diversion-only files
 * reduces the BTS Master Coordinate table to the airport sequence IDs used by
   the packaged flight data
@@ -140,7 +207,8 @@ By default, `build_slc_data()`
 * removes the temporary build directory when finished
 
 The temporary build directory is a maintainer-side build artifact. It is not
-part of the installed package and should not be confused with a user cache.
+part of the installed package and should not be confused with the user cache
+created by `update_slcflights_data()`.
 
 You can also rebuild a subset of years, for example:
 
@@ -149,7 +217,9 @@ source("data-raw/build_data.R")
 build_slc_data(years = 2019:2024)
 ```
 
-Because rebuilding requires large downloads and substantial disk space, it is recommended to work with the packaged files directly.
+Because rebuilding requires large downloads and substantial disk space, most
+users should work with the installed files and, when needed, use
+`update_slcflights_data()` for post-June-2024 updates.
 
 ## Data provenance
 

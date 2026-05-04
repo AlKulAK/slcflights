@@ -25,10 +25,14 @@ The package includes two flight-data groupings:
   in diversion airport fields and not in the core origin or destination
   airport fields
 
-The packaged data cover **October 1, 1987 through June 30, 2024**. This
-means that 1987 and 2024 are partial years. For analyses requiring
-complete calendar years, the cleanest full-year span is 1988 through
-2023.
+The installed package data cover **October 1, 1987 through June 30,
+2024**. This means that 1987 and 2024 are partial years. For analyses
+requiring complete calendar years using only installed data, the
+cleanest full-year span is 1988 through 2023.
+
+Users can optionally extend the data beyond June 2024 by building a
+local cache with `update_slcflights_data()`. The installed package files
+are never modified.
 
 ## Installation
 
@@ -43,7 +47,7 @@ remotes::install_github("AlKulAK/slcflights")
 
 The main user-facing functions are
 
-- `available_years()` to list packaged years for main or diversion-only
+- `available_years()` to list available years for main or diversion-only
   records
 - `read_year_main()` to read one year’s main flight records into memory
 - `read_year_div()` to read one year’s diversion-only flight records
@@ -56,7 +60,15 @@ The main user-facing functions are
   as an Arrow dataset
 - `open_div()` to open one, many, or all years of diversion-only records
   lazily as an Arrow dataset
-- `read_coords()` to read the packaged airport coordinate table
+- `read_coords()` to read the airport coordinate table
+- `update_slcflights_data()` to download newer BTS data into a local
+  user cache
+- `slcflights_cache_info()` to inspect the local user cache
+- `clear_slcflights_cache()` to remove the local user cache
+
+The reader functions are cache-aware. If no local cache is active, they
+read the installed package data. If a local cache is active, they read
+the installed data together with compatible cached data.
 
 ## Examples
 
@@ -66,7 +78,7 @@ Load the package:
 library(slcflights)
 ```
 
-List the packaged years available for main records:
+List the available years for main records:
 
 ``` r
 available_years("main")
@@ -80,7 +92,7 @@ Read the airport coordinate table:
 ``` r
 coords <- read_coords()
 head(coords)
-#> # A tibble: 6 × 32
+#> # A tibble: 6 × 28
 #>   AIRPORT_SEQ_ID AIRPORT_ID AIRPORT DISPLAY_AIRPORT_NAME  DISPLAY_AIRPORT_CITY…¹
 #>            <dbl>      <dbl> <chr>   <chr>                 <chr>                 
 #> 1        1013505      10135 ABE     Lehigh Valley Intern… Allentown/Bethlehem/E…
@@ -90,12 +102,12 @@ head(coords)
 #> 5        1014001      10140 ABQ     Albuquerque Internat… Albuquerque, NM       
 #> 6        1014002      10140 ABQ     Albuquerque Internat… Albuquerque, NM       
 #> # ℹ abbreviated name: ¹​DISPLAY_AIRPORT_CITY_NAME_FULL
-#> # ℹ 27 more variables: AIRPORT_WAC_SEQ_ID2 <dbl>, AIRPORT_WAC <dbl>,
-#> #   AIRPORT_COUNTRY_NAME <chr>, AIRPORT_COUNTRY_CODE_ISO <chr>,
-#> #   AIRPORT_STATE_NAME <chr>, AIRPORT_STATE_CODE <chr>,
-#> #   AIRPORT_STATE_FIPS <chr>, CITY_MARKET_SEQ_ID <dbl>, CITY_MARKET_ID <dbl>,
-#> #   DISPLAY_CITY_MARKET_NAME_FULL <chr>, CITY_MARKET_WAC_SEQ_ID2 <dbl>,
-#> #   CITY_MARKET_WAC <dbl>, LAT_DEGREES <dbl>, LAT_HEMISPHERE <chr>, …
+#> # ℹ 23 more variables: AIRPORT_WAC <dbl>, AIRPORT_COUNTRY_NAME <chr>,
+#> #   AIRPORT_COUNTRY_CODE_ISO <chr>, AIRPORT_STATE_NAME <chr>,
+#> #   AIRPORT_STATE_CODE <chr>, AIRPORT_STATE_FIPS <chr>, CITY_MARKET_ID <dbl>,
+#> #   DISPLAY_CITY_MARKET_NAME_FULL <chr>, CITY_MARKET_WAC <dbl>,
+#> #   LAT_DEGREES <dbl>, LAT_HEMISPHERE <chr>, LAT_MINUTES <dbl>,
+#> #   LAT_SECONDS <dbl>, LATITUDE <dbl>, LON_DEGREES <dbl>, …
 ```
 
 Read one year’s main flight records into memory:
@@ -103,22 +115,195 @@ Read one year’s main flight records into memory:
 ``` r
 x_1987 <- read_year_main(1987)
 head(x_1987)
-#> # A tibble: 6 × 121
-#>    Year Quarter Month DayofMonth DayOfWeek FlightDate Reporting_Airline
-#>   <int>   <int> <int>      <int>     <int> <date>     <chr>            
-#> 1  1987       4    10          1         4 1987-10-01 HP               
-#> 2  1987       4    10          1         4 1987-10-01 DL               
-#> 3  1987       4    10          1         4 1987-10-01 DL               
-#> 4  1987       4    10          1         4 1987-10-01 CO               
-#> 5  1987       4    10          1         4 1987-10-01 DL               
-#> 6  1987       4    10          1         4 1987-10-01 UA               
-#> # ℹ 114 more variables: DOT_ID_Reporting_Airline <int>,
-#> #   IATA_CODE_Reporting_Airline <chr>, Tail_Number <chr>,
-#> #   Flight_Number_Reporting_Airline <int>, OriginAirportID <int>,
-#> #   OriginAirportSeqID <int>, OriginLatitude <dbl>, OriginLongitude <dbl>,
-#> #   OriginAirportStartDate <date>, OriginAirportThruDate <date>,
-#> #   OriginAirportIsClosed <int>, OriginAirportIsLatest <int>,
-#> #   OriginCityMarketID <int>, Origin <chr>, OriginCityName <chr>, …
+#>   Year Quarter Month DayofMonth DayOfWeek FlightDate Reporting_Airline
+#> 1 1987       4    10          1         4 1987-10-01                HP
+#> 2 1987       4    10          1         4 1987-10-01                DL
+#> 3 1987       4    10          1         4 1987-10-01                DL
+#> 4 1987       4    10          1         4 1987-10-01                CO
+#> 5 1987       4    10          1         4 1987-10-01                DL
+#> 6 1987       4    10          1         4 1987-10-01                UA
+#>   DOT_ID_Reporting_Airline IATA_CODE_Reporting_Airline Tail_Number
+#> 1                    19991                          HP        <NA>
+#> 2                    19790                          DL        <NA>
+#> 3                    19790                          DL        <NA>
+#> 4                    19704                          CO        <NA>
+#> 5                    19790                          DL        <NA>
+#> 6                    19977                          UA        <NA>
+#>   Flight_Number_Reporting_Airline OriginAirportID OriginAirportSeqID
+#> 1                             336           12889            1288901
+#> 2                            1493           10299            1029901
+#> 3                             430           14869            1486901
+#> 4                            1176           14869            1486901
+#> 5                            1489           13930            1393001
+#> 6                            1620           12892            1289201
+#>   OriginLatitude OriginLongitude OriginAirportStartDate OriginAirportThruDate
+#> 1       36.08000      -115.15222             1950-01-01            1989-12-31
+#> 2       61.16917      -149.98528             1950-01-01            1999-12-31
+#> 3       40.78417      -111.96694             1950-01-01            1994-08-31
+#> 4       40.78417      -111.96694             1950-01-01            1994-08-31
+#> 5       41.97806       -87.90611             1950-01-01            2011-06-30
+#> 6       33.94250      -118.40806             1950-01-01            2011-06-30
+#>   OriginAirportIsClosed OriginAirportIsLatest OriginCityMarketID Origin
+#> 1                     0                     0              32211    LAS
+#> 2                     0                     0              30299    ANC
+#> 3                     0                     0              34614    SLC
+#> 4                     0                     0              34614    SLC
+#> 5                     0                     0              30977    ORD
+#> 6                     0                     0              32575    LAX
+#>       OriginCityName OriginState OriginStateFips OriginStateName OriginWac
+#> 1      Las Vegas, NV          NV              32          Nevada        85
+#> 2      Anchorage, AK          AK              02          Alaska         1
+#> 3 Salt Lake City, UT          UT              49            Utah        87
+#> 4 Salt Lake City, UT          UT              49            Utah        87
+#> 5        Chicago, IL          IL              17        Illinois        41
+#> 6    Los Angeles, CA          CA              06      California        91
+#>   DestAirportID DestAirportSeqID DestLatitude DestLongitude
+#> 1         14869          1486901     40.78417    -111.96694
+#> 2         14869          1486901     40.78417    -111.96694
+#> 3         11298          1129801     32.89444     -97.02972
+#> 4         11292          1129201     39.77444    -104.87972
+#> 5         14869          1486901     40.78417    -111.96694
+#> 6         14869          1486901     40.78417    -111.96694
+#>   DestAirportStartDate DestAirportThruDate DestAirportIsClosed
+#> 1           1950-01-01          1994-08-31                   0
+#> 2           1950-01-01          1994-08-31                   0
+#> 3           1950-01-01          1989-12-31                   0
+#> 4           1950-01-01          1993-08-31                   0
+#> 5           1950-01-01          1994-08-31                   0
+#> 6           1950-01-01          1994-08-31                   0
+#>   DestAirportIsLatest DestCityMarketID Dest          DestCityName DestState
+#> 1                   0            34614  SLC    Salt Lake City, UT        UT
+#> 2                   0            34614  SLC    Salt Lake City, UT        UT
+#> 3                   0            30194  DFW Dallas/Fort Worth, TX        TX
+#> 4                   0            30325  DEN            Denver, CO        CO
+#> 5                   0            34614  SLC    Salt Lake City, UT        UT
+#> 6                   0            34614  SLC    Salt Lake City, UT        UT
+#>   DestStateFips DestStateName DestWac CRSDepTime DepTime DepDelay
+#> 1            49          Utah      87       0130    0145       15
+#> 2            49          Utah      87       0155    0154       -1
+#> 3            48         Texas      74       0600    0600        0
+#> 4            08      Colorado      82       0610    0610        0
+#> 5            49          Utah      87       0615    0615        0
+#> 6            49          Utah      87       0620    0618       -2
+#>   DepDelayMinutes DepDel15 DepartureDelayGroups DepTimeBlk TaxiOut WheelsOff
+#> 1              15        1                    1  0001-0559    <NA>      <NA>
+#> 2               0        0                   -1  0001-0559    <NA>      <NA>
+#> 3               0        0                    0  0600-0659    <NA>      <NA>
+#> 4               0        0                    0  0600-0659    <NA>      <NA>
+#> 5               0        0                    0  0600-0659    <NA>      <NA>
+#> 6               0        0                   -1  0600-0659    <NA>      <NA>
+#>   WheelsOn TaxiIn CRSArrTime ArrTime ArrDelay ArrDelayMinutes ArrDel15
+#> 1     <NA>   <NA>       0340    0353       13              13        0
+#> 2     <NA>   <NA>       0814    0832       18              18        1
+#> 3     <NA>   <NA>       0918    0924        6               6        0
+#> 4     <NA>   <NA>       0728    0719       -9               0        0
+#> 5     <NA>   <NA>       0820    0820        0               0        0
+#> 6     <NA>   <NA>       0900    0858       -2               0        0
+#>   ArrivalDelayGroups ArrTimeBlk Cancelled CancellationCode Diverted
+#> 1                  0  0001-0559         0             <NA>        0
+#> 2                  1  0800-0859         0             <NA>        0
+#> 3                  0  0900-0959         0             <NA>        0
+#> 4                 -1  0700-0759         0             <NA>        0
+#> 5                  0  0800-0859         0             <NA>        0
+#> 6                 -1  0900-0959         0             <NA>        0
+#>   CRSElapsedTime ActualElapsedTime AirTime Flights Distance DistanceGroup
+#> 1             70                68    <NA>       1      368             2
+#> 2            259               278    <NA>       1     2125             9
+#> 3            138               144    <NA>       1      988             4
+#> 4             78                69    <NA>       1      381             2
+#> 5            185               185    <NA>       1     1249             5
+#> 6            100               100    <NA>       1      590             3
+#>   CarrierDelay WeatherDelay NASDelay SecurityDelay LateAircraftDelay
+#> 1         <NA>         <NA>     <NA>          <NA>              <NA>
+#> 2         <NA>         <NA>     <NA>          <NA>              <NA>
+#> 3         <NA>         <NA>     <NA>          <NA>              <NA>
+#> 4         <NA>         <NA>     <NA>          <NA>              <NA>
+#> 5         <NA>         <NA>     <NA>          <NA>              <NA>
+#> 6         <NA>         <NA>     <NA>          <NA>              <NA>
+#>   FirstDepTime TotalAddGTime LongestAddGTime DivAirportLandings DivReachedDest
+#> 1         <NA>          <NA>            <NA>               <NA>           <NA>
+#> 2         <NA>          <NA>            <NA>               <NA>           <NA>
+#> 3         <NA>          <NA>            <NA>               <NA>           <NA>
+#> 4         <NA>          <NA>            <NA>               <NA>           <NA>
+#> 5         <NA>          <NA>            <NA>               <NA>           <NA>
+#> 6         <NA>          <NA>            <NA>               <NA>           <NA>
+#>   DivActualElapsedTime DivArrDelay DivDistance Div1Airport Div1AirportID
+#> 1                 <NA>        <NA>        <NA>        <NA>          <NA>
+#> 2                 <NA>        <NA>        <NA>        <NA>          <NA>
+#> 3                 <NA>        <NA>        <NA>        <NA>          <NA>
+#> 4                 <NA>        <NA>        <NA>        <NA>          <NA>
+#> 5                 <NA>        <NA>        <NA>        <NA>          <NA>
+#> 6                 <NA>        <NA>        <NA>        <NA>          <NA>
+#>   Div1AirportSeqID Div1Latitude Div1Longitude Div1AirportStartDate
+#> 1             <NA>           NA            NA                 <NA>
+#> 2             <NA>           NA            NA                 <NA>
+#> 3             <NA>           NA            NA                 <NA>
+#> 4             <NA>           NA            NA                 <NA>
+#> 5             <NA>           NA            NA                 <NA>
+#> 6             <NA>           NA            NA                 <NA>
+#>   Div1AirportThruDate Div1AirportIsClosed Div1AirportIsLatest Div1WheelsOn
+#> 1                <NA>                  NA                  NA         <NA>
+#> 2                <NA>                  NA                  NA         <NA>
+#> 3                <NA>                  NA                  NA         <NA>
+#> 4                <NA>                  NA                  NA         <NA>
+#> 5                <NA>                  NA                  NA         <NA>
+#> 6                <NA>                  NA                  NA         <NA>
+#>   Div1TotalGTime Div1LongestGTime Div1WheelsOff Div1TailNum Div2Airport
+#> 1           <NA>             <NA>          <NA>        <NA>        <NA>
+#> 2           <NA>             <NA>          <NA>        <NA>        <NA>
+#> 3           <NA>             <NA>          <NA>        <NA>        <NA>
+#> 4           <NA>             <NA>          <NA>        <NA>        <NA>
+#> 5           <NA>             <NA>          <NA>        <NA>        <NA>
+#> 6           <NA>             <NA>          <NA>        <NA>        <NA>
+#>   Div2AirportID Div2AirportSeqID Div2Latitude Div2Longitude
+#> 1          <NA>             <NA>           NA            NA
+#> 2          <NA>             <NA>           NA            NA
+#> 3          <NA>             <NA>           NA            NA
+#> 4          <NA>             <NA>           NA            NA
+#> 5          <NA>             <NA>           NA            NA
+#> 6          <NA>             <NA>           NA            NA
+#>   Div2AirportStartDate Div2AirportThruDate Div2AirportIsClosed
+#> 1                 <NA>                <NA>                  NA
+#> 2                 <NA>                <NA>                  NA
+#> 3                 <NA>                <NA>                  NA
+#> 4                 <NA>                <NA>                  NA
+#> 5                 <NA>                <NA>                  NA
+#> 6                 <NA>                <NA>                  NA
+#>   Div2AirportIsLatest Div2WheelsOn Div2TotalGTime Div2LongestGTime
+#> 1                  NA         <NA>           <NA>             <NA>
+#> 2                  NA         <NA>           <NA>             <NA>
+#> 3                  NA         <NA>           <NA>             <NA>
+#> 4                  NA         <NA>           <NA>             <NA>
+#> 5                  NA         <NA>           <NA>             <NA>
+#> 6                  NA         <NA>           <NA>             <NA>
+#>   Div2WheelsOff Div2TailNum Div3Airport Div3AirportID Div3AirportSeqID
+#> 1          <NA>        <NA>        <NA>          <NA>             <NA>
+#> 2          <NA>        <NA>        <NA>          <NA>             <NA>
+#> 3          <NA>        <NA>        <NA>          <NA>             <NA>
+#> 4          <NA>        <NA>        <NA>          <NA>             <NA>
+#> 5          <NA>        <NA>        <NA>          <NA>             <NA>
+#> 6          <NA>        <NA>        <NA>          <NA>             <NA>
+#>   Div3Latitude Div3Longitude Div3AirportStartDate Div3AirportThruDate
+#> 1           NA            NA                 <NA>                <NA>
+#> 2           NA            NA                 <NA>                <NA>
+#> 3           NA            NA                 <NA>                <NA>
+#> 4           NA            NA                 <NA>                <NA>
+#> 5           NA            NA                 <NA>                <NA>
+#> 6           NA            NA                 <NA>                <NA>
+#>   Div3AirportIsClosed Div3AirportIsLatest Div3WheelsOn Div3TotalGTime
+#> 1                  NA                  NA         <NA>           <NA>
+#> 2                  NA                  NA         <NA>           <NA>
+#> 3                  NA                  NA         <NA>           <NA>
+#> 4                  NA                  NA         <NA>           <NA>
+#> 5                  NA                  NA         <NA>           <NA>
+#> 6                  NA                  NA         <NA>           <NA>
+#>   Div3LongestGTime
+#> 1             <NA>
+#> 2             <NA>
+#> 3             <NA>
+#> 4             <NA>
+#> 5             <NA>
+#> 6             <NA>
 ```
 
 Read multiple years of main records into memory:
@@ -169,6 +354,61 @@ x_div <- read_year_div(2015)
 head(x_div)
 ```
 
+## Updating local data
+
+The installed package includes flight records through June 2024. To
+extend the available data beyond the installed endpoint, use:
+
+``` r
+update_slcflights_data()
+```
+
+By default, `update_slcflights_data()` checks BTS for the latest
+available monthly data and downloads every available month after June
+2024. You can also request an explicit endpoint:
+
+``` r
+update_slcflights_data(until = "2024-07")
+update_slcflights_data(until = c(2024, 12))
+```
+
+Local updates always begin with July 2024 and form a consecutive
+extension of the installed data.
+
+The local update workflow
+
+- downloads monthly BTS On-Time Performance files into the user cache
+- downloads the BTS Master Coordinate table into the user cache
+- builds annual main and diversion-only Parquet files in a staging
+  directory
+- reduces the coordinate table to airports used by installed and cached
+  records
+- enriches cached Parquet files with coordinate metadata
+- finalizes cached Parquet schemas so they match the installed schema
+  contract
+- activates the completed cache atomically
+
+The installed package files are not changed. The local cache is stored
+in the user cache directory returned by
+`tools::R_user_dir("slcflights", "cache")`.
+
+Inspect the active cache with:
+
+``` r
+slcflights_cache_info()
+```
+
+After a cache is active, the ordinary readers automatically use it. For
+example, after updating through July 2024, `read_year_main(2024)` reads
+both the installed January-through-June records and the cached July
+records.
+
+Remove the local cache with:
+
+``` r
+clear_slcflights_cache()
+```
+
 ## Rebuilding the packaged data
 
 The packaged Parquet files and coordinate CSV can be rebuilt from source
@@ -188,7 +428,10 @@ By default, `build_slc_data()`
 - uses Salt Lake City’s BTS airport ID (`14869`)
 - downloads the annual source Parquet files into a temporary build
   directory
+- removes columns that are globally all `NULL`
 - filters the data to Salt Lake City-related records
+- removes columns that are all `NULL` after Salt Lake City filtering
+- sorts rows by flight date and scheduled departure time
 - splits the filtered data into main and diversion-only files
 - reduces the BTS Master Coordinate table to the airport sequence IDs
   used by the packaged flight data
@@ -197,8 +440,8 @@ By default, `build_slc_data()`
 - removes the temporary build directory when finished
 
 The temporary build directory is a maintainer-side build artifact. It is
-not part of the installed package and should not be confused with a user
-cache.
+not part of the installed package and should not be confused with the
+user cache created by `update_slcflights_data()`.
 
 You can also rebuild a subset of years, for example:
 
@@ -208,7 +451,8 @@ build_slc_data(years = 2019:2024)
 ```
 
 Because rebuilding requires large downloads and substantial disk space,
-it is recommended to work with the packaged files directly.
+most users should work with the installed files and, when needed, use
+`update_slcflights_data()` for post-June-2024 updates.
 
 ## Data provenance
 
