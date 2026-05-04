@@ -53,7 +53,7 @@ available_years <- function(type = c("main", "div")) {
 #'
 #' @export
 read_year_main <- function(year) {
-  arrow::read_parquet(.parquet_paths("main", year)[[1]])
+  read_main(year)
 }
 
 #' Read One Year's Diversion-Only Salt Lake City Flight Records
@@ -91,7 +91,7 @@ read_year_main <- function(year) {
 #'
 #' @export
 read_year_div <- function(year) {
-  arrow::read_parquet(.parquet_paths("div", year)[[1]])
+  read_div(year)
 }
 
 #' Read Main Salt Lake City Flight Records for One, Many, or All Years
