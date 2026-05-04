@@ -165,3 +165,43 @@ test_that("schema alignment works for multiple files", {
 
   unlink(root, recursive = TRUE, force = TRUE)
 })
+
+test_that("schema alignment preserves flight-date departure-time order", {
+  root <- tempfile("slc-cache-schema-")
+
+  cache_main <- slcflights:::slc_cache_parquet_path(
+    "main",
+    2024,
+    root = root,
+    create = TRUE
+  )
+
+  installed <- arrow::read_parquet(
+    slcflights:::slc_installed_parquet_path("main", 2024)
+  )
+
+  x <- installed[seq_len(min(3L, nrow(installed))), ]
+
+  x <- x[rev(seq_len(nrow(x))), ]
+  x$FlightDate <- as.Date(c("2024-07-02", "2024-07-01", "2024-07-01"))
+  x$CRSDepTime <- c(900L, 1200L, 800L)
+  x$CacheOnlyColumn <- "drop me"
+
+  arrow::write_parquet(x, cache_main)
+
+  slcflights:::cache_schema_align_file(cache_main)
+
+  aligned <- arrow::read_parquet(cache_main)
+
+  expect_equal(
+    aligned$FlightDate,
+    as.Date(c("2024-07-01", "2024-07-01", "2024-07-02"))
+  )
+
+  expect_equal(
+    aligned$CRSDepTime,
+    c(800L, 1200L, 900L)
+  )
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
