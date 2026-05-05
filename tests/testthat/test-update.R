@@ -1,3 +1,22 @@
+test_that("latest month skips unavailable candidate months", {
+  available <- slcflights:::as_year_month(2025L, 11L)
+  today <- as.Date("2026-02-15")
+
+  testthat::local_mocked_bindings(
+    bts_probe_month_url = function(year, month) {
+      identical(
+        slcflights:::as_year_month(year, month),
+        available
+      )
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights:::bts_latest_month(today = today)
+
+  expect_equal(out, available)
+})
+
 test_that("BTS candidate months run backward to first downloadable month", {
   out <- slcflights:::bts_candidate_months(
     today = as.Date("2024-09-15")

@@ -23,31 +23,46 @@ bts_candidate_months <- function(today = Sys.Date()) {
 }
 
 bts_probe_month_url <- function(year, month) {
-  if (!requireNamespace("httr2", quietly = TRUE)) {
-    stop(
-      "Package `httr2` is required to check available BTS data.",
-      call. = FALSE
-    )
-  }
-
   url <- bts_ontime_url(year, month)
+  zip_path <- tempfile("slcflights-bts-probe-", fileext = ".zip")
 
-  resp <- tryCatch(
-    httr2::request(url) |>
-      httr2::req_method("HEAD") |>
-      httr2::req_user_agent("Mozilla/5.0 slcflights") |>
-      httr2::req_timeout(20) |>
-      httr2::req_perform(),
-    error = function(e) NULL
+  ok <- tryCatch(
+    {
+      resp <- httr2::request(url) |>
+        httr2::req_user_agent("Mozilla/5.0 slcflights") |>
+        httr2::req_timeout(60) |>
+        httr2::req_perform(path = zip_path)
+
+      status <- httr2::resp_status(resp)
+
+      if (status < 200L || status >= 400L) {
+        return(FALSE)
+      }
+
+      if (!file.exists(zip_path) || file.info(zip_path)$size <= 0) {
+        return(FALSE)
+      }
+
+      listed <- tryCatch(
+        utils::unzip(zip_path, list = TRUE),
+        error = function(e) NULL,
+        warning = function(w) NULL
+      )
+
+      if (is.null(listed) || !nrow(listed)) {
+        return(FALSE)
+      }
+
+      any(grepl("\\.csv$", listed$Name, ignore.case = TRUE))
+    },
+    error = function(e) FALSE
   )
 
-  if (is.null(resp)) {
-    return(FALSE)
+  if (file.exists(zip_path)) {
+    unlink(zip_path, force = TRUE)
   }
 
-  status <- httr2::resp_status(resp)
-
-  status >= 200L && status < 400L
+  isTRUE(ok)
 }
 
 bts_latest_month <- function(today = Sys.Date()) {
