@@ -182,20 +182,6 @@ download_bts_master_coords <- function(
     ))
   }
 
-  if (!requireNamespace("httr2", quietly = TRUE)) {
-    stop(
-      "Package `httr2` is required to download BTS coordinates.",
-      call. = FALSE
-    )
-  }
-
-  if (!requireNamespace("xml2", quietly = TRUE)) {
-    stop(
-      "Package `xml2` is required to download BTS coordinates.",
-      call. = FALSE
-    )
-  }
-
   page_url <- bts_master_coords_url()
   cookie_file <- tempfile("bts-cookies-")
 
@@ -331,10 +317,13 @@ bts_form_body <- function(form) {
 
 extract_bts_master_coords_zip <- function(raw, destfile) {
   zipfile <- tempfile(fileext = ".zip")
+  on.exit(unlink(zipfile, force = TRUE), add = TRUE)
+
   writeBin(raw, zipfile)
 
   unzip_dir <- tempfile("bts-coords-")
   dir.create(unzip_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(unlink(unzip_dir, recursive = TRUE, force = TRUE), add = TRUE)
 
   utils::unzip(zipfile, exdir = unzip_dir)
 

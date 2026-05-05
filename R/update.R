@@ -25,6 +25,7 @@ bts_candidate_months <- function(today = Sys.Date()) {
 bts_probe_month_url <- function(year, month) {
   url <- bts_ontime_url(year, month)
   zip_path <- tempfile("slcflights-bts-probe-", fileext = ".zip")
+  on.exit(unlink(zip_path, force = TRUE), add = TRUE)
 
   ok <- tryCatch(
     {
@@ -35,32 +36,28 @@ bts_probe_month_url <- function(year, month) {
 
       status <- httr2::resp_status(resp)
 
-      if (status < 200L || status >= 400L) {
-        return(FALSE)
+      zip_ok <- status >= 200L &&
+        status < 400L &&
+        file.exists(zip_path) &&
+        !is.na(file.info(zip_path)$size) &&
+        file.info(zip_path)$size > 0
+
+      if (!zip_ok) {
+        FALSE
+      } else {
+        listed <- tryCatch(
+          utils::unzip(zip_path, list = TRUE),
+          error = function(e) NULL,
+          warning = function(w) NULL
+        )
+
+        !is.null(listed) &&
+          nrow(listed) > 0L &&
+          any(grepl("\\.csv$", listed$Name, ignore.case = TRUE))
       }
-
-      if (!file.exists(zip_path) || file.info(zip_path)$size <= 0) {
-        return(FALSE)
-      }
-
-      listed <- tryCatch(
-        utils::unzip(zip_path, list = TRUE),
-        error = function(e) NULL,
-        warning = function(w) NULL
-      )
-
-      if (is.null(listed) || !nrow(listed)) {
-        return(FALSE)
-      }
-
-      any(grepl("\\.csv$", listed$Name, ignore.case = TRUE))
     },
     error = function(e) FALSE
   )
-
-  if (file.exists(zip_path)) {
-    unlink(zip_path, force = TRUE)
-  }
 
   isTRUE(ok)
 }
