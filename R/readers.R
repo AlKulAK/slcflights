@@ -306,3 +306,41 @@ open_div <- function(years = NULL) {
 read_coords <- function() {
   readr::read_csv(.coords_path(), show_col_types = FALSE)
 }
+
+#' Read the Field Dictionary
+#'
+#' Reads the field dictionary for the installed slcflights data.
+#'
+#' @returns
+#' A data frame describing fields that appear in the flight-record Parquet
+#' files and the airport coordinate table.
+#'
+#' @details
+#' The field dictionary includes the field name, field group, source table,
+#' description, presence in main records, presence in diversion-only records,
+#' presence in the coordinate table, and additional notes.
+#'
+#' Values of `main_presence`, `div_presence`, and `coords_presence` use
+#' `"always"`, `"sometimes"`, or `"never"` to describe whether a field appears
+#' in that data grouping.
+#'
+#' @seealso [read_main()], [read_div()], [open_main()], [open_div()],
+#'   [read_coords()]
+#'
+#' @examples
+#' fields <- read_field_dictionary()
+#' head(fields)
+#'
+#' @export
+read_field_dictionary <- function() {
+  readr::read_csv(
+    system.file(
+      "extdata",
+      "csv",
+      "field_dictionary.csv",
+      package = "slcflights",
+      mustWork = TRUE
+    ),
+    show_col_types = FALSE
+  )
+}

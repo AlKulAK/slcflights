@@ -73,6 +73,8 @@ The main user-facing functions are
 * `open_div()` to open one, many, or all years of diversion-only records lazily
   as an Arrow dataset
 * `read_coords()` to read the currently active airport coordinate table
+* `read_field_dictionary()` to read field descriptions and field-presence
+  metadata
 * `update_slcflights_data()` to download newer BTS data into a local user cache
 * `slcflights_cache_info()` to inspect the local user cache
 * `clear_slcflights_cache()` to remove the local user cache
@@ -103,6 +105,14 @@ Read the airport coordinate table:
 coords <- read_coords()
 dim(coords)
 names(coords)[1:8]
+```
+
+Read the field dictionary:
+
+```{r}
+fields <- read_field_dictionary()
+dim(fields)
+names(fields)[1:8]
 ```
 
 Read one year's main flight records into memory:
