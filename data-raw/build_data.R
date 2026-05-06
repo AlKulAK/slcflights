@@ -3,9 +3,9 @@
 # This script rebuilds the bundled data in inst/extdata/.
 # Runtime user updates must not use this script and must not write to inst/.
 #
-# Before running, ensure that T_MASTER_CORD.csv has been downloaded from
-# https://transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=N8vn6v10+f722146+gnoyr5&gnoyr_VQ=FLL
-# and placed in data-raw/
+# If data-raw/T_MASTER_CORD.csv is missing, build_slc_data() downloads it from
+# the BTS TranStats Master Coordinate support table before reducing it into the
+# packaged coordinate CSV.
 
 years_default <- 1987:2024
 slc_id_default <- 14869L
@@ -975,6 +975,23 @@ clean_build_cache <- function(build_dir = build_dir_default) {
   invisible(TRUE)
 }
 
+ensure_master_coords_csv <- function(coords_in) {
+  if (file.exists(coords_in)) {
+    return(normalizePath(coords_in, winslash = "/", mustWork = TRUE))
+  }
+
+  dir.create(dirname(coords_in), recursive = TRUE, showWarnings = FALSE)
+
+  if (!exists("download_bts_master_coords", mode = "function")) {
+    source(file.path("R", "bts_download.R"))
+  }
+
+  download_bts_master_coords(
+    destfile = coords_in,
+    overwrite = FALSE
+  )
+}
+
 build_slc_data <- function(
   years = years_default,
   slc_id = slc_id_default,
@@ -988,6 +1005,7 @@ build_slc_data <- function(
   on.exit(clean_build_cache(build_dir), add = TRUE)
 
   files <- year_files(years, build_dir = build_dir)
+  coords_in <- ensure_master_coords_csv(coords_in)
 
   download_full_collection(
     years = years,

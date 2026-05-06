@@ -6,29 +6,31 @@
 \alias{slcflights-package}
 \title{slcflights: Salt Lake City-Related Flight Data}
 \description{
-\code{slcflights} provides packaged Parquet files for Salt Lake City-related U.S.
-flight records, along with a packaged CSV table of airport coordinates used
-to support those records.
+\code{slcflights} provides Salt Lake City-focused subsets of the Bureau of
+Transportation Statistics (BTS) TranStats On-Time: Reporting Carrier
+On-Time Performance data, along with airport coordinate metadata used to
+support those records.
 }
 \details{
-The packaged flight data are derived from the U.S. commercial flight data
-used in the 2025 ASA Data Expo Challenge. The underlying flight records
-ultimately originate from the Bureau of Transportation Statistics (BTS)
-TranStats On-Time Performance data, and the packaged coordinate table is
-derived from the BTS TranStats Master Coordinate support table.
+The installed historical Parquet files cover October 1987 through June 2024
+and are derived from the 1987--2024 Parquet files distributed for the 2025
+ASA Data Expo Challenge. The underlying records originate from the BTS
+TranStats On-Time Performance data, and the coordinate table is derived from
+the BTS TranStats Master Coordinate support table.
 
 The package contains two flight-data groupings:
 \itemize{
-\item \strong{main records}, where Salt Lake City appears in the primary origin or
-destination airport fields
-\item \strong{diversion-only records}, where Salt Lake City appears only in diversion
-airport fields and not in the primary origin or destination airport fields
+\item \strong{main records}, where Salt Lake City's BTS airport ID appears in
+\code{OriginAirportID} or \code{DestAirportID}
+\item \strong{diversion-only records}, where Salt Lake City's BTS airport ID appears
+in one of \code{Div1AirportID} through \code{Div5AirportID}, but not in
+\code{OriginAirportID} or \code{DestAirportID}
 }
 
 The main user-facing functions are
 \itemize{
-\item \code{\link[=available_years]{available_years()}} to list packaged years for main or diversion-only
-records
+\item \code{\link[=available_years]{available_years()}} to list currently available years for main or
+diversion-only records, including compatible local cache years when present
 \item \code{\link[=read_main]{read_main()}} to read one, many, or all years of main records into memory
 \item \code{\link[=read_div]{read_div()}} to read one, many, or all years of diversion-only records
 into memory
@@ -38,12 +40,37 @@ Arrow dataset
 lazily as an Arrow dataset
 \item \code{\link[=read_year_main]{read_year_main()}} to read one year's main records into memory
 \item \code{\link[=read_year_div]{read_year_div()}} to read one year's diversion-only records into memory
-\item \code{\link[=read_coords]{read_coords()}} to read the packaged airport coordinate table
+\item \code{\link[=read_coords]{read_coords()}} to read the currently active airport coordinate table
+\item \code{\link[=update_slcflights_data]{update_slcflights_data()}} to extend the installed data with newer BTS
+monthly releases in a local user cache
+\item \code{\link[=slcflights_cache_info]{slcflights_cache_info()}} to inspect the local cache
+\item \code{\link[=clear_slcflights_cache]{clear_slcflights_cache()}} to remove the local cache
+}
+}
+\section{Fields}{
+
+Flight-record columns use BTS TranStats field names where those fields are
+present in the package data. Not every BTS field is guaranteed to appear in
+every package Parquet file. The data-build process removes columns that are
+globally all missing before and after filtering to Salt Lake City-related
+records. Use \code{names(read_year_main(year))}, \code{names(read_year_div(year))},
+\code{names(open_main(year))}, or \code{names(open_div(year))} to inspect the fields
+available for a particular year and record type.
+
+The currently active coordinate table contains airport sequence identifiers
+and associated airport metadata used to enrich flight records with latitude,
+longitude, and date-bounded airport information. If a compatible local cache
+is active, \code{\link[=read_coords]{read_coords()}} reads the cached coordinate table; otherwise it
+reads the installed package coordinate table.
 }
 
-The packaged coordinate table contains airport sequence identifiers and
-associated airport metadata used to enrich the packaged flight records with
-latitude, longitude, and date-bounded airport information.
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/AlKulAK/slcflights}
+  \item Report bugs at \url{https://github.com/AlKulAK/slcflights/issues}
+}
+
 }
 \author{
 \strong{Maintainer}: Aleksey Kulyukin \email{aleksey.kulyukin.2022@gmail.com}

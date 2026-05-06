@@ -17,8 +17,8 @@ An Arrow dataset over the selected main Parquet files.
 Opens one, many, or all available main Parquet files as a lazy Arrow dataset.
 }
 \details{
-Main records are flights where Salt Lake City appears in the primary origin
-or destination airport fields.
+Main records are flights where Salt Lake City's BTS airport ID appears in
+\code{OriginAirportID} or \code{DestAirportID}.
 
 This function does not read all rows into memory immediately.
 

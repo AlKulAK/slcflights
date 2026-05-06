@@ -19,9 +19,9 @@ Reads one, many, or all available diversion-only Parquet files into memory
 and combines them row-wise into a single data frame.
 }
 \details{
-Diversion-only records are flights where Salt Lake City appears only in
-diversion airport fields and not in the primary origin or destination
-airport fields.
+Diversion-only records are flights where Salt Lake City's BTS airport ID
+appears in one of \code{Div1AirportID} through \code{Div5AirportID}, but not in
+\code{OriginAirportID} or \code{DestAirportID}.
 
 This function reads all selected files eagerly into memory. Selected files
 may come from the packaged data installed with the package, from a validated

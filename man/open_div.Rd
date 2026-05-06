@@ -18,9 +18,9 @@ Opens one, many, or all available diversion-only Parquet files as a lazy
 Arrow dataset.
 }
 \details{
-Diversion-only records are flights where Salt Lake City appears only in
-diversion airport fields and not in the primary origin or destination
-airport fields.
+Diversion-only records are flights where Salt Lake City's BTS airport ID
+appears in one of \code{Div1AirportID} through \code{Div5AirportID}, but not in
+\code{OriginAirportID} or \code{DestAirportID}.
 
 This function does not read all rows into memory immediately.
 

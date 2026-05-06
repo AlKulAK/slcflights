@@ -17,8 +17,8 @@ Reads one available Parquet file of main Salt Lake City flight records into
 memory.
 }
 \details{
-Main records are flights where Salt Lake City appears in the primary origin
-or destination airport fields.
+Main records are flights where Salt Lake City's BTS airport ID appears in
+\code{OriginAirportID} or \code{DestAirportID}.
 
 This function reads the selected year's main Parquet file eagerly into
 memory. The file may come from the packaged data installed with the package

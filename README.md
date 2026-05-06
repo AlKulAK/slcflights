@@ -7,23 +7,24 @@
 
 <!-- badges: end -->
 
-The goal of slcflights is to provide packaged Parquet files for Salt
-Lake City-related U.S. flight records, along with a CSV table of airport
-coordinates used to support those records.
+The goal of `slcflights` is to provide Salt Lake City-focused subsets of
+the Bureau of Transportation Statistics (BTS) TranStats **On-Time:
+Reporting Carrier On-Time Performance** data, along with airport
+coordinate metadata used to support those records.
 
-The packaged flight data are derived from the U.S. commercial flight
-data used in the 2025 ASA Data Expo Challenge. The underlying flight
-records originate from the Bureau of Transportation Statistics (BTS)
-TranStats On-Time Performance data, and the packaged coordinate table is
-derived from the BTS TranStats Master Coordinate support table.
+The installed historical Parquet files cover **October 1, 1987 through
+June 30, 2024** and are derived from the 1987–2024 Parquet files
+distributed for the 2025 ASA Data Expo Challenge. The ASA challenge page
+links to the BTS TranStats download page and also provides DuckDB-hosted
+Parquet files for the national flight records.
 
 The package includes two flight-data groupings:
 
-- **main records**: flights where Salt Lake City appears in the core
-  origin or destination airport fields
-- **diversion-only records**: flights where Salt Lake City appears only
-  in diversion airport fields and not in the core origin or destination
-  airport fields
+- **main records**: flights where Salt Lake City’s BTS airport ID
+  appears in `OriginAirportID` or `DestAirportID`
+- **diversion-only records**: flights where Salt Lake City’s BTS airport
+  ID appears in one of `Div1AirportID` through `Div5AirportID`, but not
+  in `OriginAirportID` or `DestAirportID`
 
 The installed package data cover **October 1, 1987 through June 30,
 2024**. This means that 1987 and 2024 are partial years. For analyses
@@ -31,8 +32,9 @@ requiring complete calendar years using only installed data, the
 cleanest full-year span is 1988 through 2023.
 
 Users can optionally extend the data beyond June 2024 by building a
-local cache with `update_slcflights_data()`. The installed package files
-are never modified.
+local cache with `update_slcflights_data()`. For cache updates, the
+package downloads monthly BTS On-Time Performance files directly from
+BTS TranStats. The installed package files are never modified.
 
 ## Installation
 
@@ -47,8 +49,9 @@ remotes::install_github("AlKulAK/slcflights")
 
 The main user-facing functions are
 
-- `available_years()` to list available years for main or diversion-only
-  records
+- `available_years()` to list currently available years for main or
+  diversion-only records, including compatible local cache years when
+  present
 - `read_year_main()` to read one year’s main flight records into memory
 - `read_year_div()` to read one year’s diversion-only flight records
   into memory
@@ -60,15 +63,18 @@ The main user-facing functions are
   as an Arrow dataset
 - `open_div()` to open one, many, or all years of diversion-only records
   lazily as an Arrow dataset
-- `read_coords()` to read the airport coordinate table
+- `read_coords()` to read the currently active airport coordinate table
 - `update_slcflights_data()` to download newer BTS data into a local
   user cache
 - `slcflights_cache_info()` to inspect the local user cache
 - `clear_slcflights_cache()` to remove the local user cache
 
-The reader functions are cache-aware. If no local cache is active, they
-read the installed package data. If a local cache is active, they read
-the installed data together with compatible cached data.
+The flight-data readers are cache-aware. If no local cache is active,
+they read the installed package data. If a local cache is active, they
+read the installed data together with compatible cached data.
+`read_coords()` is also cache-aware: it reads the cached coordinate
+table when a compatible local cache is active and otherwise reads the
+installed coordinate table.
 
 ## Examples
 
@@ -91,23 +97,13 @@ Read the airport coordinate table:
 
 ``` r
 coords <- read_coords()
-head(coords)
-#> # A tibble: 6 × 28
-#>   AIRPORT_SEQ_ID AIRPORT_ID AIRPORT DISPLAY_AIRPORT_NAME  DISPLAY_AIRPORT_CITY…¹
-#>            <dbl>      <dbl> <chr>   <chr>                 <chr>                 
-#> 1        1013505      10135 ABE     Lehigh Valley Intern… Allentown/Bethlehem/E…
-#> 2        1013506      10135 ABE     Lehigh Valley Intern… Allentown/Bethlehem/E…
-#> 3        1013602      10136 ABI     Abilene Regional      Abilene, TX           
-#> 4        1013603      10136 ABI     Abilene Regional      Abilene, TX           
-#> 5        1014001      10140 ABQ     Albuquerque Internat… Albuquerque, NM       
-#> 6        1014002      10140 ABQ     Albuquerque Internat… Albuquerque, NM       
-#> # ℹ abbreviated name: ¹​DISPLAY_AIRPORT_CITY_NAME_FULL
-#> # ℹ 23 more variables: AIRPORT_WAC <dbl>, AIRPORT_COUNTRY_NAME <chr>,
-#> #   AIRPORT_COUNTRY_CODE_ISO <chr>, AIRPORT_STATE_NAME <chr>,
-#> #   AIRPORT_STATE_CODE <chr>, AIRPORT_STATE_FIPS <chr>, CITY_MARKET_ID <dbl>,
-#> #   DISPLAY_CITY_MARKET_NAME_FULL <chr>, CITY_MARKET_WAC <dbl>,
-#> #   LAT_DEGREES <dbl>, LAT_HEMISPHERE <chr>, LAT_MINUTES <dbl>,
-#> #   LAT_SECONDS <dbl>, LATITUDE <dbl>, LON_DEGREES <dbl>, …
+dim(coords)
+#> [1] 537  32
+names(coords)[1:8]
+#> [1] "AIRPORT_SEQ_ID"                 "AIRPORT_ID"                    
+#> [3] "AIRPORT"                        "DISPLAY_AIRPORT_NAME"          
+#> [5] "DISPLAY_AIRPORT_CITY_NAME_FULL" "AIRPORT_WAC_SEQ_ID2"           
+#> [7] "AIRPORT_WAC"                    "AIRPORT_COUNTRY_NAME"
 ```
 
 Read one year’s main flight records into memory:
@@ -414,8 +410,12 @@ clear_slcflights_cache()
 The packaged Parquet files and coordinate CSV can be rebuilt from source
 data.
 
-This is a maintainer workflow implemented in `data-raw/build_data.R`. To
-rebuild, run from a source checkout of the package:
+This is a maintainer workflow implemented in `data-raw/build_data.R`.
+The workflow uses `data-raw/T_MASTER_CORD.csv` if it is already present;
+otherwise, it downloads the BTS Master Coordinate support table before
+reducing it into `inst/extdata/csv/T_MASTER_CORD_reduced.csv`.
+
+To rebuild, run from a source checkout of the package:
 
 ``` r
 source("data-raw/build_data.R")
@@ -456,13 +456,25 @@ most users should work with the installed files and, when needed, use
 
 ## Data provenance
 
-This package repackages a Salt Lake City-focused subset of the flight
-data used in the 2025 ASA Data Expo Challenge. The challenge centered on
-analysis and visualization of U.S. commercial flight arrival and
-departure records, while the underlying data ultimately come from BTS
-TranStats On-Time Performance data.
+The flight records in `slcflights` are Salt Lake City-focused subsets of
+the Bureau of Transportation Statistics (BTS) TranStats **On-Time:
+Reporting Carrier On-Time Performance** data. BTS TranStats is the
+authoritative source for the underlying flight records and field
+definitions.
 
-The packaged coordinate table is derived from the BTS TranStats Master
-Coordinate support table and contains the airport sequence identifiers
-needed to enrich the flight records with airport latitude, longitude,
-and date-bounded airport metadata.
+The installed historical Parquet files are derived from the 1987–2024
+Parquet files distributed for the 2025 ASA Data Expo Challenge. The ASA
+challenge page links to the BTS TranStats download page and provides
+DuckDB-hosted Parquet files for the national flight records. The
+maintainer build workflow filters those national files to Salt Lake
+City-related records and writes the installed `main` and `div` package
+files.
+
+For months after June 2024, `update_slcflights_data()` downloads monthly
+On-Time Performance ZIP files directly from BTS TranStats and writes
+compatible Parquet files to a local user cache.
+
+The coordinate table is derived from the BTS TranStats Master Coordinate
+support table and contains the airport sequence identifiers needed to
+enrich the flight records with airport latitude, longitude, and
+date-bounded airport metadata.

@@ -29,8 +29,8 @@ available_years <- function(type = c("main", "div")) {
 #' Reads one available Parquet file of main Salt Lake City flight records into
 #' memory.
 #'
-#' Main records are flights where Salt Lake City appears in the primary origin
-#' or destination airport fields.
+#' Main records are flights where Salt Lake City's BTS airport ID appears in
+#' `OriginAirportID` or `DestAirportID`.
 #'
 #' @param year Integer year to read.
 #'
@@ -61,9 +61,9 @@ read_year_main <- function(year) {
 #' Reads one available Parquet file of diversion-only Salt Lake City flight
 #' records into memory.
 #'
-#' Diversion-only records are flights where Salt Lake City appears only in
-#' diversion airport fields and not in the primary origin or destination
-#' airport fields.
+#' Diversion-only records are flights where Salt Lake City's BTS airport ID
+#' appears in one of `Div1AirportID` through `Div5AirportID`, but not in
+#' `OriginAirportID` or `DestAirportID`.
 #'
 #' @param year Integer year to read.
 #'
@@ -99,8 +99,8 @@ read_year_div <- function(year) {
 #' Reads one, many, or all available main Parquet files into memory and combines
 #' them row-wise into a single data frame.
 #'
-#' Main records are flights where Salt Lake City appears in the primary origin
-#' or destination airport fields.
+#' Main records are flights where Salt Lake City's BTS airport ID appears in
+#' `OriginAirportID` or `DestAirportID`.
 #'
 #' @param years Integer vector of years to read. Use `NULL` to read all
 #'   available main Parquet files.
@@ -147,9 +147,9 @@ read_main <- function(years = NULL) {
 #' Reads one, many, or all available diversion-only Parquet files into memory
 #' and combines them row-wise into a single data frame.
 #'
-#' Diversion-only records are flights where Salt Lake City appears only in
-#' diversion airport fields and not in the primary origin or destination
-#' airport fields.
+#' Diversion-only records are flights where Salt Lake City's BTS airport ID
+#' appears in one of `Div1AirportID` through `Div5AirportID`, but not in
+#' `OriginAirportID` or `DestAirportID`.
 #'
 #' @param years Integer vector of years to read. Use `NULL` to read all
 #'   available diversion-only Parquet files.
@@ -201,8 +201,8 @@ read_div <- function(years = NULL) {
 #'
 #' Opens one, many, or all available main Parquet files as a lazy Arrow dataset.
 #'
-#' Main records are flights where Salt Lake City appears in the primary origin
-#' or destination airport fields.
+#' Main records are flights where Salt Lake City's BTS airport ID appears in
+#' `OriginAirportID` or `DestAirportID`.
 #'
 #' @param years Integer vector of years to open. Use `NULL` to open all
 #'   available main Parquet files.
@@ -236,9 +236,9 @@ open_main <- function(years = NULL) {
 #' Opens one, many, or all available diversion-only Parquet files as a lazy
 #' Arrow dataset.
 #'
-#' Diversion-only records are flights where Salt Lake City appears only in
-#' diversion airport fields and not in the primary origin or destination
-#' airport fields.
+#' Diversion-only records are flights where Salt Lake City's BTS airport ID
+#' appears in one of `Div1AirportID` through `Div5AirportID`, but not in
+#' `OriginAirportID` or `DestAirportID`.
 #'
 #' @param years Integer vector of years to open. Use `NULL` to open all
 #'   available diversion-only Parquet files.
