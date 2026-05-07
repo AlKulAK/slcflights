@@ -47,5 +47,6 @@ x_all <- read_div()
 
 }
 \seealso{
-\code{\link[=open_div]{open_div()}}, \code{\link[=read_year_div]{read_year_div()}}, \code{\link[=read_main]{read_main()}}
+\code{\link[=open_div]{open_div()}}, \code{\link[=read_year_div]{read_year_div()}}, \code{\link[=read_main]{read_main()}},
+\code{\link[=read_field_dictionary]{read_field_dictionary()}}
 }

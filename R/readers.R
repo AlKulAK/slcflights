@@ -118,7 +118,8 @@ read_year_div <- function(year) {
 #' the same files lazily as an Arrow dataset, allowing filtering or column
 #' selection before materializing results in memory.
 #'
-#' @seealso [open_main()], [read_year_main()], [read_div()]
+#' @seealso [open_main()], [read_year_main()], [read_div()],
+#'   [read_field_dictionary()]
 #'
 #' @examples
 #' x1 <- read_main(1987)
@@ -170,7 +171,8 @@ read_main <- function(years = NULL) {
 #' the same files lazily as an Arrow dataset, allowing filtering or column
 #' selection before materializing results in memory.
 #'
-#' @seealso [open_div()], [read_year_div()], [read_main()]
+#' @seealso [open_div()], [read_year_div()], [read_main()],
+#'   [read_field_dictionary()]
 #'
 #' @examples
 #' \dontrun{
@@ -220,7 +222,8 @@ read_div <- function(years = NULL) {
 #' or otherwise work lazily before collecting results into memory. Use
 #' [read_main()] when you want an in-memory data frame instead.
 #'
-#' @seealso [read_main()], [read_year_main()], [open_div()]
+#' @seealso [read_main()], [read_year_main()], [open_div()],
+#'   [read_field_dictionary()]
 #'
 #' @examples
 #' ds <- open_main(1987:1988)
@@ -259,7 +262,8 @@ open_main <- function(years = NULL) {
 #' It errors if any requested year does not have an available diversion-only
 #' Parquet file.
 #'
-#' @seealso [read_div()], [read_year_div()], [open_main()]
+#' @seealso [read_div()], [read_year_div()], [open_main()],
+#'   [read_field_dictionary()]
 #'
 #' @examples
 #' \dontrun{
