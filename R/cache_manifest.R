@@ -1,6 +1,6 @@
 # Internal cache manifest helpers --------------------------------------------
 #
-# The active runtime cache will use a JSON manifest. These helpers construct,
+# The active runtime cache uses a JSON manifest. These helpers construct,
 # validate, read, and write that manifest. They do not download data, build
 # Parquet files, or change reader behavior.
 
