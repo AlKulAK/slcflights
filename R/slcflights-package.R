@@ -33,6 +33,8 @@
 #' - [read_year_main()] to read one year's main records into memory
 #' - [read_year_div()] to read one year's diversion-only records into memory
 #' - [read_coords()] to read the currently active airport coordinate table
+#' - [read_field_dictionary()] to read field descriptions and field-presence
+#'   metadata
 #' - [update_slcflights_data()] to extend the installed data with newer BTS
 #'   monthly releases in a local user cache
 #' - [slcflights_cache_info()] to inspect the local cache

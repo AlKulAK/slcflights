@@ -41,6 +41,8 @@ lazily as an Arrow dataset
 \item \code{\link[=read_year_main]{read_year_main()}} to read one year's main records into memory
 \item \code{\link[=read_year_div]{read_year_div()}} to read one year's diversion-only records into memory
 \item \code{\link[=read_coords]{read_coords()}} to read the currently active airport coordinate table
+\item \code{\link[=read_field_dictionary]{read_field_dictionary()}} to read field descriptions and field-presence
+metadata
 \item \code{\link[=update_slcflights_data]{update_slcflights_data()}} to extend the installed data with newer BTS
 monthly releases in a local user cache
 \item \code{\link[=slcflights_cache_info]{slcflights_cache_info()}} to inspect the local cache
