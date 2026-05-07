@@ -32,13 +32,19 @@ The installed package data cover **October 1, 1987 through June 30, 2024**.
 Because the endpoint years are partial, the cleanest full-year span in the
 installed data is **1988 through 2023**.
 
-## Installation
+## Installation and loading
 
 You can install the development version of `slcflights` from GitHub:
 
 ``` r
 # install.packages("pak")
 pak::pak("AlKulAK/slcflights")
+```
+
+Then load it:
+
+```{r}
+library(slcflights)
 ```
 
 ## Data sources and coverage
@@ -75,67 +81,6 @@ The package also includes:
   columns
 - cache-aware readers that combine installed data with compatible local cached
   data when a cache is active
-
-## Quick start
-
-Load the package:
-
-```{r}
-library(slcflights)
-```
-
-Check the available years:
-
-```{r}
-available_years("main")
-available_years("div")
-```
-
-Open main records lazily with Arrow when you want to inspect the data before
-materializing it:
-
-```{r}
-ds_main <- open_main(1988:1989)
-ds_main
-```
-
-Read one year into memory when you want an ordinary data frame:
-
-```{r}
-x_1988 <- read_year_main(1988)
-dim(x_1988)
-head(x_1988[, c(
-  "FlightDate",
-  "Reporting_Airline",
-  "OriginCityName",
-  "DestCityName"
-)])
-```
-
-Read several years at once when you want a single row-bound data frame:
-
-```{r}
-x_main <- read_main(1988:1989)
-dim(x_main)
-unique(x_main$Year)
-```
-
-Read the airport coordinate table directly:
-
-```{r}
-coords <- read_coords()
-dim(coords)
-names(coords)[1:8]
-```
-
-Read the field dictionary when you want column descriptions and field-presence
-metadata:
-
-```{r}
-fields <- read_field_dictionary()
-dim(fields)
-names(fields)
-```
 
 ## Main function families
 
@@ -261,8 +206,7 @@ files and, when needed, `update_slcflights_data()` for post-June-2024 monthly
 updates.
 
 The maintainer build workflow lives in `data-raw/build_data.R`. From a source
-checkout, maintainers can rebuild the bundled Parquet files and coordinate CSV
-with:
+checkout, maintainers can rebuild all bundled data artifacts with:
 
 ```{r, eval = FALSE}
 source("data-raw/build_data.R")
@@ -272,12 +216,14 @@ build_slc_data()
 By default, `build_slc_data()` rebuilds years 1987 through 2024, filters the
 national source data to Salt Lake City-related records, splits main and
 diversion-only files, reduces the BTS Master Coordinate table, enriches the
-Parquet files with airport metadata, and writes final package data under
-`inst/extdata/`.
+Parquet files with airport metadata, rebuilds the field dictionary, and writes
+final package data under `inst/extdata/`.
 
-The temporary build directory is a maintainer-side artifact. It is not part of
-the installed package and is separate from the local user cache created by
-`update_slcflights_data()`.
+No source data files need to be present before running this workflow. The historical Parquet source files are downloaded into a temporary build
+directory, and the BTS Master Coordinate table is downloaded automatically if
+`data-raw/T_MASTER_CORD.csv` is absent.
+
+The temporary build directory is a maintainer-side artifact. It is not part of the installed package and is separate from the local user cache created by `update_slcflights_data()`.
 
 ## Learn more
 

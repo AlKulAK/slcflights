@@ -21,13 +21,19 @@ The installed package data cover **October 1, 1987 through June 30,
 2024**. Because the endpoint years are partial, the cleanest full-year
 span in the installed data is **1988 through 2023**.
 
-## Installation
+## Installation and loading
 
 You can install the development version of `slcflights` from GitHub:
 
 ``` r
 # install.packages("pak")
 pak::pak("AlKulAK/slcflights")
+```
+
+Then load it:
+
+``` r
+library(slcflights)
 ```
 
 ## Data sources and coverage
@@ -64,115 +70,6 @@ The package also includes:
   coordinate-table columns
 - cache-aware readers that combine installed data with compatible local
   cached data when a cache is active
-
-## Quick start
-
-Load the package:
-
-``` r
-library(slcflights)
-```
-
-Check the available years:
-
-``` r
-available_years("main")
-#>  [1] 1987 1988 1989 1990 1991 1992 1993 1994 1995 1996 1997 1998 1999 2000 2001
-#> [16] 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016
-#> [31] 2017 2018 2019 2020 2021 2022 2023 2024
-available_years("div")
-#>  [1] 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022
-#> [16] 2023 2024
-```
-
-Open main records lazily with Arrow when you want to inspect the data
-before materializing it:
-
-``` r
-ds_main <- open_main(1988:1989)
-ds_main
-#> FileSystemDataset with 2 Parquet files
-#> 121 columns
-#> Year: int64
-#> Quarter: int64
-#> Month: int64
-#> DayofMonth: int64
-#> DayOfWeek: int64
-#> FlightDate: date32[day]
-#> Reporting_Airline: string
-#> DOT_ID_Reporting_Airline: int64
-#> IATA_CODE_Reporting_Airline: string
-#> Tail_Number: string
-#> Flight_Number_Reporting_Airline: int64
-#> OriginAirportID: int64
-#> OriginAirportSeqID: int64
-#> OriginLatitude: double
-#> OriginLongitude: double
-#> OriginAirportStartDate: date32[day]
-#> OriginAirportThruDate: date32[day]
-#> OriginAirportIsClosed: int32
-#> OriginAirportIsLatest: int32
-#> OriginCityMarketID: int64
-#> ...
-#> 101 more columns
-#> Use `schema()` to see entire schema
-```
-
-Read one year into memory when you want an ordinary data frame:
-
-``` r
-x_1988 <- read_year_main(1988)
-dim(x_1988)
-#> [1] 135436    121
-head(x_1988[, c(
-  "FlightDate",
-  "Reporting_Airline",
-  "OriginCityName",
-  "DestCityName"
-)])
-#>   FlightDate Reporting_Airline     OriginCityName       DestCityName
-#> 1 1988-01-01                HP Salt Lake City, UT      Las Vegas, NV
-#> 2 1988-01-01                DL Salt Lake City, UT        Seattle, WA
-#> 3 1988-01-01                HP      Las Vegas, NV Salt Lake City, UT
-#> 4 1988-01-01                DL       Portland, OR Salt Lake City, UT
-#> 5 1988-01-01                DL    Los Angeles, CA Salt Lake City, UT
-#> 6 1988-01-01                DL        Seattle, WA Salt Lake City, UT
-```
-
-Read several years at once when you want a single row-bound data frame:
-
-``` r
-x_main <- read_main(1988:1989)
-dim(x_main)
-#> [1] 272755    121
-unique(x_main$Year)
-#> [1] 1988 1989
-```
-
-Read the airport coordinate table directly:
-
-``` r
-coords <- read_coords()
-dim(coords)
-#> [1] 537  32
-names(coords)[1:8]
-#> [1] "AIRPORT_SEQ_ID"                 "AIRPORT_ID"                    
-#> [3] "AIRPORT"                        "DISPLAY_AIRPORT_NAME"          
-#> [5] "DISPLAY_AIRPORT_CITY_NAME_FULL" "AIRPORT_WAC_SEQ_ID2"           
-#> [7] "AIRPORT_WAC"                    "AIRPORT_COUNTRY_NAME"
-```
-
-Read the field dictionary when you want column descriptions and
-field-presence metadata:
-
-``` r
-fields <- read_field_dictionary()
-dim(fields)
-#> [1] 153   8
-names(fields)
-#> [1] "field"           "group"           "source"          "description"    
-#> [5] "main_presence"   "div_presence"    "coords_presence" "notes"
-```
 
 ## Main function families
 
@@ -547,8 +444,8 @@ installed files and, when needed, `update_slcflights_data()` for
 post-June-2024 monthly updates.
 
 The maintainer build workflow lives in `data-raw/build_data.R`. From a
-source checkout, maintainers can rebuild the bundled Parquet files and
-coordinate CSV with:
+source checkout, maintainers can rebuild all bundled data artifacts
+with:
 
 ``` r
 source("data-raw/build_data.R")
@@ -558,8 +455,13 @@ build_slc_data()
 By default, `build_slc_data()` rebuilds years 1987 through 2024, filters
 the national source data to Salt Lake City-related records, splits main
 and diversion-only files, reduces the BTS Master Coordinate table,
-enriches the Parquet files with airport metadata, and writes final
-package data under `inst/extdata/`.
+enriches the Parquet files with airport metadata, rebuilds the field
+dictionary, and writes final package data under `inst/extdata/`.
+
+No source data files need to be present before running this workflow.
+The historical Parquet source files are downloaded into a temporary
+build directory, and the BTS Master Coordinate table is downloaded
+automatically if `data-raw/T_MASTER_CORD.csv` is absent.
 
 The temporary build directory is a maintainer-side artifact. It is not
 part of the installed package and is separate from the local user cache
