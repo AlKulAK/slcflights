@@ -173,4 +173,9 @@ test_that("packaged field dictionary CSV is readable", {
   expect_true("div_presence" %in% names(x))
   expect_true("coords_presence" %in% names(x))
   expect_true(nrow(x) > 0)
+
+  expected_presence <- c("always", "sometimes", "never")
+  expect_true(all(x$main_presence %in% expected_presence))
+  expect_true(all(x$div_presence %in% expected_presence))
+  expect_true(all(x$coords_presence %in% expected_presence))
 })
