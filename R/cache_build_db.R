@@ -1,8 +1,8 @@
 # Internal cache build database helpers --------------------------------------
 #
 # These helpers provide low-level DuckDB and file-discovery utilities for the
-# future runtime cache builder. They do not download data, build Parquet files,
-# write manifests, or change reader behavior.
+# runtime cache builder. They do not download data, build Parquet files, write
+# manifests, or change reader behavior.
 
 cache_build_connect <- function() {
   DBI::dbConnect(duckdb::duckdb())
