@@ -1,8 +1,9 @@
 ---
-title: "slcflights"
+title: "Getting started with slcflights"
 output: rmarkdown::html_vignette
+bibliography: references.bib
 vignette: >
-  %\VignetteIndexEntry{slcflights}
+  %\VignetteIndexEntry{Getting started with slcflights}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -10,354 +11,665 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 8,
+  fig.height = 6
 )
-```
-
-```{r setup, message=FALSE, warning=FALSE}
-library(slcflights)
-library(arrow)
 ```
 
 ## Overview
 
-`slcflights` packages Salt Lake City-focused U.S. flight records as Parquet
-files, along with a standalone airport lookup table derived from BTS
-coordinate data.
+`slcflights` provides Salt Lake City-focused subsets of the Bureau of
+Transportation Statistics (BTS) TranStats **On-Time: Reporting Carrier
+On-Time Performance** data.
 
-This vignette introduces the main workflow:
+The installed package data cover **October 1, 1987 through June 30, 2024**.
+The first and last calendar years are therefore partial years. The package keeps
+those endpoint years because they are part of the historical source data used to
+build the package, but analyses that require complete calendar years should
+treat 1987 and 2024 with care.
 
-1. understand the package's installed time coverage
-2. inspect which years are available
-3. inspect Parquet files lazily
-4. read selected data into memory
-5. access the standalone airport lookup table when you want airport metadata
-   on its own
-6. optionally update beyond the installed endpoint with a local cache
+This vignette uses the package for a Salt Lake City-centered adaptation of an
+idea from Wickham's ASA 2009 Data Expo paper [@wickham2011asa]. Wickham used
+the national on-time flight data to compare flight volumes on weekdays and
+selected holidays after normalizing by each year's average day. Here we apply
+the same normalization idea to `slcflights`, first for flights where Salt Lake
+City was the scheduled origin or destination, and then for diversion-only
+records where Salt Lake City appears only as a diversion airport.
 
-The package includes two flight-data groupings:
+The goal is not to reproduce Wickham's national figure. The goal is to use the
+same analytical idea in a different setting: a Salt Lake City-centered package
+with two distinct flight-data groupings.
 
-- **main records**: flights where Salt Lake City appears in the primary
-  origin or destination airport fields
-- **diversion-only records**: flights where Salt Lake City appears only in
-  diversion airport fields and not in the primary origin or destination
-  fields
+## Loading the package
 
-## Coverage and an important caveat
+Load `slcflights` and the packages used in the examples below.
 
-The installed flight data cover the period from **October 1, 1987** through
-**June 30, 2024**, meaning that:
-
-- **1987 is a partial year**
-- **2024 is a partial year**
-
-Therefore, while `available_years()` reports 1987 through 2024 after
-installation, those endpoint years do **not** contain a full
-January-through-December span of installed records.
-
-This matters for year-over-year comparisons. If you want a run of full years
-using only the installed package data, the cleanest span is **1988 through
-2023**.
-
-You can see the partial-year behavior directly for 1987:
-
-```{r}
-x_1987 <- slcflights::read_year_main(1987)
-range(x_1987$FlightDate)
+```{r setup}
+library(slcflights)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
 ```
 
-The package can also use a local cache of newer BTS data. If you activate a
-cache with `update_slcflights_data()`, the reader functions automatically read
-compatible cached records together with the installed package records.
+## Data provenance
 
-## See what years are available
+The underlying flight records come from the BTS TranStats **On-Time:
+Reporting Carrier On-Time Performance** table:
 
-Start by checking which years are available.
+<https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGJ&QO_fu146_anzr=b0-gvzr>
 
-```{r}
-slcflights::available_years("main")
+The BTS field documentation for this table is available at:
+
+<https://www.transtats.bts.gov/Fields.asp?gnoyr_VQ=FGJ>
+
+The installed historical files in `slcflights` are derived from the 1987--2024
+Parquet files distributed for the 2025 ASA Data Expo Challenge:
+
+<https://community.amstat.org/jointscsg-section/dataexpo/dataexpo202136710288>
+
+Airport coordinate metadata come from the BTS TranStats Master Coordinate
+support table in the Aviation Support Tables family:
+
+<https://transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=N8vn6v10+f722146+gnoyr5&gnoyr_VQ=FLL>
+
+The package build workflow transforms the national source files into Salt Lake
+City-focused data by filtering to records involving Salt Lake City's BTS airport
+ID, splitting scheduled origin/destination records from diversion-only records,
+removing globally empty columns, sorting records, reducing the coordinate table
+to airports referenced by retained records, and enriching the Parquet files
+with coordinate metadata.
+
+## What data are available?
+
+The package has two flight-data groupings.
+
+The **main** records are flights where Salt Lake City's BTS airport ID appears
+in `OriginAirportID` or `DestAirportID`.
+
+The **diversion-only** records are flights where Salt Lake City's BTS airport
+ID appears in one of `Div1AirportID` through `Div5AirportID`, but not in
+`OriginAirportID` or `DestAirportID`.
+
+```{r available-years}
+available_years("main")
+available_years("div")
 ```
 
-Diversion-only coverage does differ from main-record coverage, so inspect it
-separately:
+The main records are available for the full installed historical range,
+including the partial endpoint years 1987 and 2024. Diversion-only records
+begin later because the relevant diversion fields are not present throughout
+the full historical period.
 
-```{r}
-slcflights::available_years("div")
+## Looking up fields
+
+Before building an analysis, it is useful to inspect the field dictionary. The
+dictionary describes selected fields and records whether each field appears in
+main records, diversion-only records, or the coordinate table.
+
+```{r field-dictionary}
+fields <- read_field_dictionary()
+
+fields |>
+  filter(field %in% c("Year", "FlightDate", "Flights")) |>
+  select(field, group, source, description, main_presence, div_presence)
 ```
 
-Again, keep in mind that availability is not the same as full-year
-completeness.
+For this vignette, the essential fields are `Year`, `FlightDate`, and
+`Flights`. We use `Year` to normalize within each year, `FlightDate` to classify
+days by weekday or holiday, and `Flights` to count flights.
 
-If a local cache is active, `available_years()` includes years from both the
-installed package data and the local cache.
+## Calendar helpers
 
-## Inspect Parquet files lazily
+The next helpers create a lookup table of selected U.S. federal holidays. The
+set of holidays follows the spirit of Wickham's weekday/holiday comparison:
+ordinary weekdays are compared with selected holidays after normalizing by each
+year's average day.
 
-A good first step is often to open the Parquet files lazily with Arrow.
+```{r calendar-helpers}
+nth_weekday_of_month <- function(year, month, weekday, n) {
+  # Return the date of the nth requested weekday in a given month.
+  # weekday uses lubridate's week_start = 1 convention:
+  # Monday = 1, Tuesday = 2, ..., Sunday = 7.
+  first_day <- as.Date(sprintf("%04d-%02d-01", year, month))
+  first_wday <- lubridate::wday(first_day, week_start = 1)
 
-Use `open_main()` or `open_div()` when you want to inspect the data at a high
-level without immediately reading all selected rows into memory.
+  first_day + ((weekday - first_wday) %% 7) + 7L * (n - 1L)
+}
 
-```{r}
-ds_main <- slcflights::open_main(1988:1989)
-ds_main
+last_weekday_of_month <- function(year, month, weekday) {
+  # Return the date of the last requested weekday in a given month.
+  # weekday uses lubridate's week_start = 1 convention:
+  # Monday = 1, Tuesday = 2, ..., Sunday = 7.
+  if (month == 12L) {
+    next_month <- as.Date(sprintf("%04d-01-01", year + 1L))
+  } else {
+    next_month <- as.Date(sprintf("%04d-%02d-01", year, month + 1L))
+  }
+
+  last_day <- next_month - 1L
+  last_wday <- lubridate::wday(last_day, week_start = 1)
+
+  last_day - ((last_wday - weekday) %% 7)
+}
+
+make_holiday_table <- function(years) {
+  # Build a Year-Date-category lookup table for the selected holidays included
+  # in the weekday/holiday comparison.
+  years <- sort(unique(as.integer(years)))
+
+  holiday_names <- c(
+    "New Year's Day",
+    "Martin Luther King Jr. Day",
+    "Presidents' Day",
+    "Memorial Day",
+    "Independence Day",
+    "Labor Day",
+    "Veterans Day",
+    "Thanksgiving Day",
+    "Christmas Day"
+  )
+
+  holiday_dates <- c(
+    as.Date(sprintf("%04d-01-01", years)),
+    nth_weekday_of_month(years, 1L, 1L, 3L),
+    nth_weekday_of_month(years, 2L, 1L, 3L),
+    last_weekday_of_month(years, 5L, 1L),
+    as.Date(sprintf("%04d-07-04", years)),
+    nth_weekday_of_month(years, 9L, 1L, 1L),
+    as.Date(sprintf("%04d-11-11", years)),
+    nth_weekday_of_month(years, 11L, 4L, 4L),
+    as.Date(sprintf("%04d-12-25", years))
+  )
+
+  data.frame(
+    Year = rep(years, times = length(holiday_names)),
+    FlightDate = holiday_dates,
+    category = factor(
+      rep(holiday_names, each = length(years)),
+      levels = c(
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+        "Martin Luther King Jr. Day",
+        "Presidents' Day",
+        "Memorial Day",
+        "Independence Day",
+        "Labor Day",
+        "Veterans Day",
+        "Thanksgiving Day",
+        "Christmas Day",
+        "New Year's Day"
+      )
+    )
+  )
+}
 ```
 
-You can inspect the dataset schema directly:
+## A Salt Lake City adaptation of Wickham's comparison
 
-```{r}
-arrow::schema(ds_main)
+Wickham's normalization idea is useful because it removes year-to-year traffic
+growth from the comparison. Instead of asking how many flights occurred on a
+particular holiday or weekday, we ask how each category compares with that
+year's average day.
+
+A value of 100 means that the category is equal to that year's average day.
+Values below 100 indicate fewer flights than an average day in that year, and
+values above 100 indicate more flights than an average day in that year.
+
+The same calculation is applied to both `slcflights` data groupings. That makes
+the contrast meaningful: main records describe scheduled SLC service, while
+diversion-only records describe rare operational disruptions.
+
+```{r main-analysis-functions}
+make_day_type_main_data <- function(years = NULL) {
+  # Use all available main-record years unless the caller supplies a smaller
+  # set of years.
+  if (is.null(years)) {
+    years <- sort(unique(slcflights::available_years("main")))
+  } else {
+    years <- sort(unique(as.integer(years)))
+  }
+
+  # Open the main Parquet files lazily, select only the fields needed for this
+  # analysis, and collapse the records to one total flight count per calendar
+  # day.
+  daily <- slcflights::open_main(years) |>
+    dplyr::select(Year, FlightDate, Flights) |>
+    dplyr::group_by(Year, FlightDate) |>
+    dplyr::summarise(daily_flights = sum(Flights), .groups = "drop") |>
+    dplyr::collect() |>
+    dplyr::mutate(
+      FlightDate = as.Date(FlightDate),
+      weekday = factor(
+        lubridate::wday(FlightDate, week_start = 1),
+        levels = 1:7,
+        labels = c(
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"
+        )
+      )
+    )
+
+  # Compute the average daily flight count within each year. This is the
+  # denominator for the Wickham-style normalization.
+  year_avg <- daily |>
+    dplyr::group_by(Year) |>
+    dplyr::summarise(avg_daily_year = mean(daily_flights), .groups = "drop")
+
+  # Compute one average daily flight count per weekday within each year.
+  weekday_stats <- daily |>
+    dplyr::group_by(Year, category = weekday) |>
+    dplyr::summarise(
+      avg_daily_category = mean(daily_flights),
+      .groups = "drop"
+    )
+
+  # Compute one daily flight count per selected holiday within each year.
+  # Holidays outside the installed October 1987-June 2024 data window do not
+  # appear.
+  holiday_stats <- daily |>
+    dplyr::inner_join(
+      make_holiday_table(years),
+      by = c("Year", "FlightDate")
+    ) |>
+    dplyr::group_by(Year, category) |>
+    dplyr::summarise(
+      avg_daily_category = mean(daily_flights),
+      .groups = "drop"
+    )
+
+  # Combine weekday and holiday summaries, then express each annual category
+  # value as a percentage of that year's average day.
+  dplyr::bind_rows(weekday_stats, holiday_stats) |>
+    dplyr::left_join(year_avg, by = "Year") |>
+    dplyr::mutate(
+      pct_of_avg_day = 100 * avg_daily_category / avg_daily_year,
+      category = factor(
+        as.character(category),
+        levels = c(
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday",
+          "Martin Luther King Jr. Day",
+          "Presidents' Day",
+          "Memorial Day",
+          "Independence Day",
+          "Labor Day",
+          "Veterans Day",
+          "Thanksgiving Day",
+          "Christmas Day",
+          "New Year's Day"
+        )
+      )
+    )
+}
+
+plot_day_type_main <- function(
+  years = NULL,
+  ordering = c("chronological", "median_desc")
+) {
+  ordering <- match.arg(ordering)
+
+  plot_df <- make_day_type_main_data(years = years)
+
+  # Use chronological ordering to preserve the weekday/holiday order, or order
+  # by median percentage to make the strongest categories easier to see.
+  if (ordering == "chronological") {
+    plot_df <- plot_df |>
+      dplyr::mutate(
+        category = factor(
+          as.character(category),
+          levels = rev(levels(category))
+        )
+      )
+  } else if (ordering == "median_desc") {
+    category_order <- plot_df |>
+      dplyr::group_by(category) |>
+      dplyr::summarise(med = median(pct_of_avg_day), .groups = "drop") |>
+      dplyr::arrange(dplyr::desc(med)) |>
+      dplyr::pull(category) |>
+      as.character()
+
+    plot_df <- plot_df |>
+      dplyr::mutate(
+        category = factor(
+          as.character(category),
+          levels = rev(category_order)
+        )
+      )
+  }
+
+  # Add sample sizes to the y-axis labels. n is the number of annual category
+  # summaries in each boxplot.
+  sample_size_df <- plot_df |>
+    dplyr::count(category, name = "n") |>
+    dplyr::mutate(
+      label = paste0(as.character(category), "\nn = ", n)
+    )
+
+  category_labels <- sample_size_df$label
+  names(category_labels) <- as.character(sample_size_df$category)
+
+  caption_text <- paste(
+    "n is the number of annual category summaries in each boxplot;",
+    "1987 and 2024 are partial years."
+  )
+
+  ggplot2::ggplot(
+    plot_df,
+    ggplot2::aes(x = pct_of_avg_day, y = category)
+  ) +
+    ggplot2::geom_vline(xintercept = 100, linetype = 2) +
+    ggplot2::geom_boxplot() +
+    ggplot2::scale_y_discrete(labels = category_labels) +
+    ggplot2::scale_x_continuous(breaks = seq(40, 140, by = 10)) +
+    ggplot2::coord_cartesian(xlim = c(40, 140)) +
+    ggplot2::labs(
+      x = "Percentage of flights relative to average day",
+      y = NULL,
+      caption = caption_text
+    )
+}
 ```
 
-This is a convenient way to understand the overall structure before deciding
-what subset you want to materialize.
+```{r div-analysis-functions}
+make_day_type_div_data <- function(years = NULL) {
+  # Use all available diversion-only years unless the caller supplies a smaller
+  # set of years.
+  if (is.null(years)) {
+    years <- sort(unique(slcflights::available_years("div")))
+  } else {
+    years <- sort(unique(as.integer(years)))
+  }
 
-The `open_*()` helpers are cache-aware. If a local cache is active, they open
-both installed and cached Parquet files where needed.
+  # Open the diversion-only Parquet files lazily, select only the fields needed
+  # for this analysis, and collapse the records to one total flight count per
+  # calendar day.
+  daily <- slcflights::open_div(years) |>
+    dplyr::select(Year, FlightDate, Flights) |>
+    dplyr::group_by(Year, FlightDate) |>
+    dplyr::summarise(daily_flights = sum(Flights), .groups = "drop") |>
+    dplyr::collect() |>
+    dplyr::mutate(
+      FlightDate = as.Date(FlightDate),
+      weekday = factor(
+        lubridate::wday(FlightDate, week_start = 1),
+        levels = 1:7,
+        labels = c(
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"
+        )
+      )
+    )
 
-## Read data into memory when you are ready to work with it directly
+  # Compute the average daily flight count within each year. This is the
+  # denominator for the Wickham-style normalization.
+  year_avg <- daily |>
+    dplyr::group_by(Year) |>
+    dplyr::summarise(avg_daily_year = mean(daily_flights), .groups = "drop")
 
-Once you know what years you want and are ready to manipulate the data as an
-ordinary in-memory object, use the `read_*()` helpers.
+  # Compute one average daily flight count per weekday within each year.
+  weekday_stats <- daily |>
+    dplyr::group_by(Year, category = weekday) |>
+    dplyr::summarise(
+      avg_daily_category = mean(daily_flights),
+      .groups = "drop"
+    )
 
-Use `read_year_main()` or `read_year_div()` for a single year:
+  # Compute one daily flight count per selected holiday within each year.
+  # Holidays outside the installed October 1987-June 2024 data window do not
+  # appear. Diversion-only records begin later than main records, so holiday
+  # sample sizes can be small.
+  holiday_stats <- daily |>
+    dplyr::inner_join(
+      make_holiday_table(years),
+      by = c("Year", "FlightDate")
+    ) |>
+    dplyr::group_by(Year, category) |>
+    dplyr::summarise(
+      avg_daily_category = mean(daily_flights),
+      .groups = "drop"
+    )
 
-```{r}
-x_1988 <- slcflights::read_year_main(1988)
+  # Combine weekday and holiday summaries, then express each annual category
+  # value as a percentage of that year's average day.
+  dplyr::bind_rows(weekday_stats, holiday_stats) |>
+    dplyr::left_join(year_avg, by = "Year") |>
+    dplyr::mutate(
+      pct_of_avg_day = 100 * avg_daily_category / avg_daily_year,
+      category = factor(
+        as.character(category),
+        levels = c(
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday",
+          "Martin Luther King Jr. Day",
+          "Presidents' Day",
+          "Memorial Day",
+          "Independence Day",
+          "Labor Day",
+          "Veterans Day",
+          "Thanksgiving Day",
+          "Christmas Day",
+          "New Year's Day"
+        )
+      )
+    )
+}
 
-dim(x_1988)
-names(x_1988)
+plot_day_type_div <- function(
+  years = NULL,
+  ordering = c("chronological", "median_desc")
+) {
+  ordering <- match.arg(ordering)
+
+  plot_df <- make_day_type_div_data(years = years)
+
+  # Use chronological ordering to preserve the weekday/holiday order, or order
+  # by median percentage to make the strongest categories easier to see.
+  if (ordering == "chronological") {
+    plot_df <- plot_df |>
+      dplyr::mutate(
+        category = factor(
+          as.character(category),
+          levels = rev(levels(category))
+        )
+      )
+  } else if (ordering == "median_desc") {
+    category_order <- plot_df |>
+      dplyr::group_by(category) |>
+      dplyr::summarise(med = median(pct_of_avg_day), .groups = "drop") |>
+      dplyr::arrange(dplyr::desc(med)) |>
+      dplyr::pull(category) |>
+      as.character()
+
+    plot_df <- plot_df |>
+      dplyr::mutate(
+        category = factor(
+          as.character(category),
+          levels = rev(category_order)
+        )
+      )
+  }
+
+  # Add sample sizes to the y-axis labels. n is the number of annual category
+  # summaries in each boxplot. For holidays, n can be small because the
+  # diversion-only records begin later and because 1987 and 2024 are partial
+  # years.
+  sample_size_df <- plot_df |>
+    dplyr::count(category, name = "n") |>
+    dplyr::mutate(
+      label = paste0(as.character(category), "\nn = ", n)
+    )
+
+  category_labels <- sample_size_df$label
+  names(category_labels) <- as.character(sample_size_df$category)
+
+  caption_text <- paste(
+    "n is the number of annual category summaries in each boxplot;",
+    "1987 and 2024 are partial years."
+  )
+
+  ggplot2::ggplot(
+    plot_df,
+    ggplot2::aes(x = pct_of_avg_day, y = category)
+  ) +
+    ggplot2::geom_vline(xintercept = 100, linetype = 2) +
+    ggplot2::geom_boxplot() +
+    ggplot2::scale_y_discrete(labels = category_labels) +
+    ggplot2::scale_x_continuous(breaks = seq(20, 200, by = 10)) +
+    ggplot2::coord_cartesian(xlim = c(20, 200)) +
+    ggplot2::labs(
+      x = "Percentage of flights relative to average day",
+      y = NULL,
+      caption = caption_text
+    )
+}
 ```
 
-Here is a very small subset of potentially useful columns:
+The next pair of plots shows the same weekday and holiday categories in calendar
+order. The left plot uses main records, where Salt Lake City was the scheduled
+origin or destination. The right plot uses diversion-only records, where Salt
+Lake City appears only because of a diversion. Each boxplot summarizes annual
+category values, expressed as a percentage of that year's average daily flight
+count.
 
-```{r}
-head(x_1988[, c(
-  "FlightDate",
-  "Reporting_Airline",
-  "OriginCityName",
-  "DestCityName"
-)])
+The main and diversion-only plots use different x-axis ranges because the
+diversion-only records are much more variable.
+
+```{r paired-chronological, fig.show = "hold", out.width = "49%"}
+plot_day_type_main(ordering = "chronological")
+plot_day_type_div(ordering = "chronological")
 ```
 
-Use `read_main()` or `read_div()` when you want multiple years combined
-row-wise into a single in-memory data frame.
+The next pair shows the same summaries ordered by median percentage of an
+average day. This ordering makes the contrast easier to read: the main-record
+plot reflects a regular scheduled-service rhythm, while the diversion-only plot
+is much more variable.
 
-```{r}
-x_main <- slcflights::read_main(1988:1989)
-
-dim(x_main)
-unique(x_main$Year)
+```{r paired-median-desc, fig.show = "hold", out.width = "49%"}
+plot_day_type_main(ordering = "median_desc")
+plot_day_type_div(ordering = "median_desc")
 ```
 
-Likewise, use `read_div()` for diversion-only records.
+For main SLC records, the weekday categories cluster close to the average-day
+baseline. Saturday is lower than the ordinary weekday categories, and several
+major holidays tend to sit below the baseline. This is the expected behavior
+for scheduled passenger service: ordinary weekdays reflect regular airline
+schedules, while some holidays alter demand and schedule patterns.
 
-```{r}
-x_div <- slcflights::read_div(2015:2016)
-dim(x_div)
-```
+The diversion-only plots are much less stable. This is not a defect in the
+package or in the method. It reflects the nature of the data grouping.
+Diversion-only records are rare events, and some holidays appear in only a few
+annual summaries. The same normalization remains useful, but it should be read
+as a comparison of operational volatility rather than a regular travel-demand
+pattern.
 
-In short:
-
-- use `open_*()` to inspect and explore the Parquet files lazily
-- use `read_*()` to load the data you actually want to analyze in memory
-
-## Update beyond the installed endpoint
+## Local updates
 
 The installed package data end on **June 30, 2024**. To extend the available
-data with newer BTS monthly releases, use `update_slcflights_data()`.
+data with newer BTS monthly releases, run:
 
-```{r, eval = FALSE}
+```{r update-data, eval = FALSE}
 update_slcflights_data()
 ```
 
 By default, `update_slcflights_data()` checks BTS for the latest available
-monthly On-Time Performance data and downloads all available months after June
-2024.
+monthly data and downloads every available month after June 2024. You can also
+request an explicit endpoint.
 
-You can also specify an explicit endpoint. This is useful when you want a small
-or reproducible update.
-
-```{r, eval = FALSE}
+```{r update-data-explicit, eval = FALSE}
+# One additional month of data
 update_slcflights_data(until = "2024-07")
+
+# Six additional months of data
 update_slcflights_data(until = c(2024, 12))
 ```
 
-Local updates always begin with July 2024 and must form a consecutive extension
-of the installed package data.
+Local updates always begin with July 2024 and form a consecutive extension of
+the installed data. The update process stores data in the user cache directory
+returned by `tools::R_user_dir("slcflights", "cache")`. The installed package
+files are not modified.
 
-The update process stores data in the user cache directory returned by
-`tools::R_user_dir("slcflights", "cache")`. It does not modify the installed
-package files.
+You can inspect the active cache with `slcflights_cache_info()`. This is useful
+after an update because it reports whether a compatible local cache is active
+and which years are available from it.
 
-You can inspect the active local cache with:
-
-```{r, eval = FALSE}
+```{r cache-info, eval = FALSE}
 slcflights_cache_info()
 ```
 
-A typical cache report looks like this:
+If you want to discard the local cache and return to using only the data
+installed with the package, run:
 
-```text
-Local slcflights cache is active.
-Cache location: <user-cache-path>
-Cached data through: 2024-07
-Cache status: complete
-```
-
-After the cache is active, the ordinary readers use it automatically. For
-example, after updating through July 2024, `read_year_main(2024)` reads the
-installed January-through-June 2024 records and the cached July 2024 records
-as one combined data frame.
-
-Remove the local cache with:
-
-```{r, eval = FALSE}
+```{r clear-cache, eval = FALSE}
 clear_slcflights_cache()
 ```
 
-Use this when you want to return to installed-package data only.
+After a compatible cache is active, ordinary reader functions use it
+automatically. For example, after updating through July 2024,
+`read_year_main(2024)` reads the installed January-through-June records and the
+cached July records as one combined data frame.
 
-## Airport coordinates are already in the flight records
+## Rebuilding the bundled data
 
-In many workflows, you do not need a separate join just to recover airport
-coordinates. The flight Parquet files already include airport location and
-date-bounded airport metadata associated with the flight record.
+Most users should not rebuild the bundled data. They should use the installed
+files and, when needed, `update_slcflights_data()` for post-June-2024 monthly
+updates.
 
-You can inspect the coordinate-related fields directly:
+The maintainer build workflow lives in `data-raw/build_data.R`. From a source
+checkout, maintainers can rebuild all bundled data artifacts with:
 
-```{r}
-grep("lat|lon", names(x_1988), value = TRUE, ignore.case = TRUE)
-```
-
-And you can inspect those columns in the in-memory data you read:
-
-```{r}
-coord_cols <- grep("Latitude|Longitude", names(x_1988), value = TRUE)
-coord_cols
-head(x_1988[, coord_cols, drop = FALSE])
-```
-
-This is often the simplest way to work with airport locations in analyses of
-routes, origins, destinations, and diversions.
-
-## Work with diversion-only records
-
-Diversion-only records are packaged separately because they answer a different
-question from the main origin/destination files.
-
-Use them when Salt Lake City is relevant because of a diversion event rather
-than because it was the scheduled origin or destination.
-
-```{r}
-x_div_2015 <- slcflights::read_year_div(2015)
-
-dim(x_div_2015)
-names(x_div_2015)
-head(x_div_2015[, c(
-  "FlightDate",
-  "Origin",
-  "Dest"
-)])
-```
-
-## Access the airport lookup table directly
-
-Although the flight Parquet files already include airport coordinates and
-related airport metadata, `slcflights` also provides a standalone airport
-lookup table.
-
-This is useful when you want airport metadata on its own, without first
-reading any flight records.
-
-```{r}
-coords <- slcflights::read_coords()
-
-dim(coords)
-names(coords)
-head(coords)
-```
-
-Use `read_coords()` when you want a compact airport reference table keyed by
-airport sequence identifier, or when you want to inspect the lookup data
-directly.
-
-If a local cache is active, `read_coords()` reads the cached reduced coordinate
-table. Otherwise, it reads the installed coordinate table.
-
-## Choosing among the main entry points
-
-Use `available_years()` when you want to discover coverage.
-
-Use `open_main()` or `open_div()` when you want to inspect the data lazily
-without immediately materializing it.
-
-Use `read_year_main()` or `read_year_div()` when you want one year's data in
-memory.
-
-Use `read_main()` or `read_div()` when you want multiple years combined into a
-single in-memory data frame.
-
-Use `read_coords()` when you want the standalone airport lookup table as its
-own data object.
-
-Use `update_slcflights_data()` when you want to extend the installed data with
-newer BTS monthly releases.
-
-Use `slcflights_cache_info()` to inspect the active cache and
-`clear_slcflights_cache()` to remove it.
-
-## Rebuilding the packaged data
-
-The package preserves the maintainer data-build workflow in `data-raw/`.
-
-```{r, eval = FALSE}
-# NOT EXECUTED
+```{r rebuild-data, eval = FALSE}
 source("data-raw/build_data.R")
 build_slc_data()
 ```
 
-By default, `build_slc_data()` rebuilds data for years 1987 through 2024, uses
-Salt Lake City's BTS airport ID, downloads annual source Parquet files into a
-temporary build directory, writes packaged outputs into `inst/extdata/`, and
-removes the temporary build directory when finished.
+By default, `build_slc_data()` rebuilds all bundled data artifacts. It rebuilds
+years 1987 through 2024, filters the national source data to Salt Lake
+City-related records, splits main and diversion-only files, reduces the BTS
+Master Coordinate table, enriches the Parquet files with airport metadata,
+rebuilds the field dictionary, and writes final package data under
+`inst/extdata/`.
 
-The maintainer build also removes globally all-NULL columns before and after
-Salt Lake City filtering. This is part of the installed schema contract that
-local cache updates preserve.
+No source data files need to be present before running this workflow. The
+historical Parquet source files are downloaded into a temporary build directory,
+and the BTS Master Coordinate table is downloaded automatically if
+`data-raw/T_MASTER_CORD.csv` is absent.
 
-The temporary build directory is a maintainer-side build artifact. It is not
-part of the installed package and should not be confused with the user cache
-created by `update_slcflights_data()`.
-
-You can also rebuild a subset of years.
-
-```{r, eval = FALSE}
-# NOT EXECUTED
-source("data-raw/build_data.R")
-build_slc_data(years = 2019:2024)
-```
-
-Rebuilding requires large downloads and substantial disk space, so most users
-should work directly with the installed files and use `update_slcflights_data()`
-when they need newer monthly data.
+The temporary build directory is a maintainer-side artifact. It is not part of
+the installed package and is separate from the local user cache created by
+`update_slcflights_data()`.
 
 ## Summary
 
-`slcflights` is built around Parquet files for Salt Lake City-related flight
-records and a standalone airport lookup table.
+This vignette used `slcflights` to adapt Wickham's weekday/holiday
+normalization idea to Salt Lake City-centered flight records. The main records
+show regular scheduled-service patterns, while the diversion-only records are
+sparser and more volatile. The contrast illustrates why `slcflights` keeps
+these two data groupings separate.
 
-The installed package covers **October 1, 1987** through **June 30, 2024**, so
-**1987 and 2024 are partial years** in the installed data. For analyses that
-require full calendar years using only installed data, focus on **1988 through
-2023**.
-
-From there, the package gives you four main access patterns:
-
-- `available_years()` to inspect coverage
-- `open_*()` helpers for lazy inspection
-- `read_*()` helpers for eager in-memory access
-- `update_slcflights_data()` to extend the data with a local cache
-
-And when you want airport metadata on its own, `read_coords()` provides the
-lookup table directly.
+## References {#refs}

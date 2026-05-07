@@ -3,7 +3,8 @@ Title: Salt Lake City Flight Records and Supporting Airport Coordinates
 Version: 0.0.0.9000
 Authors@R: 
     person("Aleksey", "Kulyukin", , "aleksey.kulyukin.2022@gmail.com", 
-    role = c("aut", "cre"))
+    role = c("aut", "cre"),
+    comment = c(ORCID = "0009-0009-4396-9878"))
 Description: Provides Salt Lake City-focused subsets of the Bureau of
     Transportation Statistics (BTS) TranStats On-Time: Reporting Carrier
     On-Time Performance data. The installed Parquet files cover October 1987
@@ -33,7 +34,10 @@ Imports:
     xml2
 Suggests: 
     curl,
+    dplyr,
+    ggplot2,
     knitr,
+    lubridate,
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
