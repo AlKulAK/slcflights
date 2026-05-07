@@ -513,7 +513,7 @@ available monthly data and downloads every available month after June
 
 ``` r
 # One additional month of data
-update_slcflights_data(until = "2024-07") 
+update_slcflights_data(until = "2024-07")
 
 # Six additional months of data
 update_slcflights_data(until = c(2024, 12))

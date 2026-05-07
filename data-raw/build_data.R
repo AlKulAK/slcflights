@@ -1052,5 +1052,18 @@ build_slc_data <- function(
     output_root = output_root
   )
 
+  if (!exists("build_field_dictionary", mode = "function")) {
+    source(file.path("data-raw", "build_field_dictionary.R"))
+  }
+
+  build_field_dictionary_fun <- get(
+    "build_field_dictionary",
+    mode = "function"
+  )
+
+  build_field_dictionary_fun(
+    output = file.path(output_root, "csv", "field_dictionary.csv")
+  )
+
   invisible(TRUE)
 }
