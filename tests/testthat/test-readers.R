@@ -178,4 +178,8 @@ test_that("packaged field dictionary CSV is readable", {
   expect_true(all(x$main_presence %in% expected_presence))
   expect_true(all(x$div_presence %in% expected_presence))
   expect_true(all(x$coords_presence %in% expected_presence))
+
+  required_metadata <- c("field", "group", "source", "description")
+  expect_true(all(!is.na(x[required_metadata])))
+  expect_true(all(x[required_metadata] != ""))
 })
