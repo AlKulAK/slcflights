@@ -116,7 +116,7 @@ Use `read_year_main()` and `read_year_div()` for a single year.
 
 ```{r}
 x <- read_year_main(1988)
-head(x)
+head(x)[1:10]
 ```
 
 Use `read_main()` and `read_div()` for one, many, or all available years.
@@ -130,9 +130,9 @@ Diversion-only records are packaged separately because they answer a different
 question: cases where Salt Lake City matters because of a diversion event, not
 because it was the scheduled origin or destination.
 
-```{r, eval = FALSE}
+```{r}
 div <- read_year_div(2015)
-head(div)
+head(div)[1:10]
 ```
 
 ### Read metadata tables

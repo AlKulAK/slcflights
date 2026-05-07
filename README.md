@@ -136,7 +136,7 @@ Use `read_year_main()` and `read_year_div()` for a single year.
 
 ``` r
 x <- read_year_main(1988)
-head(x)
+head(x)[1:10]
 #>   Year Quarter Month DayofMonth DayOfWeek FlightDate Reporting_Airline
 #> 1 1988       1     1          1         5 1988-01-01                HP
 #> 2 1988       1     1          1         5 1988-01-01                DL
@@ -151,181 +151,6 @@ head(x)
 #> 4                    19790                          DL        <NA>
 #> 5                    19790                          DL        <NA>
 #> 6                    19790                          DL        <NA>
-#>   Flight_Number_Reporting_Airline OriginAirportID OriginAirportSeqID
-#> 1                             315           14869            1486901
-#> 2                             625           14869            1486901
-#> 3                             182           12889            1288901
-#> 4                             448           14057            1405701
-#> 5                            1550           12892            1289201
-#> 6                            1168           14747            1474702
-#>   OriginLatitude OriginLongitude OriginAirportStartDate OriginAirportThruDate
-#> 1       40.78417       -111.9669             1950-01-01            1994-08-31
-#> 2       40.78417       -111.9669             1950-01-01            1994-08-31
-#> 3       36.08000       -115.1522             1950-01-01            1989-12-31
-#> 4       45.58917       -122.5950             1950-01-01            2011-06-30
-#> 5       33.94250       -118.4081             1950-01-01            2011-06-30
-#> 6       47.44917       -122.3081             1983-12-01            2011-06-30
-#>   OriginAirportIsClosed OriginAirportIsLatest OriginCityMarketID Origin
-#> 1                     0                     0              34614    SLC
-#> 2                     0                     0              34614    SLC
-#> 3                     0                     0              32211    LAS
-#> 4                     0                     0              34057    PDX
-#> 5                     0                     0              32575    LAX
-#> 6                     0                     0              30559    SEA
-#>       OriginCityName OriginState OriginStateFips OriginStateName OriginWac
-#> 1 Salt Lake City, UT          UT              49            Utah        87
-#> 2 Salt Lake City, UT          UT              49            Utah        87
-#> 3      Las Vegas, NV          NV              32          Nevada        85
-#> 4       Portland, OR          OR              41          Oregon        92
-#> 5    Los Angeles, CA          CA              06      California        91
-#> 6        Seattle, WA          WA              53      Washington        93
-#>   DestAirportID DestAirportSeqID DestLatitude DestLongitude
-#> 1         12889          1288901     36.08000     -115.1522
-#> 2         14747          1474702     47.44917     -122.3081
-#> 3         14869          1486901     40.78417     -111.9669
-#> 4         14869          1486901     40.78417     -111.9669
-#> 5         14869          1486901     40.78417     -111.9669
-#> 6         14869          1486901     40.78417     -111.9669
-#>   DestAirportStartDate DestAirportThruDate DestAirportIsClosed
-#> 1           1950-01-01          1989-12-31                   0
-#> 2           1983-12-01          2011-06-30                   0
-#> 3           1950-01-01          1994-08-31                   0
-#> 4           1950-01-01          1994-08-31                   0
-#> 5           1950-01-01          1994-08-31                   0
-#> 6           1950-01-01          1994-08-31                   0
-#>   DestAirportIsLatest DestCityMarketID Dest       DestCityName DestState
-#> 1                   0            32211  LAS      Las Vegas, NV        NV
-#> 2                   0            30559  SEA        Seattle, WA        WA
-#> 3                   0            34614  SLC Salt Lake City, UT        UT
-#> 4                   0            34614  SLC Salt Lake City, UT        UT
-#> 5                   0            34614  SLC Salt Lake City, UT        UT
-#> 6                   0            34614  SLC Salt Lake City, UT        UT
-#>   DestStateFips DestStateName DestWac CRSDepTime DepTime DepDelay
-#> 1            32        Nevada      85       0045    0045        0
-#> 2            53    Washington      93       0055    0055        0
-#> 3            49          Utah      87       0140    0143        3
-#> 4            49          Utah      87       0550    0550        0
-#> 5            49          Utah      87       0600    0606        6
-#> 6            49          Utah      87       0600    0600        0
-#>   DepDelayMinutes DepDel15 DepartureDelayGroups DepTimeBlk TaxiOut WheelsOff
-#> 1               0        0                    0  0001-0559    <NA>      <NA>
-#> 2               0        0                    0  0001-0559    <NA>      <NA>
-#> 3               3        0                    0  0001-0559    <NA>      <NA>
-#> 4               0        0                    0  0001-0559    <NA>      <NA>
-#> 5               6        0                    0  0600-0659    <NA>      <NA>
-#> 6               0        0                    0  0600-0659    <NA>      <NA>
-#>   WheelsOn TaxiIn CRSArrTime ArrTime ArrDelay ArrDelayMinutes ArrDel15
-#> 1     <NA>   <NA>       0055    0057        2               2        0
-#> 2     <NA>   <NA>       0149    0137      -12               0        0
-#> 3     <NA>   <NA>       0350    0353        3               3        0
-#> 4     <NA>   <NA>       0827    0825       -2               0        0
-#> 5     <NA>   <NA>       0838    0843        5               5        0
-#> 6     <NA>   <NA>       0840    0853       13              13        0
-#>   ArrivalDelayGroups ArrTimeBlk Cancelled CancellationCode Diverted
-#> 1                  0  0001-0559         0             <NA>        0
-#> 2                 -1  0001-0559         0             <NA>        0
-#> 3                  0  0001-0559         0             <NA>        0
-#> 4                 -1  0800-0859         0             <NA>        0
-#> 5                  0  0800-0859         0             <NA>        0
-#> 6                  0  0800-0859         0             <NA>        0
-#>   CRSElapsedTime ActualElapsedTime AirTime Flights Distance DistanceGroup
-#> 1             70                72    <NA>       1      368             2
-#> 2            114               102    <NA>       1      689             3
-#> 3             70                70    <NA>       1      368             2
-#> 4             97                95    <NA>       1      630             3
-#> 5             98                97    <NA>       1      590             3
-#> 6            100               113    <NA>       1      689             3
-#>   CarrierDelay WeatherDelay NASDelay SecurityDelay LateAircraftDelay
-#> 1         <NA>         <NA>     <NA>          <NA>              <NA>
-#> 2         <NA>         <NA>     <NA>          <NA>              <NA>
-#> 3         <NA>         <NA>     <NA>          <NA>              <NA>
-#> 4         <NA>         <NA>     <NA>          <NA>              <NA>
-#> 5         <NA>         <NA>     <NA>          <NA>              <NA>
-#> 6         <NA>         <NA>     <NA>          <NA>              <NA>
-#>   FirstDepTime TotalAddGTime LongestAddGTime DivAirportLandings DivReachedDest
-#> 1         <NA>          <NA>            <NA>               <NA>           <NA>
-#> 2         <NA>          <NA>            <NA>               <NA>           <NA>
-#> 3         <NA>          <NA>            <NA>               <NA>           <NA>
-#> 4         <NA>          <NA>            <NA>               <NA>           <NA>
-#> 5         <NA>          <NA>            <NA>               <NA>           <NA>
-#> 6         <NA>          <NA>            <NA>               <NA>           <NA>
-#>   DivActualElapsedTime DivArrDelay DivDistance Div1Airport Div1AirportID
-#> 1                 <NA>        <NA>        <NA>        <NA>          <NA>
-#> 2                 <NA>        <NA>        <NA>        <NA>          <NA>
-#> 3                 <NA>        <NA>        <NA>        <NA>          <NA>
-#> 4                 <NA>        <NA>        <NA>        <NA>          <NA>
-#> 5                 <NA>        <NA>        <NA>        <NA>          <NA>
-#> 6                 <NA>        <NA>        <NA>        <NA>          <NA>
-#>   Div1AirportSeqID Div1Latitude Div1Longitude Div1AirportStartDate
-#> 1             <NA>           NA            NA                 <NA>
-#> 2             <NA>           NA            NA                 <NA>
-#> 3             <NA>           NA            NA                 <NA>
-#> 4             <NA>           NA            NA                 <NA>
-#> 5             <NA>           NA            NA                 <NA>
-#> 6             <NA>           NA            NA                 <NA>
-#>   Div1AirportThruDate Div1AirportIsClosed Div1AirportIsLatest Div1WheelsOn
-#> 1                <NA>                  NA                  NA         <NA>
-#> 2                <NA>                  NA                  NA         <NA>
-#> 3                <NA>                  NA                  NA         <NA>
-#> 4                <NA>                  NA                  NA         <NA>
-#> 5                <NA>                  NA                  NA         <NA>
-#> 6                <NA>                  NA                  NA         <NA>
-#>   Div1TotalGTime Div1LongestGTime Div1WheelsOff Div1TailNum Div2Airport
-#> 1           <NA>             <NA>          <NA>        <NA>        <NA>
-#> 2           <NA>             <NA>          <NA>        <NA>        <NA>
-#> 3           <NA>             <NA>          <NA>        <NA>        <NA>
-#> 4           <NA>             <NA>          <NA>        <NA>        <NA>
-#> 5           <NA>             <NA>          <NA>        <NA>        <NA>
-#> 6           <NA>             <NA>          <NA>        <NA>        <NA>
-#>   Div2AirportID Div2AirportSeqID Div2Latitude Div2Longitude
-#> 1          <NA>             <NA>           NA            NA
-#> 2          <NA>             <NA>           NA            NA
-#> 3          <NA>             <NA>           NA            NA
-#> 4          <NA>             <NA>           NA            NA
-#> 5          <NA>             <NA>           NA            NA
-#> 6          <NA>             <NA>           NA            NA
-#>   Div2AirportStartDate Div2AirportThruDate Div2AirportIsClosed
-#> 1                 <NA>                <NA>                  NA
-#> 2                 <NA>                <NA>                  NA
-#> 3                 <NA>                <NA>                  NA
-#> 4                 <NA>                <NA>                  NA
-#> 5                 <NA>                <NA>                  NA
-#> 6                 <NA>                <NA>                  NA
-#>   Div2AirportIsLatest Div2WheelsOn Div2TotalGTime Div2LongestGTime
-#> 1                  NA         <NA>           <NA>             <NA>
-#> 2                  NA         <NA>           <NA>             <NA>
-#> 3                  NA         <NA>           <NA>             <NA>
-#> 4                  NA         <NA>           <NA>             <NA>
-#> 5                  NA         <NA>           <NA>             <NA>
-#> 6                  NA         <NA>           <NA>             <NA>
-#>   Div2WheelsOff Div2TailNum Div3Airport Div3AirportID Div3AirportSeqID
-#> 1          <NA>        <NA>        <NA>          <NA>             <NA>
-#> 2          <NA>        <NA>        <NA>          <NA>             <NA>
-#> 3          <NA>        <NA>        <NA>          <NA>             <NA>
-#> 4          <NA>        <NA>        <NA>          <NA>             <NA>
-#> 5          <NA>        <NA>        <NA>          <NA>             <NA>
-#> 6          <NA>        <NA>        <NA>          <NA>             <NA>
-#>   Div3Latitude Div3Longitude Div3AirportStartDate Div3AirportThruDate
-#> 1           NA            NA                 <NA>                <NA>
-#> 2           NA            NA                 <NA>                <NA>
-#> 3           NA            NA                 <NA>                <NA>
-#> 4           NA            NA                 <NA>                <NA>
-#> 5           NA            NA                 <NA>                <NA>
-#> 6           NA            NA                 <NA>                <NA>
-#>   Div3AirportIsClosed Div3AirportIsLatest Div3WheelsOn Div3TotalGTime
-#> 1                  NA                  NA         <NA>           <NA>
-#> 2                  NA                  NA         <NA>           <NA>
-#> 3                  NA                  NA         <NA>           <NA>
-#> 4                  NA                  NA         <NA>           <NA>
-#> 5                  NA                  NA         <NA>           <NA>
-#> 6                  NA                  NA         <NA>           <NA>
-#>   Div3LongestGTime
-#> 1             <NA>
-#> 2             <NA>
-#> 3             <NA>
-#> 4             <NA>
-#> 5             <NA>
-#> 6             <NA>
 ```
 
 Use `read_main()` and `read_div()` for one, many, or all available
@@ -343,7 +168,21 @@ diversion event, not because it was the scheduled origin or destination.
 
 ``` r
 div <- read_year_div(2015)
-head(div)
+head(div)[1:10]
+#>   Year Quarter Month DayofMonth DayOfWeek FlightDate Reporting_Airline
+#> 1 2015       1     1          4         7 2015-01-04                OO
+#> 2 2015       1     1          5         1 2015-01-05                B6
+#> 3 2015       1     1          5         1 2015-01-05                B6
+#> 4 2015       1     1          5         1 2015-01-05                B6
+#> 5 2015       1     1          6         2 2015-01-06                DL
+#> 6 2015       1     1          6         2 2015-01-06                AA
+#>   DOT_ID_Reporting_Airline IATA_CODE_Reporting_Airline Tail_Number
+#> 1                    20304                          OO      N613SK
+#> 2                    20409                          B6      N534JB
+#> 3                    20409                          B6      N579JB
+#> 4                    20409                          B6      N627JB
+#> 5                    19790                          DL      N3749D
+#> 6                    19805                          AA      N3DDAA
 ```
 
 ### Read metadata tables
