@@ -296,7 +296,8 @@ open_div <- function(years = NULL) {
 #' The table contains the airport-level metadata used to enrich the flight
 #' records with latitude, longitude, and date-bounded airport information.
 #'
-#' @seealso [read_main()], [read_div()], [open_main()], [open_div()]
+#' @seealso [read_main()], [read_div()], [open_main()], [open_div()],
+#'   [read_field_dictionary()]
 #'
 #' @examples
 #' x <- read_coords()
