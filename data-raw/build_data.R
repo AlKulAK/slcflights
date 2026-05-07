@@ -695,8 +695,18 @@ rewrite_with_coords <- function(path, coords_in, con) {
         CAST(AIRPORT_SEQ_ID AS BIGINT) AS AIRPORT_SEQ_ID,
         TRY_CAST(LATITUDE AS DOUBLE) AS LATITUDE,
         TRY_CAST(LONGITUDE AS DOUBLE) AS LONGITUDE,
-        CAST(TRY_STRPTIME(AIRPORT_START_DATE, '%%m/%%d/%%Y %%I:%%M:%%S %%p') AS DATE) AS AIRPORT_START_DATE,
-        CAST(TRY_STRPTIME(AIRPORT_THRU_DATE,  '%%m/%%d/%%Y %%I:%%M:%%S %%p') AS DATE) AS AIRPORT_THRU_DATE,
+        CAST(
+          TRY_STRPTIME(
+            AIRPORT_START_DATE,
+            '%%m/%%d/%%Y %%I:%%M:%%S %%p'
+          ) AS DATE
+        ) AS AIRPORT_START_DATE,
+        CAST(
+          TRY_STRPTIME(
+            AIRPORT_THRU_DATE,
+            '%%m/%%d/%%Y %%I:%%M:%%S %%p'
+          ) AS DATE
+        ) AS AIRPORT_THRU_DATE,
         TRY_CAST(AIRPORT_IS_CLOSED AS INTEGER) AS AIRPORT_IS_CLOSED,
         TRY_CAST(AIRPORT_IS_LATEST AS INTEGER) AS AIRPORT_IS_LATEST
       FROM read_csv_auto(%s, all_varchar = TRUE)
