@@ -18,7 +18,7 @@ Lists the years for which slcflights Parquet files are available.
 }
 \details{
 Available years may come from the packaged data installed with the package
-or, in later update workflows, from a validated local user cache.
+or from a validated local user cache.
 }
 \examples{
 available_years("main")
