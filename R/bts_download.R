@@ -1,8 +1,8 @@
 # Internal BTS download helpers ----------------------------------------------
 #
-# These helpers prepare raw BTS source files for future cache builds. They are
-# intentionally unexported. Users should eventually call a package-level update
-# function, not these low-level BTS helpers.
+# These helpers prepare raw BTS source files for cache builds. They are
+# intentionally unexported. Users should call update_slcflights_data(),
+# not these low-level BTS helpers.
 
 bts_ontime_zip_name <- function(year, month) {
   ym <- as_year_month(year, month, arg = "year/month")
