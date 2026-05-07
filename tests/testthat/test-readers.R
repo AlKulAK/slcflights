@@ -162,3 +162,15 @@ test_that("packaged coordinates CSV is readable and has expected columns", {
   expect_true("LATITUDE" %in% names(x))
   expect_true("LONGITUDE" %in% names(x))
 })
+
+test_that("packaged field dictionary CSV is readable", {
+  x <- read_field_dictionary()
+
+  expect_s3_class(x, "spec_tbl_df", exact = FALSE)
+  expect_true("field" %in% names(x))
+  expect_true("description" %in% names(x))
+  expect_true("main_presence" %in% names(x))
+  expect_true("div_presence" %in% names(x))
+  expect_true("coords_presence" %in% names(x))
+  expect_true(nrow(x) > 0)
+})
