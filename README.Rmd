@@ -18,74 +18,65 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of `slcflights` is to provide Salt Lake City-focused subsets of the
-Bureau of Transportation Statistics (BTS) TranStats **On-Time: Reporting
-Carrier On-Time Performance** data, along with airport coordinate metadata used
-to support those records.
+`slcflights` provides Salt Lake City-focused subsets of the Bureau of
+Transportation Statistics (BTS) TranStats **On-Time: Reporting Carrier
+On-Time Performance** data.
 
-The installed historical Parquet files cover **October 1, 1987 through June 30,
-2024** and are derived from the 1987--2024 Parquet files distributed for the
-2025 ASA Data Expo Challenge. The ASA challenge page links to the BTS TranStats
-download page and also provides DuckDB-hosted Parquet files for the national
-flight records.
-
-The package includes two flight-data groupings:
-
-* **main records**: flights where Salt Lake City's BTS airport ID appears in
-  `OriginAirportID` or `DestAirportID`
-* **diversion-only records**: flights where Salt Lake City's BTS airport ID
-  appears in one of `Div1AirportID` through `Div5AirportID`, but not in
-  `OriginAirportID` or `DestAirportID`
+The package is designed for analyses where Salt Lake City International
+Airport is central to the question. It includes flights where Salt Lake City
+appears as the scheduled origin or destination, plus a separate diversion-only
+data grouping for flights where Salt Lake City appears only as a diversion
+airport.
 
 The installed package data cover **October 1, 1987 through June 30, 2024**.
-This means that 1987 and 2024 are partial years. For analyses requiring
-complete calendar years using only installed data, the cleanest full-year span
-is 1988 through 2023.
-
-Users can optionally extend the data beyond June 2024 by building a local
-cache with `update_slcflights_data()`. For cache updates, the package downloads
-monthly BTS On-Time Performance files directly from BTS TranStats. The
-installed package files are never modified.
+Because the endpoint years are partial, the cleanest full-year span in the
+installed data is **1988 through 2023**.
 
 ## Installation
 
-You can install the development version of slcflights like so:
+You can install the development version of `slcflights` from GitHub:
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("AlKulAK/slcflights")
+# install.packages("pak")
+pak::pak("AlKulAK/slcflights")
 ```
 
-## Package contents
+## Data sources and coverage
 
-The main user-facing functions are
+The flight records come from BTS TranStats **On-Time: Reporting Carrier
+On-Time Performance** data.
 
-* `available_years()` to list currently available years for main or
-  diversion-only records, including compatible local cache years when present
-* `read_year_main()` to read one year's main flight records into memory
-* `read_year_div()` to read one year's diversion-only flight records into
-  memory
-* `read_main()` to read one, many, or all years of main records into memory
-* `read_div()` to read one, many, or all years of diversion-only records into
-  memory
-* `open_main()` to open one, many, or all years of main records lazily as an
-  Arrow dataset
-* `open_div()` to open one, many, or all years of diversion-only records lazily
-  as an Arrow dataset
-* `read_coords()` to read the currently active airport coordinate table
-* `read_field_dictionary()` to read field descriptions and field-presence
-  metadata
-* `update_slcflights_data()` to download newer BTS data into a local user cache
-* `slcflights_cache_info()` to inspect the local user cache
-* `clear_slcflights_cache()` to remove the local user cache
+The installed historical files are derived from the 1987--2024 Parquet files
+released for the 2025 ASA Data Expo Challenge. Those files contain national
+flight records. The `slcflights` build workflow filters them to Salt Lake
+City-related records, removes globally empty columns, splits main records from
+diversion-only records, and enriches airport sequence identifiers with
+coordinate metadata.
 
-The flight-data readers are cache-aware. If no local cache is active, they read
-the installed package data. If a local cache is active, they read the installed
-data together with compatible cached data. `read_coords()` is also cache-aware:
-it reads the cached coordinate table when a compatible local cache is active
-and otherwise reads the installed coordinate table.
+For months after June 2024, `update_slcflights_data()` can download monthly
+BTS files directly from TranStats and build a compatible local user cache. The
+installed package files are never modified.
 
-## Examples
+## What the package includes
+
+`slcflights` includes two flight-data groupings:
+
+- **main records**: flights where Salt Lake City's BTS airport ID appears in
+  `OriginAirportID` or `DestAirportID`
+- **diversion-only records**: flights where Salt Lake City's BTS airport ID
+  appears in one of `Div1AirportID` through `Div5AirportID`, but not in
+  `OriginAirportID` or `DestAirportID`
+
+The package also includes:
+
+- an airport coordinate table derived from the BTS TranStats Master Coordinate
+  support table
+- a field dictionary describing selected flight-record and coordinate-table
+  columns
+- cache-aware readers that combine installed data with compatible local cached
+  data when a cache is active
+
+## Quick start
 
 Load the package:
 
@@ -93,13 +84,43 @@ Load the package:
 library(slcflights)
 ```
 
-List the available years for main records:
+Check the available years:
 
 ```{r}
 available_years("main")
+available_years("div")
 ```
 
-Read the airport coordinate table:
+Open main records lazily with Arrow when you want to inspect the data before
+materializing it:
+
+```{r}
+ds_main <- open_main(1988:1989)
+ds_main
+```
+
+Read one year into memory when you want an ordinary data frame:
+
+```{r}
+x_1988 <- read_year_main(1988)
+dim(x_1988)
+head(x_1988[, c(
+  "FlightDate",
+  "Reporting_Airline",
+  "OriginCityName",
+  "DestCityName"
+)])
+```
+
+Read several years at once when you want a single row-bound data frame:
+
+```{r}
+x_main <- read_main(1988:1989)
+dim(x_main)
+unique(x_main$Year)
+```
+
+Read the airport coordinate table directly:
 
 ```{r}
 coords <- read_coords()
@@ -107,46 +128,94 @@ dim(coords)
 names(coords)[1:8]
 ```
 
-Read the field dictionary:
+Read the field dictionary when you want column descriptions and field-presence
+metadata:
 
 ```{r}
 fields <- read_field_dictionary()
 dim(fields)
-names(fields)[1:8]
+names(fields)
 ```
 
-Read one year's main flight records into memory:
+## Main function families
+
+### Discover available data
+
+Use `available_years()` to list years available for main records or
+diversion-only records.
 
 ```{r}
-x_1987 <- read_year_main(1987)
-head(x_1987)
+available_years("main")
+available_years("div")
 ```
 
-Read multiple years of main records into memory:
+The endpoint years in the installed data are partial. Use 1988 through 2023
+for analyses that require complete calendar years and do not use a local cache.
+
+### Work lazily with Parquet files
+
+Use `open_main()` and `open_div()` when you want an Arrow dataset instead of an
+in-memory data frame.
 
 ```{r}
-x_main <- read_main(1987:1988)
-dim(x_main)
+ds <- open_main(1988:1989)
+ds
 ```
 
-Open main records lazily with Arrow when you want to defer reading until later:
+This is usually the best entry point for larger workflows where you want to
+filter rows or select columns before collecting data into memory.
+
+### Read data into memory
+
+Use `read_year_main()` and `read_year_div()` for a single year.
 
 ```{r}
-ds_main <- open_main(1987:1988)
-ds_main
+x <- read_year_main(1988)
+head(x)
 ```
 
-Read diversion-only records for one year:
+Use `read_main()` and `read_div()` for one, many, or all available years.
+
+```{r}
+x <- read_main(1988:1989)
+dim(x)
+```
+
+Diversion-only records are packaged separately because they answer a different
+question: cases where Salt Lake City matters because of a diversion event, not
+because it was the scheduled origin or destination.
 
 ```{r, eval = FALSE}
-x_div <- read_year_div(2015)
-head(x_div)
+div <- read_year_div(2015)
+head(div)
 ```
+
+### Read metadata tables
+
+Use `read_coords()` when you want the standalone airport coordinate table.
+
+```{r}
+coords <- read_coords()
+head(coords)
+```
+
+Use `read_field_dictionary()` when you want column descriptions, source-table
+information, and field-presence metadata for main records, diversion-only
+records, and the coordinate table.
+
+```{r}
+fields <- read_field_dictionary()
+head(fields)
+```
+
+The flight Parquet files are already enriched with latitude, longitude, and
+other date-bounded airport metadata. In most workflows, you do not need a
+separate coordinate join.
 
 ## Updating local data
 
-The installed package includes flight records through June 2024. To extend the
-available data beyond the installed endpoint, use:
+The installed package data end on **June 30, 2024**. To extend the available
+data with newer BTS monthly releases, build a local cache:
 
 ```{r, eval = FALSE}
 update_slcflights_data()
@@ -157,25 +226,16 @@ monthly data and downloads every available month after June 2024. You can also
 request an explicit endpoint:
 
 ```{r, eval = FALSE}
-update_slcflights_data(until = "2024-07")
+# One additional month of data
+update_slcflights_data(until = "2024-07") 
+
+# Six additional months of data
 update_slcflights_data(until = c(2024, 12))
 ```
 
 Local updates always begin with July 2024 and form a consecutive extension of
-the installed data.
-
-The local update workflow
-
-* downloads monthly BTS On-Time Performance files into the user cache
-* downloads the BTS Master Coordinate table into the user cache
-* builds annual main and diversion-only Parquet files in a staging directory
-* reduces the coordinate table to airports used by installed and cached records
-* enriches cached Parquet files with coordinate metadata
-* finalizes cached Parquet schemas so they match the installed schema contract
-* activates the completed cache atomically
-
-The installed package files are not changed. The local cache is stored in the
-user cache directory returned by `tools::R_user_dir("slcflights", "cache")`.
+the installed data. The cache is stored in the user cache directory returned by
+`tools::R_user_dir("slcflights", "cache")`.
 
 Inspect the active cache with:
 
@@ -183,82 +243,44 @@ Inspect the active cache with:
 slcflights_cache_info()
 ```
 
-After a cache is active, the ordinary readers automatically use it. For example,
-after updating through July 2024, `read_year_main(2024)` reads both the
-installed January-through-June records and the cached July records.
-
 Remove the local cache with:
 
 ```{r, eval = FALSE}
 clear_slcflights_cache()
 ```
 
+After a compatible cache is active, the ordinary reader functions use it
+automatically. For example, after updating through July 2024,
+`read_year_main(2024)` reads the installed January-through-June records and the
+cached July records as one combined data frame.
+
 ## Rebuilding the packaged data
 
-The packaged Parquet files and coordinate CSV can be rebuilt from source data.
+Most users should **not** rebuild the packaged data. They should use the installed
+files and, when needed, `update_slcflights_data()` for post-June-2024 monthly
+updates.
 
-This is a maintainer workflow implemented in `data-raw/build_data.R`. The
-workflow uses `data-raw/T_MASTER_CORD.csv` if it is already present; otherwise,
-it downloads the BTS Master Coordinate support table before reducing it into
-`inst/extdata/csv/T_MASTER_CORD_reduced.csv`.
+The maintainer build workflow lives in `data-raw/build_data.R`. From a source
+checkout, maintainers can rebuild the bundled Parquet files and coordinate CSV
+with:
 
-To rebuild, run from a source checkout of the package:
-
-```r
+```{r, eval = FALSE}
 source("data-raw/build_data.R")
 build_slc_data()
 ```
 
-By default, `build_slc_data()`
+By default, `build_slc_data()` rebuilds years 1987 through 2024, filters the
+national source data to Salt Lake City-related records, splits main and
+diversion-only files, reduces the BTS Master Coordinate table, enriches the
+Parquet files with airport metadata, and writes final package data under
+`inst/extdata/`.
 
-* rebuilds data for years 1987 through 2024
-* uses Salt Lake City's BTS airport ID (`14869`)
-* downloads the annual source Parquet files into a temporary build directory
-* removes columns that are globally all `NULL`
-* filters the data to Salt Lake City-related records
-* removes columns that are all `NULL` after Salt Lake City filtering
-* sorts rows by flight date and scheduled departure time
-* splits the filtered data into main and diversion-only files
-* reduces the BTS Master Coordinate table to the airport sequence IDs used by
-  the packaged flight data
-* enriches the final Parquet files with airport coordinate metadata
-* copies final packaged outputs into `inst/extdata/`
-* removes the temporary build directory when finished
+The temporary build directory is a maintainer-side artifact. It is not part of
+the installed package and is separate from the local user cache created by
+`update_slcflights_data()`.
 
-The temporary build directory is a maintainer-side build artifact. It is not
-part of the installed package and should not be confused with the user cache
-created by `update_slcflights_data()`.
+## Learn more
 
-You can also rebuild a subset of years, for example:
-
-```r
-source("data-raw/build_data.R")
-build_slc_data(years = 2019:2024)
-```
-
-Because rebuilding requires large downloads and substantial disk space, most
-users should work with the installed files and, when needed, use
-`update_slcflights_data()` for post-June-2024 updates.
-
-## Data provenance
-
-The flight records in `slcflights` are Salt Lake City-focused subsets of the
-Bureau of Transportation Statistics (BTS) TranStats **On-Time: Reporting
-Carrier On-Time Performance** data. BTS TranStats is the authoritative source
-for the underlying flight records and field definitions.
-
-The installed historical Parquet files are derived from the 1987--2024 Parquet
-files distributed for the 2025 ASA Data Expo Challenge. The ASA challenge page
-links to the BTS TranStats download page and provides DuckDB-hosted Parquet
-files for the national flight records. The maintainer build workflow filters
-those national files to Salt Lake City-related records and writes the installed
-`main` and `div` package files.
-
-For months after June 2024, `update_slcflights_data()` downloads monthly
-On-Time Performance ZIP files directly from BTS TranStats and writes compatible
-Parquet files to a local user cache.
-
-The coordinate table is derived from the BTS TranStats Master Coordinate
-support table and contains the airport sequence identifiers needed to enrich
-the flight records with airport latitude, longitude, and date-bounded airport
-metadata.
+See `vignette("slcflights")` for a fuller walkthrough of the package workflow,
+including coverage, lazy inspection, in-memory reads, airport metadata,
+diversion-only records, and local cache updates.
