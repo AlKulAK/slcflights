@@ -39,5 +39,6 @@ head(x)
 
 }
 \seealso{
-\code{\link[=read_div]{read_div()}}, \code{\link[=open_div]{open_div()}}, \code{\link[=read_year_main]{read_year_main()}}
+\code{\link[=read_div]{read_div()}}, \code{\link[=open_div]{open_div()}}, \code{\link[=read_year_main]{read_year_main()}},
+\code{\link[=read_field_dictionary]{read_field_dictionary()}}
 }

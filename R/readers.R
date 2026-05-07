@@ -45,7 +45,8 @@ available_years <- function(type = c("main", "div")) {
 #' Use [read_main()] to read multiple years at once. Use [open_main()] to work
 #' lazily with one or more years as an Arrow dataset.
 #'
-#' @seealso [read_main()], [open_main()], [read_year_div()]
+#' @seealso [read_main()], [open_main()], [read_year_div()],
+#'   [read_field_dictionary()]
 #'
 #' @examples
 #' x <- read_year_main(1987)
@@ -81,7 +82,8 @@ read_year_main <- function(year) {
 #' Use [read_div()] to read multiple years at once. Use [open_div()] to work
 #' lazily with one or more years as an Arrow dataset.
 #'
-#' @seealso [read_div()], [open_div()], [read_year_main()]
+#' @seealso [read_div()], [open_div()], [read_year_main()],
+#'   [read_field_dictionary()]
 #'
 #' @examples
 #' \dontrun{
