@@ -6,6 +6,18 @@
 # They do not download data, reduce coordinates, enrich coordinates, write a
 # manifest, or expose user-facing update behavior.
 
+#' Build a DuckDB CSV relation for monthly BTS files
+#'
+#' Creates the DuckDB `read_csv_auto()` relation used to read one or more
+#' monthly BTS CSV files with name-based column union.
+#'
+#' @param con DuckDB connection.
+#' @param csv_files Character vector of monthly BTS CSV paths.
+#'
+#' @returns
+#' Character SQL relation expression.
+#'
+#' @noRd
 cache_build_csv_relation <- function(con, csv_files) {
   if (!length(csv_files)) {
     stop("`csv_files` must contain at least one CSV file.", call. = FALSE)
@@ -73,6 +85,18 @@ cache_build_any_equals_clause <- function(con, cols, value) {
   )
 }
 
+#' Locate raw monthly BTS CSV files for a cached year
+#'
+#' Resolves the raw BTS On-Time Performance CSV files needed to build one
+#' cached annual Parquet file set.
+#'
+#' @param year Integer-like calendar year.
+#' @param months Integer vector of months to include for `year`.
+#'
+#' @returns
+#' Character vector of raw BTS CSV paths.
+#'
+#' @noRd
 cache_build_year_csvs <- function(year, months) {
   csvs <- cache_raw_ontime_csvs(
     year = year,
@@ -92,6 +116,18 @@ cache_build_year_csvs <- function(year, months) {
   csvs
 }
 
+#' Resolve cached annual Parquet output paths
+#'
+#' Resolves the main and diversion-only Parquet paths for one cached year.
+#'
+#' @param year Integer-like calendar year.
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#' @param create If `TRUE`, create parent directories as needed.
+#'
+#' @returns
+#' List with `main` and `div` path elements.
+#'
+#' @noRd
 cache_build_year_file_paths <- function(year, root = NULL, create = TRUE) {
   list(
     main = slc_cache_parquet_path(
@@ -109,6 +145,22 @@ cache_build_year_file_paths <- function(year, root = NULL, create = TRUE) {
   )
 }
 
+#' Write one cached annual main Parquet file
+#'
+#' Filters a BTS CSV relation to flights where Salt Lake City's airport ID
+#' appears as the scheduled origin or destination and writes the result to a
+#' cached annual main Parquet file.
+#'
+#' @param con DuckDB connection.
+#' @param relation Character SQL relation expression for the source BTS CSVs.
+#' @param cols Character vector of source column names.
+#' @param slc_id BTS airport ID for Salt Lake City.
+#' @param out_main Destination path for the main Parquet file.
+#'
+#' @returns
+#' Invisibly, `out_main`.
+#'
+#' @noRd
 cache_build_write_main_file <- function(
   con,
   relation,
@@ -203,6 +255,23 @@ cache_build_div_only_count <- function(
   as.integer(out$n[[1]])
 }
 
+#' Write one cached annual diversion-only Parquet file
+#'
+#' Filters a BTS CSV relation to flights where Salt Lake City's airport ID
+#' appears in a diversion airport field but not as the scheduled origin or
+#' destination. If no diversion-only rows are present, no file is written.
+#'
+#' @param con DuckDB connection.
+#' @param relation Character SQL relation expression for the source BTS CSVs.
+#' @param cols Character vector of source column names.
+#' @param slc_id BTS airport ID for Salt Lake City.
+#' @param out_div Destination path for the diversion-only Parquet file.
+#'
+#' @returns
+#' Invisibly, `out_div` when a diversion-only file is written; otherwise an
+#' invisible empty character vector.
+#'
+#' @noRd
 cache_build_write_div_file <- function(
   con,
   relation,
@@ -281,6 +350,24 @@ cache_build_write_div_file <- function(
   invisible(out_div)
 }
 
+#' Build cached annual Parquet files
+#'
+#' Builds the main and diversion-only Parquet files for one cached year from
+#' downloaded monthly BTS CSV files.
+#'
+#' @param year Integer-like calendar year.
+#' @param months Integer vector of months to include for `year`.
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#' @param slc_id BTS airport ID for Salt Lake City.
+#' @param csv_files Optional character vector of raw monthly BTS CSV paths.
+#'   When `NULL`, paths are resolved from the raw local cache.
+#' @param con Optional DuckDB connection. When `NULL`,
+#'   a temporary connection is opened and closed by this function.
+#'
+#' @returns
+#' Character vector of cached Parquet files that were written.
+#'
+#' @noRd
 cache_build_write_year_files <- function(
   year,
   months,
