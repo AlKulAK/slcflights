@@ -225,7 +225,8 @@ clear_cache_root <- function(root, confirm = interactive()) {
 #'   in the local raw-data cache.
 #'
 #' @returns
-#' Invisibly, a list describing the active local cache.
+#' Invisibly, a list describing the active local cache. The list has the same
+#' structure as the value returned by [slcflights_cache_info()].
 #'
 #' @details
 #' The package ships data through June 2024. Local updates always begin with
@@ -238,6 +239,12 @@ clear_cache_root <- function(root, confirm = interactive()) {
 #' Updated data are stored in the user cache returned by
 #' `tools::R_user_dir("slcflights", "cache")`. The installed package files are
 #' never modified.
+#'
+#' After a compatible cache is active, the ordinary reader functions use it
+#' automatically. For example, [read_year_main()] combines installed and cached
+#' data for a year that spans both sources.
+#'
+#' @seealso [slcflights_cache_info()], [clear_slcflights_cache()]
 #'
 #' @examples
 #' \dontrun{
@@ -280,7 +287,20 @@ update_slcflights_data <- function(until = "latest", overwrite = FALSE) {
 #' Reports whether a local slcflights data cache is active and complete.
 #'
 #' @returns
-#' Invisibly, a list describing the active local cache.
+#' Invisibly, a list describing the active local cache. The list contains:
+#'
+#' - `root`: normalized path to the active cache directory.
+#' - `exists`: `TRUE` if an active cache manifest exists.
+#' - `complete`: `TRUE` if the active cache has the expected cached files.
+#' - `months`: data frame of cached year-month pairs.
+#' - `endpoint`: final cached year-month, or `NULL` when no cache is active.
+#' - `manifest`: parsed cache manifest, or `NULL` when no cache is active.
+#'
+#' @details
+#' This function only reports cache state. It does not download or
+#' build data, modify the cache, or modify the installed package files.
+#'
+#' @seealso [update_slcflights_data()], [clear_slcflights_cache()]
 #'
 #' @examples
 #' slcflights_cache_info()
@@ -302,8 +322,14 @@ slcflights_cache_info <- function() {
 #' deletion was cancelled.
 #'
 #' @details
-#' This removes the slcflights user cache. It does not modify the installed
+#' This removes the slcflights user cache returned by
+#' `tools::R_user_dir("slcflights", "cache")`. It does not modify the installed
 #' package files.
+#'
+#' After the cache is cleared, the ordinary reader functions use only the
+#' installed package data.
+#'
+#' @seealso [update_slcflights_data()], [slcflights_cache_info()]
 #'
 #' @examples
 #' \dontrun{

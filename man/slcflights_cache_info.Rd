@@ -7,12 +7,27 @@
 slcflights_cache_info()
 }
 \value{
-Invisibly, a list describing the active local cache.
+Invisibly, a list describing the active local cache. The list contains:
+\itemize{
+\item \code{root}: normalized path to the active cache directory.
+\item \code{exists}: \code{TRUE} if an active cache manifest exists.
+\item \code{complete}: \code{TRUE} if the active cache has the expected cached files.
+\item \code{months}: data frame of cached year-month pairs.
+\item \code{endpoint}: final cached year-month, or \code{NULL} when no cache is active.
+\item \code{manifest}: parsed cache manifest, or \code{NULL} when no cache is active.
+}
 }
 \description{
 Reports whether a local slcflights data cache is active and complete.
 }
+\details{
+This function only reports cache state. It does not download or
+build data, modify the cache, or modify the installed package files.
+}
 \examples{
 slcflights_cache_info()
 
+}
+\seealso{
+\code{\link[=update_slcflights_data]{update_slcflights_data()}}, \code{\link[=clear_slcflights_cache]{clear_slcflights_cache()}}
 }

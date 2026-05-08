@@ -17,12 +17,19 @@ deletion was cancelled.
 Removes locally downloaded and locally built slcflights update data.
 }
 \details{
-This removes the slcflights user cache. It does not modify the installed
+This removes the slcflights user cache returned by
+\code{tools::R_user_dir("slcflights", "cache")}. It does not modify the installed
 package files.
+
+After the cache is cleared, the ordinary reader functions use only the
+installed package data.
 }
 \examples{
 \dontrun{
 clear_slcflights_cache()
 }
 
+}
+\seealso{
+\code{\link[=update_slcflights_data]{update_slcflights_data()}}, \code{\link[=slcflights_cache_info]{slcflights_cache_info()}}
 }

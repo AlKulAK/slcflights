@@ -15,7 +15,8 @@ all currently available new data, a string of the form \code{"YYYY-MM"}, or
 in the local raw-data cache.}
 }
 \value{
-Invisibly, a list describing the active local cache.
+Invisibly, a list describing the active local cache. The list has the same
+structure as the value returned by \code{\link[=slcflights_cache_info]{slcflights_cache_info()}}.
 }
 \description{
 Downloads newly available BTS flight data and builds a validated local cache.
@@ -31,6 +32,10 @@ endpoint, for example \code{until = "2024-07"}, to perform a smaller update.
 Updated data are stored in the user cache returned by
 \code{tools::R_user_dir("slcflights", "cache")}. The installed package files are
 never modified.
+
+After a compatible cache is active, the ordinary reader functions use it
+automatically. For example, \code{\link[=read_year_main]{read_year_main()}} combines installed and cached
+data for a year that spans both sources.
 }
 \examples{
 \dontrun{
@@ -38,4 +43,7 @@ update_slcflights_data()
 update_slcflights_data(until = "2024-07")
 }
 
+}
+\seealso{
+\code{\link[=slcflights_cache_info]{slcflights_cache_info()}}, \code{\link[=clear_slcflights_cache]{clear_slcflights_cache()}}
 }
