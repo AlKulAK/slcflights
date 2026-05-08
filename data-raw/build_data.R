@@ -1,6 +1,7 @@
 # Maintainer-only data build script.
 #
-# This script rebuilds the bundled data in inst/extdata/.
+# This script rebuilds the bundled Parquet files, reduced coordinate CSV, and
+# field dictionary under inst/extdata/.
 # Runtime user updates must not use this script and must not write to inst/.
 #
 # If data-raw/T_MASTER_CORD.csv is missing, build_slc_data() downloads it from

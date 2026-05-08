@@ -1,7 +1,7 @@
-# Internal legacy path wrappers ----------------------------------------------
+# Internal reader path wrappers ----------------------------------------------
 #
-# These wrappers preserve the existing reader-facing internal interface while
-# delegating file discovery to the newer cache-aware path helpers.
+# These wrappers keep the reader-facing internal interface small while
+# delegating file discovery to the installed-data and cache-aware path helpers.
 
 .slcflights_file <- function(...) {
   slc_extdata_file(...)

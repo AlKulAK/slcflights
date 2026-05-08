@@ -1,8 +1,9 @@
 # Maintainer-only field dictionary build script.
 #
-# This script creates inst/extdata/csv/field_dictionary.csv from the currently
-# available slcflights public API. It records where each field appears:
-# main flight records, diversion-only flight records, and the coordinate table.
+# This script creates inst/extdata/csv/field_dictionary.csv from the rebuilt
+# package data outputs through the slcflights public readers. It records where
+# each field appears: main flight records, diversion-only flight records, and
+# the coordinate table.
 
 build_field_dictionary <- function(
   output = file.path(
