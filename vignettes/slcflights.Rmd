@@ -59,21 +59,21 @@ library(lubridate)
 The underlying flight records come from the BTS TranStats **On-Time:
 Reporting Carrier On-Time Performance** table:
 
-<https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGJ&QO_fu146_anzr=b0-gvzr>
+[https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGJ&QO_fu146_anzr=b0-gvzr](https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGJ&QO_fu146_anzr=b0-gvzr)
 
 The BTS field documentation for this table is available at:
 
-<https://www.transtats.bts.gov/Fields.asp?gnoyr_VQ=FGJ>
+[https://www.transtats.bts.gov/Fields.asp?gnoyr_VQ=FGJ](https://www.transtats.bts.gov/Fields.asp?gnoyr_VQ=FGJ)
 
 The installed historical files in `slcflights` are derived from the 1987--2024
 Parquet files distributed for the 2025 ASA Data Expo Challenge:
 
-<https://community.amstat.org/jointscsg-section/dataexpo/dataexpo202136710288>
+[https://community.amstat.org/jointscsg-section/dataexpo/dataexpo202136710288](https://community.amstat.org/jointscsg-section/dataexpo/dataexpo202136710288)
 
 Airport coordinate metadata come from the BTS TranStats Master Coordinate
 support table in the Aviation Support Tables family:
 
-<https://transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=N8vn6v10+f722146+gnoyr5&gnoyr_VQ=FLL>
+[https://transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=N8vn6v10+f722146+gnoyr5&gnoyr_VQ=FLL](https://transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=N8vn6v10+f722146+gnoyr5&gnoyr_VQ=FLL)
 
 The package build workflow transforms the national source files into Salt Lake
 City-focused data by filtering to records involving Salt Lake City's BTS airport
@@ -242,8 +242,7 @@ make_day_type_data <- function(type = c("main", "div"), years = NULL) {
   # Choose the lazy reader for the requested data grouping. Main records are
   # scheduled SLC origin/destination flights; diversion-only records are flights
   # where SLC appears only as a diversion airport.
-  open_fun <- switch(
-    type,
+  open_fun <- switch(type,
     main = slcflights::open_main,
     div = slcflights::open_div
   )
@@ -389,14 +388,12 @@ plot_day_type <- function(
 
   # Main records have a tighter range; diversion-only records are much more
   # variable, so they need a wider x-axis.
-  x_breaks <- switch(
-    type,
+  x_breaks <- switch(type,
     main = seq(40, 140, by = 10),
     div = seq(20, 200, by = 10)
   )
 
-  x_limits <- switch(
-    type,
+  x_limits <- switch(type,
     main = c(40, 140),
     div = c(20, 200)
   )
@@ -454,7 +451,7 @@ count.
 The main and diversion-only plots use different x-axis ranges because the
 diversion-only records are much more variable.
 
-```{r paired-chronological, fig.width = 12, fig.height = 6}
+```{r paired-chronological, fig.width = 12, fig.height = 6, out.width = "100%", fig.align = "center"}
 draw_plot_pair(ordering = "chronological")
 ```
 
@@ -463,7 +460,7 @@ average day. This ordering makes the contrast easier to read: the main-record
 plot reflects a regular scheduled-service rhythm, while the diversion-only plot
 is much more variable.
 
-```{r paired-median-desc, fig.width = 12, fig.height = 6}
+```{r paired-median-desc, fig.width = 12, fig.height = 6, out.width = "100%", fig.align = "center"}
 draw_plot_pair(ordering = "median_desc")
 ```
 
