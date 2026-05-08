@@ -231,7 +231,7 @@ Consult the package's vignette for a fuller walkthrough of the package workflow,
 including coverage, lazy inspection, in-memory reads, airport metadata,
 diversion-only records, and local cache updates. You access it like so:
 
-```{r}
+```{r, eval = FALSE}
 vignette("slcflights", package = "slcflights")
 ```
 

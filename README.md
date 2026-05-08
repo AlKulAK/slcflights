@@ -315,5 +315,4 @@ like so:
 
 ``` r
 vignette("slcflights", package = "slcflights")
-#> Warning: vignette 'slcflights' not found
 ```
