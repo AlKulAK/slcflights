@@ -11,6 +11,18 @@ cache_build_parquet_seq_cols <- function(con, path) {
   cache_build_airport_seq_cols(cols)
 }
 
+#' Find airport sequence ID columns used by Parquet files
+#'
+#' Reads the schemas of available flight Parquet files and finds the airport
+#' sequence ID columns used for coordinate reduction.
+#'
+#' @param con DuckDB connection.
+#' @param parquet_files Character vector of Parquet file paths.
+#'
+#' @returns
+#' Character vector of airport sequence ID column names.
+#'
+#' @noRd
 cache_build_used_seq_cols <- function(con, parquet_files) {
   if (!length(parquet_files)) {
     stop(
@@ -78,6 +90,22 @@ cache_build_vldte_coords_cols <- function(cols) {
   invisible(TRUE)
 }
 
+#' Build the reduced coordinate CSV for a cache
+#'
+#' Reduces the raw BTS Master Coordinate CSV to rows whose airport sequence IDs
+#' are referenced by the supplied flight Parquet files.
+#'
+#' @param parquet_files Character vector of main and diversion-only Parquet
+#'   files used to identify referenced airport sequence IDs.
+#' @param coords_in Path to the raw BTS Master Coordinate CSV.
+#' @param coords_out Destination path for the reduced coordinate CSV.
+#' @param con Optional DuckDB connection. When `NULL`, a temporary connection
+#'   is opened and closed by this function.
+#'
+#' @returns
+#' Invisibly, the normalized path to the reduced coordinate CSV.
+#'
+#' @noRd
 cache_build_reduce_coords_csv <- function(
   parquet_files,
   coords_in = slc_cache_raw_coords_path(create = FALSE),
@@ -167,6 +195,22 @@ cache_build_reduce_coords_csv <- function(
   )
 }
 
+#' List Parquet files available for coordinate reduction
+#'
+#' Lists cached Parquet files for the requested years, optionally combined
+#' with installed package Parquet files. The combined file set is used to
+#' reduce the coordinate table to all airports referenced by installed and
+#' cached data.
+#'
+#' @param years Integer vector of years to inspect.
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#' @param include_installed If `TRUE`, include installed package Parquet files
+#'   in addition to cached Parquet files.
+#'
+#' @returns
+#' Character vector of existing Parquet file paths.
+#'
+#' @noRd
 cache_build_avail_pq_files <- function(
   years,
   root = NULL,
