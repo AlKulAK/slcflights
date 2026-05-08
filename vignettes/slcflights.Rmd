@@ -2,6 +2,7 @@
 title: "Getting started with slcflights"
 output: rmarkdown::html_vignette
 bibliography: references.bib
+link-citations: true
 vignette: >
   %\VignetteIndexEntry{Getting started with slcflights}
   %\VignetteEngine{knitr::rmarkdown}
@@ -48,6 +49,7 @@ We begin by loading `slcflights` and all the other packages used in this vignett
 ```{r setup}
 library(slcflights)
 library(dplyr)
+library(grid)
 library(ggplot2)
 library(lubridate)
 ```
@@ -225,20 +227,32 @@ The same calculation is applied to both `slcflights` data groupings. That makes
 the contrast meaningful: main records describe scheduled SLC service, while
 diversion-only records describe rare operational disruptions.
 
-```{r main-analysis-functions}
-make_day_type_main_data <- function(years = NULL) {
-  # Use all available main-record years unless the caller supplies a smaller
-  # set of years.
+```{r analysis-functions}
+make_day_type_data <- function(type = c("main", "div"), years = NULL) {
+  type <- match.arg(type)
+
+  # Use all available years for the requested data grouping unless the caller
+  # supplies a smaller set of years.
   if (is.null(years)) {
-    years <- sort(unique(slcflights::available_years("main")))
+    years <- sort(unique(slcflights::available_years(type)))
   } else {
     years <- sort(unique(as.integer(years)))
   }
 
-  # Open the main Parquet files lazily, select only the fields needed for this
+  # Choose the lazy reader for the requested data grouping. Main records are
+  # scheduled SLC origin/destination flights; diversion-only records are flights
+  # where SLC appears only as a diversion airport.
+  open_fun <- switch(
+    type,
+    main = slcflights::open_main,
+    div = slcflights::open_div
+  )
+
+  # Open the Parquet files lazily, select only the fields needed for this
   # analysis, and collapse the records to one total flight count per calendar
-  # day.
-  daily <- slcflights::open_main(years) |>
+  # day. The collect() call happens after aggregation, so the vignette brings
+  # only the smaller daily summary into memory.
+  daily <- open_fun(years) |>
     dplyr::select(Year, FlightDate, Flights) |>
     dplyr::group_by(Year, FlightDate) |>
     dplyr::summarise(daily_flights = sum(Flights), .groups = "drop") |>
@@ -260,13 +274,14 @@ make_day_type_main_data <- function(years = NULL) {
       )
     )
 
-  # Compute the average daily flight count within each year. This is the
+  # Compute each year's average daily flight count. This value is the
   # denominator for the Wickham-style normalization.
   year_avg <- daily |>
     dplyr::group_by(Year) |>
     dplyr::summarise(avg_daily_year = mean(daily_flights), .groups = "drop")
 
-  # Compute one average daily flight count per weekday within each year.
+  # For ordinary weekdays, compute one average daily flight count per weekday
+  # within each year.
   weekday_stats <- daily |>
     dplyr::group_by(Year, category = weekday) |>
     dplyr::summarise(
@@ -274,9 +289,9 @@ make_day_type_main_data <- function(years = NULL) {
       .groups = "drop"
     )
 
-  # Compute one daily flight count per selected holiday within each year.
-  # Holidays outside the installed October 1987-June 2024 data window do not
-  # appear.
+  # For holidays, each year contributes the daily count on that holiday. Holiday
+  # dates outside the installed October 1987-June 2024 data window drop out
+  # naturally in the inner join.
   holiday_stats <- daily |>
     dplyr::inner_join(
       make_holiday_table(years),
@@ -288,8 +303,9 @@ make_day_type_main_data <- function(years = NULL) {
       .groups = "drop"
     )
 
-  # Combine weekday and holiday summaries, then express each annual category
-  # value as a percentage of that year's average day.
+  # Combine weekday and holiday summaries. Each output row is one
+  # Year-category summary, expressed as a percentage of that year's average
+  # daily flight count.
   dplyr::bind_rows(weekday_stats, holiday_stats) |>
     dplyr::left_join(year_avg, by = "Year") |>
     dplyr::mutate(
@@ -318,16 +334,17 @@ make_day_type_main_data <- function(years = NULL) {
     )
 }
 
-plot_day_type_main <- function(
-  years = NULL,
+plot_day_type <- function(
+  type = c("main", "div"),
   ordering = c("chronological", "median_desc")
 ) {
+  type <- match.arg(type)
   ordering <- match.arg(ordering)
 
-  plot_df <- make_day_type_main_data(years = years)
+  plot_df <- make_day_type_data(type = type)
 
   # Use chronological ordering to preserve the weekday/holiday order, or order
-  # by median percentage to make the strongest categories easier to see.
+  # by median percentage to make high- and low-volume categories easier to see.
   if (ordering == "chronological") {
     plot_df <- plot_df |>
       dplyr::mutate(
@@ -354,7 +371,8 @@ plot_day_type_main <- function(
   }
 
   # Add sample sizes to the y-axis labels. n is the number of annual category
-  # summaries in each boxplot.
+  # summaries in each boxplot. Holiday sample sizes can be smaller because 1987
+  # and 2024 are partial years; diversion-only records also begin later.
   sample_size_df <- plot_df |>
     dplyr::count(category, name = "n") |>
     dplyr::mutate(
@@ -369,6 +387,20 @@ plot_day_type_main <- function(
     "1987 and 2024 are partial years."
   )
 
+  # Main records have a tighter range; diversion-only records are much more
+  # variable, so they need a wider x-axis.
+  x_breaks <- switch(
+    type,
+    main = seq(40, 140, by = 10),
+    div = seq(20, 200, by = 10)
+  )
+
+  x_limits <- switch(
+    type,
+    main = c(40, 140),
+    div = c(20, 200)
+  )
+
   ggplot2::ggplot(
     plot_df,
     ggplot2::aes(x = pct_of_avg_day, y = category)
@@ -376,177 +408,39 @@ plot_day_type_main <- function(
     ggplot2::geom_vline(xintercept = 100, linetype = 2) +
     ggplot2::geom_boxplot() +
     ggplot2::scale_y_discrete(labels = category_labels) +
-    ggplot2::scale_x_continuous(breaks = seq(40, 140, by = 10)) +
-    ggplot2::coord_cartesian(xlim = c(40, 140)) +
+    ggplot2::scale_x_continuous(breaks = x_breaks) +
+    ggplot2::coord_cartesian(xlim = x_limits) +
     ggplot2::labs(
       x = "Percentage of flights relative to average day",
       y = NULL,
       caption = caption_text
     )
 }
-```
 
-```{r div-analysis-functions}
-make_day_type_div_data <- function(years = NULL) {
-  # Use all available diversion-only years unless the caller supplies a smaller
-  # set of years.
-  if (is.null(years)) {
-    years <- sort(unique(slcflights::available_years("div")))
-  } else {
-    years <- sort(unique(as.integer(years)))
-  }
-
-  # Open the diversion-only Parquet files lazily, select only the fields needed
-  # for this analysis, and collapse the records to one total flight count per
-  # calendar day.
-  daily <- slcflights::open_div(years) |>
-    dplyr::select(Year, FlightDate, Flights) |>
-    dplyr::group_by(Year, FlightDate) |>
-    dplyr::summarise(daily_flights = sum(Flights), .groups = "drop") |>
-    dplyr::collect() |>
-    dplyr::mutate(
-      FlightDate = as.Date(FlightDate),
-      weekday = factor(
-        lubridate::wday(FlightDate, week_start = 1),
-        levels = 1:7,
-        labels = c(
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday",
-          "Sunday"
-        )
-      )
-    )
-
-  # Compute the average daily flight count within each year. This is the
-  # denominator for the Wickham-style normalization.
-  year_avg <- daily |>
-    dplyr::group_by(Year) |>
-    dplyr::summarise(avg_daily_year = mean(daily_flights), .groups = "drop")
-
-  # Compute one average daily flight count per weekday within each year.
-  weekday_stats <- daily |>
-    dplyr::group_by(Year, category = weekday) |>
-    dplyr::summarise(
-      avg_daily_category = mean(daily_flights),
-      .groups = "drop"
-    )
-
-  # Compute one daily flight count per selected holiday within each year.
-  # Holidays outside the installed October 1987-June 2024 data window do not
-  # appear. Diversion-only records begin later than main records, so holiday
-  # sample sizes can be small.
-  holiday_stats <- daily |>
-    dplyr::inner_join(
-      make_holiday_table(years),
-      by = c("Year", "FlightDate")
-    ) |>
-    dplyr::group_by(Year, category) |>
-    dplyr::summarise(
-      avg_daily_category = mean(daily_flights),
-      .groups = "drop"
-    )
-
-  # Combine weekday and holiday summaries, then express each annual category
-  # value as a percentage of that year's average day.
-  dplyr::bind_rows(weekday_stats, holiday_stats) |>
-    dplyr::left_join(year_avg, by = "Year") |>
-    dplyr::mutate(
-      pct_of_avg_day = 100 * avg_daily_category / avg_daily_year,
-      category = factor(
-        as.character(category),
-        levels = c(
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday",
-          "Sunday",
-          "Martin Luther King Jr. Day",
-          "Presidents' Day",
-          "Memorial Day",
-          "Independence Day",
-          "Labor Day",
-          "Veterans Day",
-          "Thanksgiving Day",
-          "Christmas Day",
-          "New Year's Day"
-        )
-      )
-    )
-}
-
-plot_day_type_div <- function(
-  years = NULL,
-  ordering = c("chronological", "median_desc")
-) {
+draw_plot_pair <- function(ordering = c("chronological", "median_desc")) {
   ordering <- match.arg(ordering)
 
-  plot_df <- make_day_type_div_data(years = years)
+  # Build two ggplot objects and draw them on one graphics page. This avoids
+  # relying on HTML layout behavior for two separate images.
+  p_main <- plot_day_type("main", ordering = ordering)
+  p_div <- plot_day_type("div", ordering = ordering)
 
-  # Use chronological ordering to preserve the weekday/holiday order, or order
-  # by median percentage to make the strongest categories easier to see.
-  if (ordering == "chronological") {
-    plot_df <- plot_df |>
-      dplyr::mutate(
-        category = factor(
-          as.character(category),
-          levels = rev(levels(category))
-        )
-      )
-  } else if (ordering == "median_desc") {
-    category_order <- plot_df |>
-      dplyr::group_by(category) |>
-      dplyr::summarise(med = median(pct_of_avg_day), .groups = "drop") |>
-      dplyr::arrange(dplyr::desc(med)) |>
-      dplyr::pull(category) |>
-      as.character()
-
-    plot_df <- plot_df |>
-      dplyr::mutate(
-        category = factor(
-          as.character(category),
-          levels = rev(category_order)
-        )
-      )
-  }
-
-  # Add sample sizes to the y-axis labels. n is the number of annual category
-  # summaries in each boxplot. For holidays, n can be small because the
-  # diversion-only records begin later and because 1987 and 2024 are partial
-  # years.
-  sample_size_df <- plot_df |>
-    dplyr::count(category, name = "n") |>
-    dplyr::mutate(
-      label = paste0(as.character(category), "\nn = ", n)
+  grid::grid.newpage()
+  grid::pushViewport(
+    grid::viewport(
+      layout = grid::grid.layout(nrow = 1, ncol = 2)
     )
-
-  category_labels <- sample_size_df$label
-  names(category_labels) <- as.character(sample_size_df$category)
-
-  caption_text <- paste(
-    "n is the number of annual category summaries in each boxplot;",
-    "1987 and 2024 are partial years."
   )
 
-  ggplot2::ggplot(
-    plot_df,
-    ggplot2::aes(x = pct_of_avg_day, y = category)
-  ) +
-    ggplot2::geom_vline(xintercept = 100, linetype = 2) +
-    ggplot2::geom_boxplot() +
-    ggplot2::scale_y_discrete(labels = category_labels) +
-    ggplot2::scale_x_continuous(breaks = seq(20, 200, by = 10)) +
-    ggplot2::coord_cartesian(xlim = c(20, 200)) +
-    ggplot2::labs(
-      x = "Percentage of flights relative to average day",
-      y = NULL,
-      caption = caption_text
-    )
+  print(
+    p_main,
+    vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 1)
+  )
+
+  print(
+    p_div,
+    vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 2)
+  )
 }
 ```
 
@@ -560,9 +454,8 @@ count.
 The main and diversion-only plots use different x-axis ranges because the
 diversion-only records are much more variable.
 
-```{r paired-chronological, fig.show = "hold", out.width = "49%"}
-plot_day_type_main(ordering = "chronological")
-plot_day_type_div(ordering = "chronological")
+```{r paired-chronological, fig.width = 12, fig.height = 6}
+draw_plot_pair(ordering = "chronological")
 ```
 
 The next pair shows the same summaries ordered by median percentage of an
@@ -570,9 +463,8 @@ average day. This ordering makes the contrast easier to read: the main-record
 plot reflects a regular scheduled-service rhythm, while the diversion-only plot
 is much more variable.
 
-```{r paired-median-desc, fig.show = "hold", out.width = "49%"}
-plot_day_type_main(ordering = "median_desc")
-plot_day_type_div(ordering = "median_desc")
+```{r paired-median-desc, fig.width = 12, fig.height = 6}
+draw_plot_pair(ordering = "median_desc")
 ```
 
 For main SLC records, the weekday categories cluster close to the average-day
