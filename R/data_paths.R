@@ -3,6 +3,17 @@
 # These helpers discover installed and cached data files. They do not read
 # Parquet files, build cache files, download data, or change reader behavior.
 
+#' Locate an installed slcflights extdata file
+#'
+#' Resolves a path under the package's installed `inst/` tree using
+#' [system.file()] and errors if the file is not present.
+#'
+#' @param ... Path components passed to [system.file()].
+#'
+#' @returns
+#' Character path to an installed package file.
+#'
+#' @noRd
 slc_extdata_file <- function(...) {
   rel_path <- file.path(...)
 
@@ -86,6 +97,17 @@ slc_years_from_dirs <- function(dirs) {
   sort(unique(years[!is.na(years)]))
 }
 
+#' List installed years for a flight-data grouping
+#'
+#' Lists years for which the installed package contains a main or
+#' diversion-only Parquet file.
+#'
+#' @param type Flight-data grouping: `"main"` or `"div"`.
+#'
+#' @returns
+#' Integer vector of installed years sorted in ascending order.
+#'
+#' @noRd
 slc_available_installed_years <- function(type = c("main", "div")) {
   type <- match.arg(type)
 
@@ -125,6 +147,18 @@ slc_cached_year_dirs <- function(root = NULL) {
   dirs[grepl("^Year=[0-9]{4}$", dirs)]
 }
 
+#' List cached years for a flight-data grouping
+#'
+#' Lists years for which the active local cache contains a main or
+#' diversion-only Parquet file and has a readable manifest.
+#'
+#' @param type Flight-data grouping: `"main"` or `"div"`.
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#'
+#' @returns
+#' Integer vector of cached years sorted in ascending order.
+#'
+#' @noRd
 slc_available_cached_years <- function(type = c("main", "div"), root = NULL) {
   type <- match.arg(type)
 
@@ -156,6 +190,18 @@ slc_available_cached_years <- function(type = c("main", "div"), root = NULL) {
   years[file.exists(paths)]
 }
 
+#' List all available years for a flight-data grouping
+#'
+#' Combines installed and cached years for a main or diversion-only data
+#' grouping.
+#'
+#' @param type Flight-data grouping: `"main"` or `"div"`.
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#'
+#' @returns
+#' Integer vector of available years sorted in ascending order.
+#'
+#' @noRd
 slc_available_data_years <- function(type = c("main", "div"), root = NULL) {
   type <- match.arg(type)
 
@@ -165,6 +211,20 @@ slc_available_data_years <- function(type = c("main", "div"), root = NULL) {
   )))
 }
 
+#' Resolve installed Parquet paths
+#'
+#' Resolves installed package Parquet files for a main or diversion-only data
+#' grouping.
+#'
+#' @param type Flight-data grouping: `"main"` or `"div"`.
+#' @param years Optional integer vector of years. Uses all installed years for
+#'   `type` when `NULL`.
+#'
+#' @returns
+#' Data frame with `year`, `source`, and `path` columns. `source` is always
+#' `"installed"`.
+#'
+#' @noRd
 slc_installed_data_paths <- function(type = c("main", "div"), years = NULL) {
   type <- match.arg(type)
 
@@ -199,6 +259,21 @@ slc_installed_data_paths <- function(type = c("main", "div"), years = NULL) {
   )
 }
 
+#' Resolve cached Parquet paths
+#'
+#' Resolves active-cache Parquet files for a main or diversion-only data
+#' grouping.
+#'
+#' @param type Flight-data grouping: `"main"` or `"div"`.
+#' @param years Optional integer vector of years. Uses all cached years for
+#'   `type` when `NULL`.
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#'
+#' @returns
+#' Data frame with `year`, `source`, and `path` columns. `source` is always
+#' `"cache"`.
+#'
+#' @noRd
 slc_cached_data_paths <- function(
   type = c("main", "div"),
   years = NULL,
@@ -251,7 +326,24 @@ slc_cached_data_paths <- function(
   )
 }
 
-slc_data_paths <- function(type = c("main", "div"), years = NULL, root = NULL) {
+#' Resolve installed and cached Parquet paths
+#'
+#' Resolves reader-facing Parquet paths for a main or diversion-only data
+#' grouping, combining installed package files with compatible cached files.
+#'
+#' @param type Flight-data grouping: `"main"` or `"div"`.
+#' @param years Optional integer vector of years. Uses all available years for
+#'   `type` when `NULL`.
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#'
+#' @returns
+#' Data frame with `year`, `source`, and `path` columns, sorted by year and
+#' then source.
+#'
+#' @noRd
+slc_data_paths <- function(
+  type = c("main", "div"), years = NULL, root = NULL
+) {
   type <- match.arg(type)
 
   if (is.null(years)) {
@@ -283,6 +375,18 @@ slc_data_paths <- function(type = c("main", "div"), years = NULL, root = NULL) {
   out
 }
 
+#' Resolve the active coordinate CSV path
+#'
+#' Returns the cached coordinate CSV when a compatible cache is active and the
+#' cached coordinate file exists. Otherwise returns the installed coordinate
+#' CSV.
+#'
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#'
+#' @returns
+#' Character path to the coordinate CSV used by [read_coords()].
+#'
+#' @noRd
 slc_coords_path <- function(root = NULL) {
   manifest <- read_cache_manifest(root = root)
   cached <- slc_cache_coords_path(root = root, create = FALSE)
@@ -294,6 +398,17 @@ slc_coords_path <- function(root = NULL) {
   slc_installed_coords_path()
 }
 
+#' Normalize a reader year vector
+#'
+#' Validates and normalizes the `years` argument used by reader and path
+#' helpers.
+#'
+#' @param years `NULL` or a numeric vector of whole four-digit calendar years.
+#'
+#' @returns
+#' `NULL` when `years` is `NULL`; otherwise a sorted unique integer vector.
+#'
+#' @noRd
 normalize_data_years <- function(years) {
   if (is.null(years)) {
     return(NULL)
