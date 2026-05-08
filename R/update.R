@@ -1,4 +1,4 @@
-# Public update and cache management API --------------------------------------
+# Update endpoint and cache management helpers --------------------------------
 
 bts_candidate_months <- function(today = Sys.Date()) {
   today <- as.Date(today)
