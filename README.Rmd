@@ -227,6 +227,11 @@ The temporary build directory is a maintainer-side artifact. It is not part of t
 
 ## Learn more
 
-See `vignette("slcflights")` for a fuller walkthrough of the package workflow,
+Consult the package's vignette for a fuller walkthrough of the package workflow,
 including coverage, lazy inspection, in-memory reads, airport metadata,
-diversion-only records, and local cache updates.
+diversion-only records, and local cache updates. You access it like so:
+
+```{r}
+vignette("slcflights", package = "slcflights")
+```
+

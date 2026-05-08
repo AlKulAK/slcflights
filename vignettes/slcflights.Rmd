@@ -43,7 +43,7 @@ with two distinct flight-data groupings.
 
 ## Loading the package
 
-Load `slcflights` and the packages used in the examples below.
+We begin by loading `slcflights` and all the other packages used in this vignette.
 
 ```{r setup}
 library(slcflights)
@@ -121,7 +121,7 @@ days by weekday or holiday, and `Flights` to count flights.
 
 ## Calendar helpers
 
-The next helpers create a lookup table of selected U.S. federal holidays. The
+The following helpers create a lookup table of selected U.S. federal holidays. The
 set of holidays follows the spirit of Wickham's weekday/holiday comparison:
 ordinary weekdays are compared with selected holidays after normalizing by each
 year's average day.
@@ -550,7 +550,7 @@ plot_day_type_div <- function(
 }
 ```
 
-The next pair of plots shows the same weekday and holiday categories in calendar
+The following pair of plots shows the same weekday and holiday categories in calendar
 order. The left plot uses main records, where Salt Lake City was the scheduled
 origin or destination. The right plot uses diversion-only records, where Salt
 Lake City appears only because of a diversion. Each boxplot summarizes annual
@@ -599,7 +599,7 @@ update_slcflights_data()
 
 By default, `update_slcflights_data()` checks BTS for the latest available
 monthly data and downloads every available month after June 2024. You can also
-request an explicit endpoint.
+request an explicit endpoint:
 
 ```{r update-data-explicit, eval = FALSE}
 # One additional month of data
@@ -618,10 +618,6 @@ You can inspect the active cache with `slcflights_cache_info()`. This is useful
 after an update because it reports whether a compatible local cache is active
 and which years are available from it.
 
-```{r cache-info, eval = FALSE}
-slcflights_cache_info()
-```
-
 If you want to discard the local cache and return to using only the data
 installed with the package, run:
 
@@ -636,7 +632,7 @@ cached July records as one combined data frame.
 
 ## Rebuilding the bundled data
 
-Most users should not rebuild the bundled data. They should use the installed
+Most users should **not** rebuild the bundled data. They should use the installed
 files and, when needed, `update_slcflights_data()` for post-June-2024 monthly
 updates.
 

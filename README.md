@@ -308,6 +308,12 @@ created by `update_slcflights_data()`.
 
 ## Learn more
 
-See `vignette("slcflights")` for a fuller walkthrough of the package
+Consult the package’s vignette for a fuller walkthrough of the package
 workflow, including coverage, lazy inspection, in-memory reads, airport
-metadata, diversion-only records, and local cache updates.
+metadata, diversion-only records, and local cache updates. You access it
+like so:
+
+``` r
+vignette("slcflights", package = "slcflights")
+#> Warning: vignette 'slcflights' not found
+```
