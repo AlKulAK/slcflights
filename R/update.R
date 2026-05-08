@@ -144,6 +144,8 @@ slc_cache_info <- function(root = NULL) {
     root <- slc_cache_active_root(create = FALSE)
   }
 
+  root <- normalizePath(root, winslash = "/", mustWork = FALSE)
+
   manifest <- read_cache_manifest(root = root)
   complete <- cache_months_are_complete(root = root)
 
