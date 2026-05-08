@@ -18,6 +18,19 @@ slc_manifest_package_version <- function() {
   version
 }
 
+#' Validate cached month metadata
+#'
+#' Validates the year-month table used in cache manifests. Cached months must
+#' start in July 2024 and must form a consecutive monthly sequence.
+#'
+#' @param months Data frame with `year` and `month` columns.
+#' @param arg Argument name to use in error messages.
+#'
+#' @returns
+#' A normalized data frame with integer `year` and `month` columns, sorted in
+#' ascending order.
+#'
+#' @noRd
 validate_cache_months <- function(months, arg = "months") {
   if (!is.data.frame(months)) {
     stop(sprintf("`%s` must be a data frame.", arg), call. = FALSE)
@@ -83,6 +96,20 @@ validate_cache_months <- function(months, arg = "months") {
   months
 }
 
+#' Construct a cache manifest
+#'
+#' Builds the JSON-compatible manifest object written into the active local
+#' cache. The manifest records schema compatibility, bundled data boundaries,
+#' cached month boundaries, creation time, and cached month status.
+#'
+#' @param months Data frame with `year` and `month` columns.
+#' @param package_version Package version string recorded in the manifest.
+#' @param created_at UTC timestamp recorded in the manifest.
+#'
+#' @returns
+#' A list suitable for JSON serialization.
+#'
+#' @noRd
 new_cache_manifest <- function(
   months,
   package_version = slc_manifest_package_version(),
@@ -114,6 +141,19 @@ new_cache_manifest <- function(
   )
 }
 
+#' Validate a cache manifest
+#'
+#' Validates that a parsed cache manifest has the expected fields, schema
+#' version, bundled data boundaries, cached month sequence,
+#' and cached endpoint.
+#'
+#' @param manifest Parsed JSON manifest object.
+#' @param arg Argument name to use in error messages.
+#'
+#' @returns
+#' The validated manifest, unchanged.
+#'
+#' @noRd
 validate_cache_manifest <- function(manifest, arg = "manifest") {
   if (!is.list(manifest)) {
     stop(sprintf("`%s` must be a list.", arg), call. = FALSE)
@@ -188,6 +228,17 @@ validate_cache_manifest <- function(manifest, arg = "manifest") {
   manifest
 }
 
+#' Extract cached months from a manifest
+#'
+#' Converts the manifest month list into the data-frame representation used by
+#' cache validation and cache reporting helpers.
+#'
+#' @param manifest Parsed cache manifest.
+#'
+#' @returns
+#' Data frame with integer `year` and `month` columns.
+#'
+#' @noRd
 cache_months_from_manifest <- function(manifest) {
   if (is.null(manifest$months) || !length(manifest$months)) {
     return(data.frame(year = integer(), month = integer()))
@@ -203,6 +254,19 @@ cache_months_from_manifest <- function(manifest) {
   )
 }
 
+#' Write a cache manifest
+#'
+#' Constructs and writes the JSON manifest for a local cache root.
+#'
+#' @param months Data frame with `year` and `month` columns.
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#' @param package_version Package version string recorded in the manifest.
+#' @param created_at UTC timestamp recorded in the manifest.
+#'
+#' @returns
+#' Invisibly, the manifest list that was written.
+#'
+#' @noRd
 write_cache_manifest <- function(
   months,
   root = NULL,
@@ -227,6 +291,16 @@ write_cache_manifest <- function(
   invisible(manifest)
 }
 
+#' Read a cache manifest
+#'
+#' Reads and validates the JSON manifest for a local cache root.
+#'
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#'
+#' @returns
+#' A validated manifest list, or `NULL` when no manifest file exists.
+#'
+#' @noRd
 read_cache_manifest <- function(root = NULL) {
   path <- slc_cache_manifest_path(root = root, create = FALSE)
 
@@ -238,11 +312,32 @@ read_cache_manifest <- function(root = NULL) {
   validate_cache_manifest(manifest)
 }
 
+#' Extract the cached endpoint from a manifest
+#'
+#' Returns the final cached year-month recorded by a validated cache manifest.
+#'
+#' @param manifest Parsed cache manifest.
+#'
+#' @returns
+#' A `"slc_year_month"` object.
+#'
+#' @noRd
 cache_endpoint_from_manifest <- function(manifest) {
   manifest <- validate_cache_manifest(manifest)
   as_year_month_string(manifest$cached_end, arg = "cached_end")
 }
 
+#' Check whether cached month files are complete
+#'
+#' Checks whether the cache root has a manifest, the expected annual main
+#' Parquet files, and the cached coordinate CSV.
+#'
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#'
+#' @returns
+#' `TRUE` if expected cache files are present; otherwise `FALSE`.
+#'
+#' @noRd
 cache_months_are_complete <- function(root = NULL) {
   manifest <- read_cache_manifest(root = root)
 
@@ -275,6 +370,18 @@ cache_months_are_complete <- function(root = NULL) {
   TRUE
 }
 
+#' Validate cached files
+#'
+#' Checks that the cache root contains all files required by its manifest and
+#' errors if the cache appears incomplete.
+#'
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#'
+#' @returns
+#' Invisibly, `TRUE` when the cache is complete and `FALSE` when no manifest
+#' is present.
+#'
+#' @noRd
 validate_cache_files <- function(root = NULL) {
   manifest <- read_cache_manifest(root = root)
 
