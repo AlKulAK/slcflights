@@ -79,11 +79,47 @@ cache_stage_coord_files <- function(
   unname(c(cache_stage_installed_files(), cache_files))
 }
 
+#' Validate a staged cache
+#'
+#' Checks that a staged cache root contains a valid manifest and all files
+#' required by that manifest.
+#'
+#' @param root Staging cache root to validate.
+#'
+#' @returns
+#' Invisibly, `TRUE` when the staged cache is valid.
+#'
+#' @noRd
 cache_stage_validate <- function(root) {
   validate_cache_files(root = root)
   invisible(TRUE)
 }
 
+#' Build a local cache in a staging directory
+#'
+#' Builds annual main and diversion-only Parquet files for the requested cached
+#' months, reduces the coordinate table to airports used by installed and
+#' cached records, enriches cached files with coordinate metadata, optionally
+#' aligns cached schemas to installed schemas, writes a cache manifest, and
+#' validates the staged cache.
+#'
+#' @param months Data frame with `year` and `month` columns. The months must
+#'   begin in July 2024 and form a consecutive sequence.
+#' @param root Staging cache root to create and populate.
+#' @param slc_id BTS airport ID for Salt Lake City.
+#' @param coords_in Path to the raw BTS Master Coordinate CSV.
+#' @param csv_files Optional named list of monthly BTS CSV files by year. Used
+#'   by tests and lower-level workflows.
+#' @param include_installed If `TRUE`, include installed package Parquet files
+#'   when reducing the coordinate table.
+#' @param finalize_schema If `TRUE`, align cached file schemas to installed
+#'   package schemas after coordinate enrichment.
+#'
+#' @returns
+#' Invisibly, a list containing the staging root, requested months,
+#' built files, coordinate CSV path, and manifest.
+#'
+#' @noRd
 cache_stage_build <- function(
   months,
   root = slc_cache_staging_root(),
@@ -181,6 +217,19 @@ cache_stage_build <- function(
   ))
 }
 
+#' Promote a staged cache to the active cache
+#'
+#' Validates a staged cache and atomically promotes it to the active cache
+#' location. If an active cache already exists, it is first moved to a backup
+#' location so it can be restored if promotion fails.
+#'
+#' @param staging_root Staging cache root to promote.
+#' @param active_root Active cache root to replace.
+#'
+#' @returns
+#' Invisibly, the active cache root.
+#'
+#' @noRd
 cache_stage_promote <- function(
   staging_root = slc_cache_staging_root(create = FALSE),
   active_root = slc_cache_active_root(create = FALSE)
