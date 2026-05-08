@@ -14,6 +14,18 @@ bts_ontime_zip_name <- function(year, month) {
   )
 }
 
+#' Construct a BTS On-Time Performance ZIP URL
+#'
+#' Constructs the direct BTS PREZIP URL for one Reporting Carrier On-Time
+#' Performance monthly ZIP file.
+#'
+#' @param year Integer-like calendar year.
+#' @param month Integer-like calendar month.
+#'
+#' @returns
+#' Character URL for the requested monthly BTS ZIP file.
+#'
+#' @noRd
 bts_ontime_url <- function(year, month) {
   sprintf(
     "https://transtats.bts.gov/PREZIP/%s",
@@ -21,6 +33,15 @@ bts_ontime_url <- function(year, month) {
   )
 }
 
+#' Return the BTS Master Coordinate download page URL
+#'
+#' Returns the TranStats select-fields page used to request the Master
+#' Coordinate support table.
+#'
+#' @returns
+#' Character URL for the BTS Master Coordinate download form.
+#'
+#' @noRd
 bts_master_coords_url <- function() {
   paste0(
     "https://www.transtats.bts.gov/DL_SelectFields.aspx?",
@@ -76,6 +97,18 @@ bts_response_is_html <- function(x) {
   )
 }
 
+#' Validate a downloaded BTS CSV file
+#'
+#' Checks that a downloaded or previously cached BTS CSV file exists and is not
+#' empty.
+#'
+#' @param path Path to the CSV file.
+#' @param label Human-readable file label used in error messages.
+#'
+#' @returns
+#' Invisibly, the normalized path to the CSV file.
+#'
+#' @noRd
 bts_validate_csv_file <- function(path, label = "BTS CSV file") {
   if (!file.exists(path)) {
     stop(
@@ -96,6 +129,22 @@ bts_validate_csv_file <- function(path, label = "BTS CSV file") {
   invisible(normalizePath(path, mustWork = TRUE))
 }
 
+#' Download one BTS On-Time Performance monthly file
+#'
+#' Downloads and unzips one monthly BTS Reporting Carrier On-Time Performance
+#' ZIP file into the raw local cache. If a CSV file is already present and
+#' `overwrite` is `FALSE`, the existing CSV is reused.
+#'
+#' @param year Integer-like calendar year.
+#' @param month Integer-like calendar month.
+#' @param overwrite If `TRUE`, re-download even when a raw CSV is already
+#'   present for the requested month.
+#' @param keep_zip If `TRUE`, keep the downloaded ZIP file after extraction.
+#'
+#' @returns
+#' Invisibly, the normalized path to the downloaded or reused CSV file.
+#'
+#' @noRd
 download_bts_ontime_month <- function(
   year,
   month,
@@ -171,6 +220,18 @@ download_bts_ontime_month <- function(
   )
 }
 
+#' Download the BTS Master Coordinate table
+#'
+#' Downloads the BTS TranStats Master Coordinate support table. If the file is
+#' already present and `overwrite` is `FALSE`, the existing CSV is reused.
+#'
+#' @param destfile Destination path for the Master Coordinate CSV.
+#' @param overwrite If `TRUE`, re-download even when `destfile` already exists.
+#'
+#' @returns
+#' Invisibly, the normalized path to the downloaded or reused CSV file.
+#'
+#' @noRd
 download_bts_master_coords <- function(
   destfile = slc_cache_raw_coords_path(),
   overwrite = FALSE
