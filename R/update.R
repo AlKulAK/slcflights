@@ -192,6 +192,8 @@ print_cache_info <- function(info) {
 }
 
 clear_cache_root <- function(root, confirm = interactive()) {
+  root <- normalizePath(root, winslash = "/", mustWork = FALSE)
+
   if (isTRUE(confirm)) {
     answer <- readline(
       paste0(
