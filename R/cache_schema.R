@@ -37,6 +37,19 @@ cache_schema_year_for_file <- function(path) {
   as.integer(sub("^Year=", "", year_dir))
 }
 
+#' Resolve an installed schema template
+#'
+#' Finds the installed Parquet file whose schema should be used as the template
+#' for a cached main or diversion-only Parquet file. If the same year is not
+#' installed, the most recent installed year for that data grouping is used.
+#'
+#' @param type Flight-data grouping: `"main"` or `"div"`.
+#' @param year Integer-like calendar year for the cached file being aligned.
+#'
+#' @returns
+#' Character path to an installed Parquet schema template.
+#'
+#' @noRd
 cache_schema_template <- function(type = c("main", "div"), year) {
   type <- match.arg(type)
   year <- normalize_cache_year(year)
@@ -63,6 +76,21 @@ cache_schema_cols <- function(con, path) {
   cache_build_read_parquet_cols(con, path)
 }
 
+#' Align one cached Parquet file to the installed schema
+#'
+#' Rewrites one cached Parquet file so its columns match the installed package
+#' schema for the corresponding main or diversion-only data grouping.
+#' Cache-only columns are dropped, installed column order is preserved, and
+#' missing installed columns cause an error.
+#'
+#' @param path Cached Parquet file to align.
+#' @param con Optional DuckDB connection. When `NULL`, a temporary connection
+#'   is opened and closed by this function.
+#'
+#' @returns
+#' Invisibly, `path`.
+#'
+#' @noRd
 cache_schema_align_file <- function(path, con = NULL) {
   if (!file.exists(path)) {
     stop(
@@ -128,6 +156,18 @@ cache_schema_align_file <- function(path, con = NULL) {
   invisible(path)
 }
 
+#' Align cached Parquet files to installed schemas
+#'
+#' Applies installed-schema alignment to one or more cached Parquet files.
+#'
+#' @param files Character vector of cached Parquet files to align.
+#' @param con Optional DuckDB connection. When `NULL`, a temporary connection
+#'   is opened and closed by this function.
+#'
+#' @returns
+#' Character vector of aligned cached Parquet file paths.
+#'
+#' @noRd
 cache_schema_align_files <- function(files, con = NULL) {
   if (!length(files)) {
     stop(
