@@ -53,6 +53,19 @@ cache_build_coord_extra_cols <- function(seq_cols) {
   )
 }
 
+#' Create the temporary coordinate lookup table
+#'
+#' Reads the reduced BTS Master Coordinate CSV into a DuckDB temporary table
+#' with typed airport sequence, latitude, longitude, date, and indicator
+#' fields.
+#'
+#' @param con DuckDB connection.
+#' @param coords_in Path to the reduced BTS Master Coordinate CSV.
+#'
+#' @returns
+#' Invisibly, `TRUE`.
+#'
+#' @noRd
 cache_build_create_coord_tbl <- function(con, coords_in) {
   coord_cols <- cache_build_read_csv_cols(
     con = con,
@@ -179,6 +192,18 @@ cache_build_coord_sel_terms <- function(con, cols, seq_cols) {
   select_terms
 }
 
+#' Replace a cache build output file safely
+#'
+#' Promotes a temporary file into place while preserving the original file
+#' long enough to restore it if promotion fails.
+#'
+#' @param src_tmp Temporary file path to promote.
+#' @param dest Destination path to replace.
+#'
+#' @returns
+#' Invisibly, `TRUE`.
+#'
+#' @noRd
 cache_build_replace_file <- function(src_tmp, dest) {
   bak <- paste0(dest, ".bak")
 
@@ -218,6 +243,21 @@ cache_build_replace_file <- function(src_tmp, dest) {
   invisible(TRUE)
 }
 
+#' Enrich one cached Parquet file with coordinate metadata
+#'
+#' Rewrites one cached Parquet file by joining each airport sequence ID field
+#' to the reduced coordinate table and adding latitude, longitude,
+#' date-bounded airport metadata, and coordinate status fields.
+#'
+#' @param path Cached Parquet file to enrich.
+#' @param coords_in Path to the reduced BTS Master Coordinate CSV.
+#' @param con Optional DuckDB connection. When `NULL`, a temporary connection
+#'   is opened and closed by this function.
+#'
+#' @returns
+#' Invisibly, `path`.
+#'
+#' @noRd
 cache_build_enrich_file <- function(path, coords_in, con = NULL) {
   if (!file.exists(path)) {
     stop(
@@ -292,6 +332,19 @@ cache_build_enrich_file <- function(path, coords_in, con = NULL) {
   invisible(path)
 }
 
+#' Enrich cached Parquet files with coordinate metadata
+#'
+#' Applies coordinate enrichment to one or more cached annual Parquet files.
+#'
+#' @param parquet_files Character vector of cached Parquet files to enrich.
+#' @param coords_in Path to the reduced BTS Master Coordinate CSV.
+#' @param con Optional DuckDB connection. When `NULL`, a temporary connection
+#'   is opened and closed by this function.
+#'
+#' @returns
+#' Character vector of enriched Parquet file paths.
+#'
+#' @noRd
 cache_build_enrich_files <- function(parquet_files, coords_in, con = NULL) {
   if (!length(parquet_files)) {
     stop(
