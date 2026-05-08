@@ -62,7 +62,10 @@ test_that("cache info reports absent cache", {
 
   info <- slcflights:::slc_cache_info(root = root)
 
-  expect_equal(info$root, root)
+  expect_equal(
+    info$root,
+    normalizePath(root, winslash = "/", mustWork = FALSE)
+  )
   expect_false(info$exists)
   expect_false(info$complete)
   expect_equal(
