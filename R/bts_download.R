@@ -249,8 +249,8 @@ download_bts_ontime_month <- function(
 #'
 #' @noRd
 download_bts_airline_id <- function(
-    destfile,
-    overwrite = FALSE
+  destfile,
+  overwrite = FALSE
 ) {
   if (file.exists(destfile) && !isTRUE(overwrite)) {
     return(bts_validate_csv_file(

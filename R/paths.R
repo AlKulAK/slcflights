@@ -11,6 +11,10 @@
   slc_coords_path()
 }
 
+.airlines_path <- function() {
+  slc_airlines_path()
+}
+
 .parquet_root <- function() {
   slc_installed_parquet_root()
 }

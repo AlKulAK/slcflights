@@ -94,17 +94,34 @@ test_that("cache coordinate path preserves package filename", {
   )
 })
 
+test_that("cache airline path preserves package filename", {
+  root <- tempfile("slc-cache-test-")
+
+  expect_equal(
+    slcflights:::slc_cache_airlines_path(root = root, create = FALSE),
+    file.path(
+      root,
+      "extdata",
+      "csv",
+      "L_AIRLINE_ID_reduced.csv"
+    )
+  )
+})
+
 test_that("raw cache paths are separated from active extdata", {
   root <- slcflights:::slc_cache_root(create = FALSE)
 
   ontime <- slcflights:::slc_cache_raw_ontime_root(create = FALSE)
   coords <- slcflights:::slc_cache_raw_coords_root(create = FALSE)
+  airlines <- slcflights:::slc_cache_raw_airlines_root(create = FALSE)
 
   expect_true(startsWith(ontime, root))
   expect_true(startsWith(coords, root))
+  expect_true(startsWith(airlines, root))
 
   expect_match(ontime, "raw[/\\\\]bts_ontime")
   expect_match(coords, "raw[/\\\\]bts_coords")
+  expect_match(airlines, "raw[/\\\\]bts_airlines")
 })
 
 test_that("raw monthly on-time directory uses YYYY_MM format", {
@@ -121,6 +138,12 @@ test_that("raw coordinate path uses expected filename", {
   path <- slcflights:::slc_cache_raw_coords_path(create = FALSE)
 
   expect_match(path, "T_MASTER_CORD[.]csv$")
+})
+
+test_that("raw airline path uses expected filename", {
+  path <- slcflights:::slc_cache_raw_airlines_path(create = FALSE)
+
+  expect_match(path, "L_AIRLINE_ID[.]csv$")
 })
 
 test_that("cache year validation rejects invalid years", {

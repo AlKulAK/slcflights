@@ -76,6 +76,14 @@ slc_installed_coords_path <- function() {
   )
 }
 
+slc_installed_airlines_path <- function() {
+  slc_extdata_file(
+    "extdata",
+    "csv",
+    "L_AIRLINE_ID_reduced.csv"
+  )
+}
+
 slc_installed_year_dirs <- function() {
   root <- slc_installed_parquet_root()
 
@@ -396,6 +404,29 @@ slc_coords_path <- function(root = NULL) {
   }
 
   slc_installed_coords_path()
+}
+
+#' Resolve the active Airline ID lookup CSV
+#'
+#' Uses the active cache Airline ID lookup CSV only when a readable cache
+#' manifest and reduced Airline ID lookup CSV are both present. Otherwise falls
+#' back to the installed package Airline ID lookup CSV.
+#'
+#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#'
+#' @returns
+#' Character path to the active Airline ID lookup CSV.
+#'
+#' @noRd
+slc_airlines_path <- function(root = NULL) {
+  manifest <- read_cache_manifest(root = root)
+  cached <- slc_cache_airlines_path(root = root, create = FALSE)
+
+  if (!is.null(manifest) && file.exists(cached)) {
+    return(cached)
+  }
+
+  slc_installed_airlines_path()
 }
 
 #' Normalize a reader year vector

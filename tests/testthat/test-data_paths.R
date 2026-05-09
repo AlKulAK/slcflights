@@ -234,6 +234,41 @@ test_that("coordinate path prefers cache only when manifest and file exist", {
   unlink(root, recursive = TRUE, force = TRUE)
 })
 
+test_that("airline path prefers cache only when manifest and file exist", {
+  root <- tempfile("slc-data-paths-")
+
+  expect_error(
+    slcflights:::slc_airlines_path(root = root),
+    "Installed slcflights file not found"
+  )
+
+  slcflights:::write_cache_manifest(
+    months = data.frame(year = 2024L, month = 7L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  expect_error(
+    slcflights:::slc_airlines_path(root = root),
+    "Installed slcflights file not found"
+  )
+
+  cached <- slcflights:::slc_cache_airlines_path(
+    root = root,
+    create = TRUE
+  )
+
+  writeLines("airlines", cached)
+
+  expect_equal(
+    slcflights:::slc_airlines_path(root = root),
+    cached
+  )
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
 test_that("data year normalization validates years", {
   expect_equal(
     slcflights:::normalize_data_years(c(2025, 2024, 2024)),

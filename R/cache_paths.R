@@ -138,6 +138,13 @@ slc_cache_coords_path <- function(root = NULL, create = TRUE) {
   )
 }
 
+slc_cache_airlines_path <- function(root = NULL, create = TRUE) {
+  file.path(
+    slc_cache_csv_root(root = root, create = create),
+    "L_AIRLINE_ID_reduced.csv"
+  )
+}
+
 slc_cache_raw_ontime_root <- function(create = TRUE) {
   path <- file.path(slc_cache_raw_root(create = create), "bts_ontime")
 
@@ -150,6 +157,16 @@ slc_cache_raw_ontime_root <- function(create = TRUE) {
 
 slc_cache_raw_coords_root <- function(create = TRUE) {
   path <- file.path(slc_cache_raw_root(create = create), "bts_coords")
+
+  if (isTRUE(create)) {
+    dir.create(path, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  path
+}
+
+slc_cache_raw_airlines_root <- function(create = TRUE) {
+  path <- file.path(slc_cache_raw_root(create = create), "bts_airlines")
 
   if (isTRUE(create)) {
     dir.create(path, recursive = TRUE, showWarnings = FALSE)
@@ -177,6 +194,13 @@ slc_cache_raw_coords_path <- function(create = TRUE) {
   file.path(
     slc_cache_raw_coords_root(create = create),
     "T_MASTER_CORD.csv"
+  )
+}
+
+slc_cache_raw_airlines_path <- function(create = TRUE) {
+  file.path(
+    slc_cache_raw_airlines_root(create = create),
+    "L_AIRLINE_ID.csv"
   )
 }
 
