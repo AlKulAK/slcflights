@@ -6,7 +6,8 @@
 #
 # If data-raw/T_MASTER_CORD.csv is missing, build_slc_data() downloads it from
 # the BTS TranStats Master Coordinate support table before reducing it into the
-# packaged coordinate CSV.
+# packaged coordinate CSV. If data-raw/L_AIRLINE_ID.csv is missing,
+# build_slc_data() downloads it from the BTS TranStats Airline ID lookup table.
 
 years_default <- 1987:2024
 slc_id_default <- 14869L
@@ -1003,20 +1004,40 @@ ensure_master_coords_csv <- function(coords_in) {
   )
 }
 
+ensure_airline_id_csv <- function(airlines_in) {
+  if (file.exists(airlines_in)) {
+    return(normalizePath(airlines_in, winslash = "/", mustWork = TRUE))
+  }
+
+  dir.create(dirname(airlines_in), recursive = TRUE, showWarnings = FALSE)
+
+  if (!exists("download_bts_airline_id", mode = "function")) {
+    source(file.path("R", "bts_download.R"))
+  }
+
+  download_bts_airline_id(
+    destfile = airlines_in,
+    overwrite = FALSE
+  )
+}
+
 build_slc_data <- function(
-  years = years_default,
-  slc_id = slc_id_default,
-  base_url = base_url_default,
-  coords_in = file.path("data-raw", "T_MASTER_CORD.csv"),
-  build_dir = build_dir_default,
-  output_root = file.path("inst", "extdata"),
-  coords_out = file.path(build_dir, "T_MASTER_CORD_reduced.csv")
+    years = years_default,
+    slc_id = slc_id_default,
+    base_url = base_url_default,
+    coords_in = file.path("data-raw", "T_MASTER_CORD.csv"),
+    airlines_in = file.path("data-raw", "L_AIRLINE_ID.csv"),
+    build_dir = build_dir_default,
+    output_root = file.path("inst", "extdata"),
+    coords_out = file.path(build_dir, "T_MASTER_CORD_reduced.csv")
 ) {
   dir.create(build_dir, recursive = TRUE, showWarnings = FALSE)
   on.exit(clean_build_cache(build_dir), add = TRUE)
 
   files <- year_files(years, build_dir = build_dir)
   coords_in <- ensure_master_coords_csv(coords_in)
+  airlines_in <- ensure_airline_id_csv(airlines_in)
+  invisible(airlines_in)
 
   download_full_collection(
     years = years,
