@@ -646,150 +646,6 @@ pass_reduce_coords_csv <- function(files, coords_in, coords_out, con) {
   )
 }
 
-rewrite_used_airline_ids <- function(path_in, path_out, parquet_files, con) {
-  qpath_in <- DBI::dbQuoteString(
-    con,
-    normalizePath(path_in, winslash = "/", mustWork = TRUE)
-  )
-
-  tmp <- paste0(path_out, ".tmp")
-
-  union_sql <- paste(
-    vapply(
-      parquet_files,
-      function(path) {
-        qpath <- DBI::dbQuoteString(
-          con,
-          normalizePath(path, winslash = "/", mustWork = TRUE)
-        )
-
-        sprintf(
-          "
-          SELECT CAST(DOT_ID_Reporting_Airline AS BIGINT)
-            AS DOT_ID_Reporting_Airline
-          FROM read_parquet(%s)
-          WHERE DOT_ID_Reporting_Airline IS NOT NULL
-          ",
-          qpath
-        )
-      },
-      character(1)
-    ),
-    collapse = "\nUNION ALL\n"
-  )
-
-  sql <- sprintf(
-    "
-    COPY (
-      WITH used_airline_ids AS (
-        SELECT DISTINCT DOT_ID_Reporting_Airline
-        FROM (
-          %s
-        )
-      ),
-      airlines_raw AS (
-        SELECT
-          row_number() OVER () AS csv_row_num,
-          CAST(Code AS BIGINT) AS DOT_ID_Reporting_Airline,
-          trim(regexp_extract(Description, '^(.*):\\\\s*([^:]*)$', 1))
-            AS Reporting_AirlineName,
-          trim(regexp_extract(Description, '^(.*):\\\\s*([^:]*)$', 2))
-            AS Reporting_AirlineLookupCode
-        FROM read_csv_auto(%s, all_varchar = TRUE)
-      )
-      SELECT
-        DOT_ID_Reporting_Airline,
-        Reporting_AirlineName,
-        Reporting_AirlineLookupCode
-      FROM airlines_raw
-      WHERE DOT_ID_Reporting_Airline IN (
-        SELECT DOT_ID_Reporting_Airline
-        FROM used_airline_ids
-      )
-      ORDER BY csv_row_num
-    )
-    TO %s
-    (HEADER, DELIMITER ',')
-    ",
-    union_sql,
-    qpath_in,
-    DBI::dbQuoteString(con, tmp)
-  )
-
-  DBI::dbExecute(con, sql)
-  safe_replace_file(tmp, path_out)
-  TRUE
-}
-
-pass_reduce_airlines_csv <- function(files, airlines_in, airlines_out, con) {
-  if (!length(files)) {
-    stop(
-      "No final parquet files found for Airline ID reduction",
-      call. = FALSE
-    )
-  }
-
-  if (!file.exists(airlines_in)) {
-    stop(sprintf("Airline ID CSV not found: %s", airlines_in), call. = FALSE)
-  }
-
-  files_with_airline_id <- files[vapply(
-    files,
-    function(path) {
-      cols <- names(DBI::dbGetQuery(
-        con,
-        sprintf(
-          "SELECT * FROM read_parquet(%s) LIMIT 0",
-          DBI::dbQuoteString(
-            con,
-            normalizePath(path, winslash = "/", mustWork = TRUE)
-          )
-        )
-      ))
-
-      "DOT_ID_Reporting_Airline" %in% cols
-    },
-    logical(1)
-  )]
-
-  if (!length(files_with_airline_id)) {
-    stop(
-      "No DOT_ID_Reporting_Airline columns found after split",
-      call. = FALSE
-    )
-  }
-
-  airline_cols <- names(DBI::dbGetQuery(
-    con,
-    sprintf(
-      "SELECT * FROM read_csv_auto(%s, all_varchar = TRUE) LIMIT 0",
-      DBI::dbQuoteString(
-        con,
-        normalizePath(airlines_in, winslash = "/", mustWork = TRUE)
-      )
-    )
-  ))
-
-  missing_airline_cols <- setdiff(c("Code", "Description"), airline_cols)
-
-  if (length(missing_airline_cols)) {
-    stop(
-      sprintf(
-        "L_AIRLINE_ID.csv does not contain required column(s): %s",
-        paste(missing_airline_cols, collapse = ", ")
-      ),
-      call. = FALSE
-    )
-  }
-
-  rewrite_used_airline_ids(
-    path_in = airlines_in,
-    path_out = airlines_out,
-    parquet_files = files_with_airline_id,
-    con = con
-  )
-}
-
 rewrite_with_coords <- function(path, coords_in, con) {
   qpath <- DBI::dbQuoteString(
     con,
@@ -1230,7 +1086,12 @@ build_slc_data <- function(
   final_files <- final_files[file.exists(final_files)]
 
   pass_reduce_coords_csv(final_files, coords_in, coords_out, con)
-  pass_reduce_airlines_csv(final_files, airlines_in, airlines_out, con)
+  cache_build_reduce_airlines_csv(
+    parquet_files = final_files,
+    airlines_in = airlines_in,
+    airlines_out = airlines_out,
+    con = con
+  )
   pass_enrich_with_coords(final_files, coords_out, con)
 
   # Coordinate enrichment rewrites the final Parquet files. Sort again after
