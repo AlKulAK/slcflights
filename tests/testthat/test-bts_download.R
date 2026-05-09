@@ -31,6 +31,13 @@ test_that("BTS Master Coordinate URL identifies the expected support table", {
   expect_match(url, "gnoyr_VQ=FLL", fixed = TRUE)
 })
 
+test_that("BTS Airline ID URL identifies the expected lookup table", {
+  url <- slcflights:::bts_airline_id_url()
+
+  expect_match(url, "Download_Lookup[.]asp", fixed = FALSE)
+  expect_match(url, "Y11x72=Y_NVeYVaR_VQ", fixed = TRUE)
+})
+
 test_that("BTS CSV file discovery is recursive and case-insensitive", {
   root <- tempfile("bts-csv-test-")
   dir.create(file.path(root, "nested"), recursive = TRUE)
@@ -119,6 +126,20 @@ test_that("CSV validation returns normalized path for non-empty file", {
   writeLines("x", path)
 
   out <- slcflights:::bts_validate_csv_file(path)
+
+  expect_equal(out, normalizePath(path, mustWork = TRUE))
+
+  unlink(path)
+})
+
+test_that("BTS Airline ID download reuses existing CSV by default", {
+  path <- tempfile("airline-id-", fileext = ".csv")
+  writeLines("Code,Description\n1,Example Airline: EX", path)
+
+  out <- slcflights:::download_bts_airline_id(
+    destfile = path,
+    overwrite = FALSE
+  )
 
   expect_equal(out, normalizePath(path, mustWork = TRUE))
 

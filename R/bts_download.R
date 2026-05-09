@@ -49,6 +49,22 @@ bts_master_coords_url <- function() {
   )
 }
 
+#' Return the BTS Airline ID lookup URL
+#'
+#' Returns the TranStats lookup-table URL for the DOT reporting airline ID
+#' support table used by the Reporting Carrier On-Time Performance data.
+#'
+#' @returns
+#' Character URL for the BTS Airline ID lookup CSV.
+#'
+#' @noRd
+bts_airline_id_url <- function() {
+  paste0(
+    "https://www.transtats.bts.gov/",
+    "Download_Lookup.asp?Y11x72=Y_NVeYVaR_VQ"
+  )
+}
+
 bts_csv_files <- function(path) {
   list.files(
     path,
@@ -217,6 +233,63 @@ download_bts_ontime_month <- function(
   bts_validate_csv_file(
     csv_files[[1]],
     label = "Downloaded BTS on-time CSV file"
+  )
+}
+
+#' Download the BTS Airline ID lookup table
+#'
+#' Downloads the BTS TranStats Airline ID lookup table. If the file is already
+#' present and `overwrite` is `FALSE`, the existing CSV is reused.
+#'
+#' @param destfile Destination path for the Airline ID lookup CSV.
+#' @param overwrite If `TRUE`, re-download even when `destfile` already exists.
+#'
+#' @returns
+#' Invisibly, the normalized path to the downloaded or reused CSV file.
+#'
+#' @noRd
+download_bts_airline_id <- function(
+    destfile,
+    overwrite = FALSE
+) {
+  if (file.exists(destfile) && !isTRUE(overwrite)) {
+    return(bts_validate_csv_file(
+      destfile,
+      label = "Existing BTS Airline ID CSV file"
+    ))
+  }
+
+  url <- bts_airline_id_url()
+
+  message("Downloading required airline lookup table...")
+
+  resp <- httr2::req_perform(
+    httr2::request(url) |>
+      httr2::req_user_agent("Mozilla/5.0 slcflights") |>
+      httr2::req_headers(
+        Accept = "text/csv,text/plain,*/*",
+        Referer = paste0(
+          "https://www.transtats.bts.gov/",
+          "DL_SelectFields.aspx?gnoyr_VQ=FGJ&QO_fu146_anzr=b0-gvzr"
+        )
+      )
+  )
+
+  raw <- httr2::resp_body_raw(resp)
+
+  if (bts_response_is_html(raw)) {
+    stop(
+      "BTS returned HTML instead of the Airline ID lookup CSV file.",
+      call. = FALSE
+    )
+  }
+
+  dir.create(dirname(destfile), recursive = TRUE, showWarnings = FALSE)
+  writeBin(raw, destfile)
+
+  bts_validate_csv_file(
+    destfile,
+    label = "Downloaded BTS Airline ID CSV file"
   )
 }
 
