@@ -192,6 +192,119 @@ cache_build_coord_sel_terms <- function(con, cols, seq_cols) {
   select_terms
 }
 
+cache_build_req_air_cols <- function() {
+  c(
+    "DOT_ID_Reporting_Airline",
+    "Reporting_AirlineName",
+    "Reporting_AirlineLookupCode"
+  )
+}
+
+cache_build_val_air_cols <- function(cols) {
+  missing <- setdiff(cache_build_req_air_cols(), cols)
+
+  if (length(missing)) {
+    stop(
+      sprintf(
+        "Reduced Airline ID CSV is missing required columns: %s",
+        paste(missing, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  invisible(TRUE)
+}
+
+cache_build_air_extra_cols <- function() {
+  c(
+    "Reporting_AirlineName",
+    "Reporting_AirlineLookupCode"
+  )
+}
+
+#' Create the temporary Airline ID lookup table
+#'
+#' Reads the reduced BTS Airline ID lookup CSV into a DuckDB temporary table
+#' with typed DOT reporting airline ID and selected airline metadata fields.
+#'
+#' @param con DuckDB connection.
+#' @param airlines_in Path to the reduced BTS Airline ID lookup CSV.
+#'
+#' @returns
+#' Invisibly, `TRUE`.
+#'
+#' @noRd
+cache_build_create_air_tbl <- function(con, airlines_in) {
+  airline_cols <- cache_build_read_csv_cols(
+    con = con,
+    path = airlines_in,
+    all_varchar = TRUE
+  )
+
+  cache_build_val_air_cols(airline_cols)
+
+  DBI::dbExecute(con, "DROP TABLE IF EXISTS airlines")
+
+  DBI::dbExecute(
+    con,
+    sprintf(
+      "
+      CREATE TEMP TABLE airlines AS
+      SELECT
+        CAST(DOT_ID_Reporting_Airline AS BIGINT)
+          AS DOT_ID_Reporting_Airline,
+        Reporting_AirlineName,
+        Reporting_AirlineLookupCode
+      FROM read_csv_auto(%s, all_varchar = true)
+      ",
+      cache_build_quote_path(con, airlines_in)
+    )
+  )
+
+  invisible(TRUE)
+}
+
+cache_build_air_join_sql <- function(con) {
+  sprintf(
+    paste(
+      "LEFT JOIN airlines a",
+      "ON CAST(f.%s AS BIGINT) = a.DOT_ID_Reporting_Airline"
+    ),
+    DBI::dbQuoteIdentifier(con, "DOT_ID_Reporting_Airline")
+  )
+}
+
+cache_build_air_sel_terms <- function(con, cols) {
+  extra_cols <- cache_build_air_extra_cols()
+  cols_base <- cols[!(cols %in% extra_cols)]
+
+  select_terms <- character()
+
+  for (col in cols_base) {
+    select_terms <- c(
+      select_terms,
+      sprintf("f.%s", DBI::dbQuoteIdentifier(con, col))
+    )
+
+    if (identical(col, "DOT_ID_Reporting_Airline")) {
+      select_terms <- c(
+        select_terms,
+        sprintf(
+          "a.Reporting_AirlineName AS %s",
+          DBI::dbQuoteIdentifier(con, "Reporting_AirlineName")
+        ),
+        sprintf(
+          "a.Reporting_AirlineLookupCode AS %s",
+          DBI::dbQuoteIdentifier(con, "Reporting_AirlineLookupCode")
+        )
+      )
+    }
+  }
+
+  select_terms
+}
+
 #' Replace a cache build output file safely
 #'
 #' Promotes a temporary file into place while preserving the original file
@@ -300,6 +413,96 @@ cache_build_enrich_file <- function(path, coords_in, con = NULL) {
 
   join_sql <- cache_build_coord_join_sql(con, seq_cols)
   select_terms <- cache_build_coord_sel_terms(con, cols, seq_cols)
+  sel <- paste(select_terms, collapse = ",\n        ")
+
+  tmp <- paste0(path, ".tmp")
+
+  DBI::dbExecute(
+    con,
+    sprintf(
+      "
+      COPY (
+        SELECT
+          %s
+        FROM read_parquet(%s) f
+        %s
+      )
+      TO %s
+      (FORMAT parquet)
+      ",
+      sel,
+      cache_build_quote_path(con, path),
+      join_sql,
+      DBI::dbQuoteString(
+        con,
+        normalizePath(tmp, winslash = "/", mustWork = FALSE)
+      )
+    )
+  )
+
+  cache_build_replace_file(tmp, path)
+
+  invisible(path)
+}
+
+#' Enrich one cached Parquet file with Airline ID metadata
+#'
+#' Rewrites one cached Parquet file by joining the reporting airline DOT ID
+#' field to the reduced Airline ID lookup table and adding selected airline
+#' metadata fields.
+#'
+#' @param path Cached Parquet file to enrich.
+#' @param airlines_in Path to the reduced BTS Airline ID lookup CSV.
+#' @param con Optional DuckDB connection. When `NULL`, a temporary connection
+#'   is opened and closed by this function.
+#'
+#' @returns
+#' Invisibly, `path`.
+#'
+#' @noRd
+cache_build_enrich_air_file <- function(path, airlines_in, con = NULL) {
+  if (!file.exists(path)) {
+    stop(
+      sprintf("Parquet file not found: %s", path),
+      call. = FALSE
+    )
+  }
+
+  if (!file.exists(airlines_in)) {
+    stop(
+      sprintf("Reduced Airline ID CSV not found: %s", airlines_in),
+      call. = FALSE
+    )
+  }
+
+  if (is.null(con)) {
+    con <- cache_build_connect()
+    on.exit(cache_build_disconnect(con), add = TRUE)
+  }
+
+  cache_build_create_air_tbl(con, airlines_in)
+
+  cols <- cache_build_read_parquet_cols(con, path)
+
+  if (!length(cols)) {
+    stop(
+      sprintf("No readable columns found in file: %s", path),
+      call. = FALSE
+    )
+  }
+
+  if (!("DOT_ID_Reporting_Airline" %in% cols)) {
+    stop(
+      sprintf(
+        "No DOT_ID_Reporting_Airline column found in file: %s",
+        path
+      ),
+      call. = FALSE
+    )
+  }
+
+  join_sql <- cache_build_air_join_sql(con)
+  select_terms <- cache_build_air_sel_terms(con, cols)
   sel <- paste(select_terms, collapse = ",\n        ")
 
   tmp <- paste0(path, ".tmp")

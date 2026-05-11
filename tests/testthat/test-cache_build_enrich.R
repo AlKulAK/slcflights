@@ -299,3 +299,224 @@ test_that("coordinate enrichment requires at least one file", {
 
   unlink(coords)
 })
+
+make_enrich_air_csv <- function(path) {
+  writeLines(
+    c(
+      paste(
+        "DOT_ID_Reporting_Airline",
+        "Reporting_AirlineName",
+        "Reporting_AirlineLookupCode",
+        sep = ","
+      ),
+      "20001,First Airline Inc.,FA",
+      "20002,Second Airline LLC,SB",
+      "20003,Third Airline,TC"
+    ),
+    path
+  )
+
+  path
+}
+
+test_that("required Airline ID columns are explicit", {
+  expect_equal(
+    slcflights:::cache_build_req_air_cols(),
+    c(
+      "DOT_ID_Reporting_Airline",
+      "Reporting_AirlineName",
+      "Reporting_AirlineLookupCode"
+    )
+  )
+})
+
+test_that("Airline ID enrichment validation catches missing columns", {
+  expect_error(
+    slcflights:::cache_build_val_air_cols(
+      c("DOT_ID_Reporting_Airline", "Reporting_AirlineName")
+    ),
+    "missing required columns"
+  )
+
+  expect_true(
+    slcflights:::cache_build_val_air_cols(
+      slcflights:::cache_build_req_air_cols()
+    )
+  )
+})
+
+test_that("Airline ID extra columns are explicit", {
+  expect_equal(
+    slcflights:::cache_build_air_extra_cols(),
+    c(
+      "Reporting_AirlineName",
+      "Reporting_AirlineLookupCode"
+    )
+  )
+})
+
+test_that("Airline ID join SQL uses DOT reporting airline ID", {
+  con <- slcflights:::cache_build_connect()
+  on.exit(slcflights:::cache_build_disconnect(con), add = TRUE)
+
+  out <- slcflights:::cache_build_air_join_sql(con)
+
+  expect_match(out, "LEFT JOIN airlines a", fixed = TRUE)
+  expect_match(out, "DOT_ID_Reporting_Airline", fixed = TRUE)
+})
+
+test_that("Airline ID select terms insert metadata after DOT ID", {
+  con <- slcflights:::cache_build_connect()
+  on.exit(slcflights:::cache_build_disconnect(con), add = TRUE)
+
+  terms <- slcflights:::cache_build_air_sel_terms(
+    con,
+    cols = c(
+      "FlightDate",
+      "DOT_ID_Reporting_Airline",
+      "Reporting_Airline",
+      "Other"
+    )
+  )
+
+  dot_pos <- grep("DOT_ID_Reporting_Airline", terms, fixed = TRUE)[[1]]
+  name_pos <- grep("Reporting_AirlineName", terms, fixed = TRUE)[[1]]
+  code_pos <- grep("Reporting_AirlineLookupCode", terms, fixed = TRUE)[[1]]
+
+  expect_equal(name_pos, dot_pos + 1L)
+  expect_equal(code_pos, dot_pos + 2L)
+})
+
+test_that("Airline ID enrichment requires existing parquet file", {
+  airlines <- tempfile("airlines-", fileext = ".csv")
+  make_enrich_air_csv(airlines)
+
+  expect_error(
+    slcflights:::cache_build_enrich_air_file(
+      path = tempfile("missing-", fileext = ".parquet"),
+      airlines_in = airlines
+    ),
+    "Parquet file not found"
+  )
+
+  unlink(airlines)
+})
+
+test_that("Airline ID enrichment requires Airline ID CSV", {
+  root <- tempfile("slc-cache-air-enrich-")
+  dir.create(root, recursive = TRUE)
+
+  path <- file.path(root, "x.parquet")
+
+  arrow::write_parquet(
+    data.frame(DOT_ID_Reporting_Airline = 20001L),
+    path
+  )
+
+  expect_error(
+    slcflights:::cache_build_enrich_air_file(
+      path = path,
+      airlines_in = file.path(root, "missing.csv")
+    ),
+    "Reduced Airline ID CSV not found"
+  )
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("Airline ID enrichment requires DOT ID column", {
+  root <- tempfile("slc-cache-air-enrich-")
+  dir.create(root, recursive = TRUE)
+
+  path <- file.path(root, "x.parquet")
+  airlines <- file.path(root, "airlines.csv")
+
+  arrow::write_parquet(
+    data.frame(Other = "x"),
+    path
+  )
+
+  make_enrich_air_csv(airlines)
+
+  expect_error(
+    slcflights:::cache_build_enrich_air_file(
+      path = path,
+      airlines_in = airlines
+    ),
+    "No DOT_ID_Reporting_Airline column"
+  )
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("Airline ID enrichment adds reporting airline metadata", {
+  root <- tempfile("slc-cache-air-enrich-")
+  dir.create(root, recursive = TRUE)
+
+  path <- file.path(root, "x.parquet")
+  airlines <- file.path(root, "airlines.csv")
+
+  arrow::write_parquet(
+    data.frame(
+      FlightDate = as.Date("2025-01-01"),
+      DOT_ID_Reporting_Airline = c(20001L, 20002L),
+      Reporting_Airline = c("FA", "SB"),
+      Other = c("x", "y")
+    ),
+    path
+  )
+
+  make_enrich_air_csv(airlines)
+
+  out <- slcflights:::cache_build_enrich_air_file(
+    path = path,
+    airlines_in = airlines
+  )
+
+  expect_equal(out, path)
+
+  read <- arrow::read_parquet(path)
+
+  expect_true("Reporting_AirlineName" %in% names(read))
+  expect_true("Reporting_AirlineLookupCode" %in% names(read))
+
+  expect_equal(
+    read$Reporting_AirlineName,
+    c("First Airline Inc.", "Second Airline LLC")
+  )
+
+  expect_equal(read$Reporting_AirlineLookupCode, c("FA", "SB"))
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("Airline ID enrichment replaces stale airline columns", {
+  root <- tempfile("slc-cache-air-enrich-")
+  dir.create(root, recursive = TRUE)
+
+  path <- file.path(root, "x.parquet")
+  airlines <- file.path(root, "airlines.csv")
+
+  arrow::write_parquet(
+    data.frame(
+      DOT_ID_Reporting_Airline = 20001L,
+      Reporting_AirlineName = "Stale Name",
+      Reporting_AirlineLookupCode = "XX"
+    ),
+    path
+  )
+
+  make_enrich_air_csv(airlines)
+
+  slcflights:::cache_build_enrich_air_file(
+    path = path,
+    airlines_in = airlines
+  )
+
+  read <- arrow::read_parquet(path)
+
+  expect_equal(read$Reporting_AirlineName, "First Airline Inc.")
+  expect_equal(read$Reporting_AirlineLookupCode, "FA")
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
