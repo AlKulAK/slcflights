@@ -1059,6 +1059,10 @@ ensure_build_helpers <- function() {
     source(file.path("R", "cache_build_airlines.R"))
   }
 
+  if (!exists("cache_build_enrich_air_file", mode = "function")) {
+    source(file.path("R", "cache_build_enrich.R"))
+  }
+
   invisible(TRUE)
 }
 
@@ -1119,7 +1123,20 @@ build_slc_data <- function(
 
   pass_enrich_with_coords(final_files, coords_out, con)
 
-  # Coordinate enrichment rewrites the final Parquet files. Sort again after
+  enrich_air_file_fun <- get(
+    "cache_build_enrich_air_file",
+    mode = "function"
+  )
+
+  vapply(
+    final_files,
+    enrich_air_file_fun,
+    character(1),
+    airlines_in = airlines_out,
+    con = con
+  )
+
+  # Metadata enrichment rewrites the final Parquet files. Sort again after
   # enrichment so reader-facing files are chronologically ordered.
   pass_sort_rows(final_files, con)
 
