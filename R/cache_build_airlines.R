@@ -6,7 +6,7 @@
 # They do not download data, enrich Parquet files, write a manifest, or expose
 # user-facing update behavior.
 
-cache_build_parquet_airline_id_cols <- function(con, path) {
+cache_build_pq_airline_cols <- function(con, path) {
   cols <- cache_build_read_parquet_cols(con, path)
   intersect("DOT_ID_Reporting_Airline", cols)
 }
@@ -23,7 +23,7 @@ cache_build_parquet_airline_id_cols <- function(con, path) {
 #' Character vector of reporting airline ID column names.
 #'
 #' @noRd
-cache_build_used_airline_id_cols <- function(con, parquet_files) {
+cache_build_used_airline_cols <- function(con, parquet_files) {
   if (!length(parquet_files)) {
     stop(
       "`parquet_files` must contain at least one Parquet file.",
@@ -31,40 +31,46 @@ cache_build_used_airline_id_cols <- function(con, parquet_files) {
     )
   }
 
-  airline_id_cols <- unique(unlist(
+  airline_cols <- unique(unlist(
     lapply(
       parquet_files,
       function(path) {
-        cache_build_parquet_airline_id_cols(con, path)
+        cache_build_pq_airline_cols(con, path)
       }
     ),
     use.names = FALSE
   ))
 
-  if (!length(airline_id_cols)) {
+  if (!length(airline_cols)) {
     stop(
-      "No DOT_ID_Reporting_Airline columns were found for Airline ID reduction.",
+      paste(
+        "No DOT_ID_Reporting_Airline columns were found for",
+        "Airline ID reduction."
+      ),
       call. = FALSE
     )
   }
 
-  airline_id_cols
+  airline_cols
 }
 
-cache_build_airline_id_union_sql <- function(
+cache_build_airline_union_sql <- function(
   con,
   parquet_files,
-  airline_id_cols
+  airline_cols
 ) {
-  if (!length(airline_id_cols)) {
-    stop("`airline_id_cols` must contain at least one column name.", call. = FALSE)
+  if (!length(airline_cols)) {
+    stop(
+      "`airline_cols` must contain at least one column name.",
+      call. = FALSE
+    )
   }
 
   qfiles <- cache_build_quote_paths(con, parquet_files)
 
   paste(
     vapply(
-      airline_id_cols,
+      airline_cols,
       function(col) {
         sprintf(
           "
@@ -83,7 +89,7 @@ cache_build_airline_id_union_sql <- function(
   )
 }
 
-cache_build_vldte_airline_id_cols <- function(cols) {
+cache_build_vldte_airline_cols <- function(cols) {
   missing_cols <- setdiff(c("Code", "Description"), cols)
 
   if (length(missing_cols)) {
@@ -115,7 +121,7 @@ cache_build_vldte_airline_id_cols <- function(cols) {
 #' Invisibly, the normalized path to the reduced Airline ID lookup CSV.
 #'
 #' @noRd
-cache_build_reduce_airlines_csv <- function(
+cache_build_reduce_air_csv <- function(
   parquet_files,
   airlines_in = slc_cache_raw_airlines_path(create = FALSE),
   airlines_out = slc_cache_airlines_path(),
@@ -140,23 +146,23 @@ cache_build_reduce_airlines_csv <- function(
     on.exit(cache_build_disconnect(con), add = TRUE)
   }
 
-  airline_id_cols <- cache_build_used_airline_id_cols(
+  airline_cols <- cache_build_used_airline_cols(
     con = con,
     parquet_files = parquet_files
   )
 
-  airline_cols <- cache_build_read_csv_cols(
+  lookup_cols <- cache_build_read_csv_cols(
     con = con,
     path = airlines_in,
     all_varchar = TRUE
   )
 
-  cache_build_vldte_airline_id_cols(airline_cols)
+  cache_build_vldte_airline_cols(lookup_cols)
 
-  union_sql <- cache_build_airline_id_union_sql(
+  union_sql <- cache_build_airline_union_sql(
     con = con,
     parquet_files = parquet_files,
-    airline_id_cols = airline_id_cols
+    airline_cols = airline_cols
   )
 
   dir.create(dirname(airlines_out), recursive = TRUE, showWarnings = FALSE)
@@ -176,10 +182,20 @@ cache_build_reduce_airlines_csv <- function(
           SELECT
             row_number() OVER () AS csv_row_num,
             CAST(Code AS BIGINT) AS DOT_ID_Reporting_Airline,
-            trim(regexp_extract(Description, '^(.*):[[:space:]]*([^:]*)$', 1))
-              AS Reporting_AirlineName,
-            trim(regexp_extract(Description, '^(.*):[[:space:]]*([^:]*)$', 2))
-              AS Reporting_AirlineLookupCode
+            trim(
+              regexp_extract(
+                Description,
+                '^(.*):[[:space:]]*([^:]*)$',
+                1
+              )
+            ) AS Reporting_AirlineName,
+            trim(
+              regexp_extract(
+                Description,
+                '^(.*):[[:space:]]*([^:]*)$',
+                2
+              )
+            ) AS Reporting_AirlineLookupCode
           FROM read_csv_auto(%s, all_varchar = true)
         )
         SELECT

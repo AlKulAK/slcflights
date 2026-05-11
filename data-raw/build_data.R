@@ -1046,6 +1046,22 @@ ensure_airline_id_csv <- function(airlines_in) {
   )
 }
 
+ensure_build_helpers <- function() {
+  if (!exists("bts_validate_csv_file", mode = "function")) {
+    source(file.path("R", "bts_download.R"))
+  }
+
+  if (!exists("cache_build_read_csv_cols", mode = "function")) {
+    source(file.path("R", "cache_build_db.R"))
+  }
+
+  if (!exists("cache_build_reduce_air_csv", mode = "function")) {
+    source(file.path("R", "cache_build_airlines.R"))
+  }
+
+  invisible(TRUE)
+}
+
 build_slc_data <- function(
   years = years_default,
   slc_id = slc_id_default,
@@ -1057,6 +1073,8 @@ build_slc_data <- function(
   coords_out = file.path(build_dir, "T_MASTER_CORD_reduced.csv"),
   airlines_out = file.path(build_dir, "L_AIRLINE_ID_reduced.csv")
 ) {
+  ensure_build_helpers()
+
   dir.create(build_dir, recursive = TRUE, showWarnings = FALSE)
   on.exit(clean_build_cache(build_dir), add = TRUE)
 
@@ -1086,12 +1104,19 @@ build_slc_data <- function(
   final_files <- final_files[file.exists(final_files)]
 
   pass_reduce_coords_csv(final_files, coords_in, coords_out, con)
-  cache_build_reduce_airlines_csv(
+
+  reduce_air_csv_fun <- get(
+    "cache_build_reduce_air_csv",
+    mode = "function"
+  )
+
+  reduce_air_csv_fun(
     parquet_files = final_files,
     airlines_in = airlines_in,
     airlines_out = airlines_out,
     con = con
   )
+
   pass_enrich_with_coords(final_files, coords_out, con)
 
   # Coordinate enrichment rewrites the final Parquet files. Sort again after

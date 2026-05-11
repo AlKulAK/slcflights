@@ -16,7 +16,7 @@ test_that("parquet Airline ID columns are discovered from a Parquet file", {
   on.exit(slcflights:::cache_build_disconnect(con), add = TRUE)
 
   expect_equal(
-    slcflights:::cache_build_parquet_airline_id_cols(con, path),
+    slcflights:::cache_build_pq_airline_cols(con, path),
     "DOT_ID_Reporting_Airline"
   )
 
@@ -28,7 +28,7 @@ test_that("used Airline ID column discovery requires files", {
   on.exit(slcflights:::cache_build_disconnect(con), add = TRUE)
 
   expect_error(
-    slcflights:::cache_build_used_airline_id_cols(con, character()),
+    slcflights:::cache_build_used_airline_cols(con, character()),
     "at least one Parquet file"
   )
 })
@@ -50,7 +50,7 @@ test_that(
     on.exit(slcflights:::cache_build_disconnect(con), add = TRUE)
 
     expect_error(
-      slcflights:::cache_build_used_airline_id_cols(con, path),
+      slcflights:::cache_build_used_airline_cols(con, path),
       "No DOT_ID_Reporting_Airline columns"
     )
 
@@ -73,7 +73,7 @@ test_that("Airline ID union SQL requires Airline ID columns", {
   on.exit(slcflights:::cache_build_disconnect(con), add = TRUE)
 
   expect_error(
-    slcflights:::cache_build_airline_id_union_sql(con, path, character()),
+    slcflights:::cache_build_airline_union_sql(con, path, character()),
     "at least one column name"
   )
 
@@ -82,17 +82,17 @@ test_that("Airline ID union SQL requires Airline ID columns", {
 
 test_that("Airline ID column validation requires Code and Description", {
   expect_error(
-    slcflights:::cache_build_vldte_airline_id_cols("Code"),
+    slcflights:::cache_build_vldte_airline_cols("Code"),
     "Description"
   )
 
   expect_error(
-    slcflights:::cache_build_vldte_airline_id_cols("Description"),
+    slcflights:::cache_build_vldte_airline_cols("Description"),
     "Code"
   )
 
   expect_true(
-    slcflights:::cache_build_vldte_airline_id_cols(
+    slcflights:::cache_build_vldte_airline_cols(
       c("Code", "Description")
     )
   )
@@ -103,7 +103,7 @@ test_that("Airline ID reduction requires parquet files", {
   writeLines("Code,Description\n20001,First Airline: FA", airlines)
 
   expect_error(
-    slcflights:::cache_build_reduce_airlines_csv(
+    slcflights:::cache_build_reduce_air_csv(
       parquet_files = character(),
       airlines_in = airlines,
       airlines_out = tempfile(fileext = ".csv")
@@ -126,7 +126,7 @@ test_that("Airline ID reduction requires Airline ID CSV", {
   )
 
   expect_error(
-    slcflights:::cache_build_reduce_airlines_csv(
+    slcflights:::cache_build_reduce_air_csv(
       parquet_files = path,
       airlines_in = file.path(root, "missing.csv"),
       airlines_out = file.path(root, "out.csv")
@@ -173,7 +173,7 @@ test_that("Airline ID reduction keeps only used IDs in CSV order", {
     airlines_in
   )
 
-  out <- slcflights:::cache_build_reduce_airlines_csv(
+  out <- slcflights:::cache_build_reduce_air_csv(
     parquet_files = c(main, div),
     airlines_in = airlines_in,
     airlines_out = airlines_out

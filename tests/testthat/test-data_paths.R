@@ -237,9 +237,11 @@ test_that("coordinate path prefers cache only when manifest and file exist", {
 test_that("airline path prefers cache only when manifest and file exist", {
   root <- tempfile("slc-data-paths-")
 
-  expect_error(
+  installed <- slcflights:::slc_installed_airlines_path()
+
+  expect_equal(
     slcflights:::slc_airlines_path(root = root),
-    "Installed slcflights file not found"
+    installed
   )
 
   slcflights:::write_cache_manifest(
@@ -249,9 +251,9 @@ test_that("airline path prefers cache only when manifest and file exist", {
     created_at = "2026-05-01T00:00:00Z"
   )
 
-  expect_error(
+  expect_equal(
     slcflights:::slc_airlines_path(root = root),
-    "Installed slcflights file not found"
+    installed
   )
 
   cached <- slcflights:::slc_cache_airlines_path(

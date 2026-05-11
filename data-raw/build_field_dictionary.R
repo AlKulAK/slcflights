@@ -13,15 +13,21 @@ build_field_dictionary <- function(
     "field_dictionary.csv"
   )
 ) {
-  main_years <- available_years("main")
-  div_years <- available_years("div")
+  main_years <- slc_available_installed_years("main")
+  div_years <- slc_available_installed_years("div")
 
   fields_for <- function(type, year) {
-    if (identical(type, "main")) {
-      names(open_main(year))
-    } else {
-      names(open_div(year))
-    }
+    path <- slc_installed_parquet_path(type, year)
+
+    names(arrow::open_dataset(path, format = "parquet"))
+  }
+
+  installed_csv_fields <- function(path) {
+    names(readr::read_csv(
+      path,
+      n_max = 0,
+      show_col_types = FALSE
+    ))
   }
 
   presence_status <- function(field, type, years) {
@@ -56,7 +62,7 @@ build_field_dictionary <- function(
     use.names = FALSE
   )))
 
-  coords_fields <- names(read_coords())
+  coords_fields <- installed_csv_fields(slc_installed_coords_path())
 
   all_fields <- sort(unique(c(main_fields, div_fields, coords_fields)))
 
