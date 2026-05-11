@@ -520,3 +520,54 @@ test_that("Airline ID enrichment replaces stale airline columns", {
 
   unlink(root, recursive = TRUE, force = TRUE)
 })
+
+test_that("Airline ID enrichment works for multiple files", {
+  root <- tempfile("slc-cache-air-enrich-")
+  dir.create(root, recursive = TRUE)
+
+  path1 <- file.path(root, "x1.parquet")
+  path2 <- file.path(root, "x2.parquet")
+  airlines <- file.path(root, "airlines.csv")
+
+  arrow::write_parquet(
+    data.frame(DOT_ID_Reporting_Airline = 20001L),
+    path1
+  )
+
+  arrow::write_parquet(
+    data.frame(DOT_ID_Reporting_Airline = 20002L),
+    path2
+  )
+
+  make_enrich_air_csv(airlines)
+
+  out <- slcflights:::cache_build_enrich_air_files(
+    parquet_files = c(path1, path2),
+    airlines_in = airlines
+  )
+
+  expect_equal(out, c(path1, path2))
+
+  read1 <- arrow::read_parquet(path1)
+  read2 <- arrow::read_parquet(path2)
+
+  expect_equal(read1$Reporting_AirlineName, "First Airline Inc.")
+  expect_equal(read2$Reporting_AirlineName, "Second Airline LLC")
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("Airline ID enrichment requires at least one file", {
+  airlines <- tempfile("airlines-", fileext = ".csv")
+  make_enrich_air_csv(airlines)
+
+  expect_error(
+    slcflights:::cache_build_enrich_air_files(
+      parquet_files = character(),
+      airlines_in = airlines
+    ),
+    "at least one Parquet file"
+  )
+
+  unlink(airlines)
+})

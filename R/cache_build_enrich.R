@@ -535,6 +535,54 @@ cache_build_enrich_air_file <- function(path, airlines_in, con = NULL) {
   invisible(path)
 }
 
+#' Enrich cached Parquet files with Airline ID metadata
+#'
+#' Applies Airline ID enrichment to one or more cached annual Parquet files.
+#'
+#' @param parquet_files Character vector of cached Parquet files to enrich.
+#' @param airlines_in Path to the reduced BTS Airline ID lookup CSV.
+#' @param con Optional DuckDB connection. When `NULL`, a temporary connection
+#'   is opened and closed by this function.
+#'
+#' @returns
+#' Character vector of enriched Parquet file paths.
+#'
+#' @noRd
+cache_build_enrich_air_files <- function(
+  parquet_files,
+  airlines_in,
+  con = NULL
+) {
+  if (!length(parquet_files)) {
+    stop(
+      "`parquet_files` must contain at least one Parquet file.",
+      call. = FALSE
+    )
+  }
+
+  if (!file.exists(airlines_in)) {
+    stop(
+      sprintf("Reduced Airline ID CSV not found: %s", airlines_in),
+      call. = FALSE
+    )
+  }
+
+  if (is.null(con)) {
+    con <- cache_build_connect()
+    on.exit(cache_build_disconnect(con), add = TRUE)
+  }
+
+  out <- vapply(
+    parquet_files,
+    cache_build_enrich_air_file,
+    character(1),
+    airlines_in = airlines_in,
+    con = con
+  )
+
+  unname(out)
+}
+
 #' Enrich cached Parquet files with coordinate metadata
 #'
 #' Applies coordinate enrichment to one or more cached annual Parquet files.
