@@ -1,10 +1,11 @@
-# Internal cache coordinate enrichment helpers --------------------------------
+# Internal cache metadata enrichment helpers ----------------------------------
 #
 # These helpers enrich cached annual Parquet files with airport coordinate
-# metadata from the reduced BTS Master Coordinate CSV.
+# metadata from the reduced BTS Master Coordinate CSV and airline metadata from
+# the reduced BTS Airline ID lookup CSV.
 #
-# They do not download data, reduce coordinates, write a manifest, or expose
-# user-facing update behavior.
+# They do not download data, reduce metadata tables, write a manifest, or
+# expose user-facing update behavior.
 
 cache_build_req_coord_cols <- function() {
   c(
