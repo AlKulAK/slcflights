@@ -98,26 +98,27 @@ cache_stage_validate <- function(root) {
 #' Build a local cache in a staging directory
 #'
 #' Builds annual main and diversion-only Parquet files for the requested cached
-#' months, reduces the coordinate table to airports used by installed and
-#' cached records, enriches cached files with coordinate metadata, optionally
-#' aligns cached schemas to installed schemas, writes a cache manifest, and
-#' validates the staged cache.
+#' months, reduces metadata tables to values used by installed and cached
+#' records, enriches cached files with coordinate and airline metadata,
+#' optionally aligns cached schemas to installed schemas, writes a cache
+#' manifest, and validates the staged cache.
 #'
 #' @param months Data frame with `year` and `month` columns. The months must
 #'   begin in July 2024 and form a consecutive sequence.
 #' @param root Staging cache root to create and populate.
 #' @param slc_id BTS airport ID for Salt Lake City.
 #' @param coords_in Path to the raw BTS Master Coordinate CSV.
+#' @param airlines_in Path to the raw BTS Airline ID lookup CSV.
 #' @param csv_files Optional named list of monthly BTS CSV files by year. Used
 #'   by tests and lower-level workflows.
 #' @param include_installed If `TRUE`, include installed package Parquet files
-#'   when reducing the coordinate table.
+#'   when reducing metadata tables.
 #' @param finalize_schema If `TRUE`, align cached file schemas to installed
-#'   package schemas after coordinate enrichment.
+#'   package schemas after metadata enrichment.
 #'
 #' @returns
 #' Invisibly, a list containing the staging root, requested months,
-#' built files, coordinate CSV path, and manifest.
+#' built files, metadata CSV paths, and manifest.
 #'
 #' @noRd
 cache_stage_build <- function(
@@ -125,6 +126,7 @@ cache_stage_build <- function(
   root = slc_cache_staging_root(),
   slc_id = 14869L,
   coords_in = slc_cache_raw_coords_path(create = FALSE),
+  airlines_in = slc_cache_raw_airlines_path(create = FALSE),
   csv_files = NULL,
   include_installed = TRUE,
   finalize_schema = include_installed
@@ -179,6 +181,11 @@ cache_stage_build <- function(
     create = TRUE
   )
 
+  airlines_out <- slc_cache_airlines_path(
+    root = root,
+    create = TRUE
+  )
+
   cache_build_reduce_coords_csv(
     parquet_files = coord_files,
     coords_in = coords_in,
@@ -186,9 +193,25 @@ cache_stage_build <- function(
     con = con
   )
 
+  cache_build_reduce_air_csv(
+    parquet_files = coord_files,
+    airlines_in = airlines_in,
+    airlines_out = airlines_out,
+    con = con
+  )
+
   cache_build_enrich_files(
     parquet_files = built_files,
     coords_in = coords_out,
+    con = con
+  )
+
+  cache_build_disconnect(con)
+  con <- cache_build_connect()
+
+  cache_build_enrich_air_files(
+    parquet_files = built_files,
+    airlines_in = airlines_out,
     con = con
   )
 
@@ -213,6 +236,7 @@ cache_stage_build <- function(
     months = months,
     files = unname(built_files),
     coords = coords_out,
+    airlines = airlines_out,
     manifest = manifest
   ))
 }
