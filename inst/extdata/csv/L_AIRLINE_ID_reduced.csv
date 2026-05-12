@@ -1,4 +1,4 @@
-DOT_ID_Reporting_Airline,Reporting_AirlineName,Reporting_AirlineLookupCode
+DOT_ID_Reporting_Airline,Reporting_Airline_Name,Reporting_Airline_Lookup_Code
 19386,Northwest Airlines Inc.,NW
 19393,Southwest Airlines Co.,WN
 19687,Horizon Air,QX
@@ -9,20 +9,20 @@ DOT_ID_Reporting_Airline,Reporting_AirlineName,Reporting_AirlineLookupCode
 19805,American Airlines Inc.,AA
 19930,Alaska Airlines Inc.,AS
 19977,United Air Lines Inc.,UA
-19991,America West Airlines Inc.,HP (Merged with US Airways 9/05.Stopped reporting 10/07.)
+19991,America West Airlines Inc.,HP
 20211,Trans World Airways LLC,TW
 20304,SkyWest Airlines Inc.,OO
-20355,US Airways Inc.,US (Merged with America West 9/05. Reporting for both starting 10/07.)
+20355,US Airways Inc.,US
 20363,Endeavor Air Inc.,9E
 20366,ExpressJet Airlines LLC d/b/a aha!,EV
 20368,Allegiant Air,G4
-20374,ExpressJet Airlines Inc.,XE (1)
+20374,ExpressJet Airlines Inc.,XE
 20378,Mesa Airlines Inc.,YV
-20384,Pan American World Airways (1),PA (1)
+20384,Pan American World Airways (1),PA
 20398,Envoy Air,MQ
 20409,JetBlue Airways,B6
 20416,Spirit Air Lines,NK
-20417,Comair Inc.,OH (1)
+20417,Comair Inc.,OH
 20436,Frontier Airlines Inc.,F9
 20452,Republic Airline,YX
 21171,Virgin America,VX

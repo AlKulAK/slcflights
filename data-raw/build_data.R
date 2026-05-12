@@ -1066,6 +1066,17 @@ ensure_build_helpers <- function() {
   invisible(TRUE)
 }
 
+build_fld_dict_from_src <- function(output) {
+  env <- new.env(parent = asNamespace("slcflights"))
+
+  sys.source(
+    file.path("data-raw", "build_field_dictionary.R"),
+    envir = env
+  )
+
+  env$build_field_dictionary(output = output)
+}
+
 build_slc_data <- function(
   years = years_default,
   slc_id = slc_id_default,
@@ -1148,16 +1159,7 @@ build_slc_data <- function(
     output_root = output_root
   )
 
-  if (!exists("build_field_dictionary", mode = "function")) {
-    source(file.path("data-raw", "build_field_dictionary.R"))
-  }
-
-  build_field_dictionary_fun <- get(
-    "build_field_dictionary",
-    mode = "function"
-  )
-
-  build_field_dictionary_fun(
+  build_fld_dict_from_src(
     output = file.path(output_root, "csv", "field_dictionary.csv")
   )
 
