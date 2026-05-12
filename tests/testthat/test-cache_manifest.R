@@ -240,11 +240,52 @@ test_that("cache completeness is true when required files exist", {
     create = TRUE
   )
 
+  airlines <- slcflights:::slc_cache_airlines_path(
+    root = root,
+    create = TRUE
+  )
+
   writeLines("not real parquet", main)
   writeLines("coords", coords)
+  writeLines("airlines", airlines)
 
   expect_true(slcflights:::cache_months_are_complete(root = root))
   expect_true(slcflights:::validate_cache_files(root = root))
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("cache completeness requires reduced Airline ID lookup", {
+  root <- tempfile("slc-cache-manifest-")
+
+  slcflights:::write_cache_manifest(
+    months = data.frame(year = 2024L, month = 7L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  main <- slcflights:::slc_cache_parquet_path(
+    "main",
+    2024,
+    root = root,
+    create = TRUE
+  )
+
+  coords <- slcflights:::slc_cache_coords_path(
+    root = root,
+    create = TRUE
+  )
+
+  writeLines("not real parquet", main)
+  writeLines("coords", coords)
+
+  expect_false(slcflights:::cache_months_are_complete(root = root))
+
+  expect_error(
+    slcflights:::validate_cache_files(root = root),
+    "cache appears incomplete"
+  )
 
   unlink(root, recursive = TRUE, force = TRUE)
 })

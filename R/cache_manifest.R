@@ -367,6 +367,12 @@ cache_months_are_complete <- function(root = NULL) {
     return(FALSE)
   }
 
+  airlines <- slc_cache_airlines_path(root = root, create = FALSE)
+
+  if (!file.exists(airlines)) {
+    return(FALSE)
+  }
+
   TRUE
 }
 
@@ -410,6 +416,12 @@ validate_cache_files <- function(root = NULL) {
 
   if (!file.exists(coords)) {
     missing <- c(missing, coords)
+  }
+
+  airlines <- slc_cache_airlines_path(root = root, create = FALSE)
+
+  if (!file.exists(airlines)) {
+    missing <- c(missing, airlines)
   }
 
   if (length(missing)) {

@@ -98,8 +98,14 @@ test_that("cache info reports present cache", {
     create = TRUE
   )
 
+  airlines <- slcflights:::slc_cache_airlines_path(
+    root = root,
+    create = TRUE
+  )
+
   writeLines("main", main)
   writeLines("coords", coords)
+  writeLines("airlines", airlines)
 
   info <- slcflights:::slc_cache_info(root = root)
 
