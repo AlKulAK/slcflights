@@ -121,6 +121,13 @@ download_update_coords <- function(overwrite = FALSE) {
   )
 }
 
+download_update_airlines <- function(overwrite = FALSE) {
+  download_bts_airline_id(
+    destfile = slc_cache_raw_airlines_path(create = TRUE),
+    overwrite = overwrite
+  )
+}
+
 build_update_cache <- function(months) {
   message("Building local slcflights cache...")
 
@@ -128,6 +135,7 @@ build_update_cache <- function(months) {
     months = months,
     root = slc_cache_staging_root(create = TRUE),
     coords_in = slc_cache_raw_coords_path(create = FALSE),
+    airlines_in = slc_cache_raw_airlines_path(create = FALSE),
     include_installed = TRUE
   )
 
@@ -274,6 +282,10 @@ update_slcflights_data <- function(until = "latest", overwrite = FALSE) {
   message("Downloading airport coordinate data...")
 
   download_update_coords(overwrite = overwrite)
+
+  message("Downloading airline lookup data...")
+
+  download_update_airlines(overwrite = overwrite)
 
   build_update_cache(months)
 

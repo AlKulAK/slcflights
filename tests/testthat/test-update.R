@@ -57,6 +57,70 @@ test_that("illegal update endpoint fails clearly", {
   )
 })
 
+test_that("update Airline ID download writes to raw cache path", {
+  testthat::local_mocked_bindings(
+    download_bts_airline_id = function(destfile, overwrite = FALSE) {
+      expect_equal(
+        destfile,
+        slcflights:::slc_cache_raw_airlines_path(create = TRUE)
+      )
+      expect_false(overwrite)
+      destfile
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights:::download_update_airlines(overwrite = FALSE)
+
+  expect_equal(
+    out,
+    slcflights:::slc_cache_raw_airlines_path(create = TRUE)
+  )
+})
+
+test_that("cache build passes raw metadata paths to staging", {
+  months <- data.frame(year = 2024L, month = 7L)
+
+  testthat::local_mocked_bindings(
+    cache_stage_build = function(
+      months,
+      root,
+      coords_in,
+      airlines_in,
+      include_installed
+    ) {
+      expect_equal(months, data.frame(year = 2024L, month = 7L))
+      expect_equal(root, slcflights:::slc_cache_staging_root(create = TRUE))
+      expect_equal(
+        coords_in,
+        slcflights:::slc_cache_raw_coords_path(create = FALSE)
+      )
+      expect_equal(
+        airlines_in,
+        slcflights:::slc_cache_raw_airlines_path(create = FALSE)
+      )
+      expect_true(include_installed)
+      invisible(TRUE)
+    },
+    cache_stage_promote = function(staging_root, active_root) {
+      expect_equal(
+        staging_root,
+        slcflights:::slc_cache_staging_root(create = FALSE)
+      )
+      expect_equal(
+        active_root,
+        slcflights:::slc_cache_active_root(create = FALSE)
+      )
+      invisible(active_root)
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights:::build_update_cache(months)
+
+  expect_equal(out, slcflights:::slc_cache_active_root(create = FALSE))
+})
+
 test_that("cache info reports absent cache", {
   root <- tempfile("slc-update-cache-")
 
