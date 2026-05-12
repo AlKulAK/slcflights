@@ -75,12 +75,16 @@ support table in the Aviation Support Tables family:
 
 [https://transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=N8vn6v10+f722146+gnoyr5&gnoyr_VQ=FLL](https://transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=N8vn6v10+f722146+gnoyr5&gnoyr_VQ=FLL)
 
+Airline ID metadata come from the BTS TranStats DOT_ID_Reporting_Airline lookup table:
+
+[https://www.transtats.bts.gov/Download_Lookup.asp?Y11x72=Y_NVeYVaR_VQ](https://www.transtats.bts.gov/Download_Lookup.asp?Y11x72=Y_NVeYVaR_VQ)
+
 The package build workflow transforms the national source files into Salt Lake
 City-focused data by filtering to records involving Salt Lake City's BTS airport
 ID, splitting scheduled origin/destination records from diversion-only records,
-removing globally empty columns, sorting records, reducing the coordinate table
-to airports referenced by retained records, and enriching the Parquet files
-with coordinate metadata.
+removing globally empty columns, sorting records, reducing the coordinate and
+Airline ID lookup tables to metadata rows referenced by retained records, and
+enriching the Parquet files with coordinate metadata and airline names.
 
 ## What data are available?
 
@@ -113,13 +117,38 @@ main records, diversion-only records, or the coordinate table.
 fields <- read_field_dictionary()
 
 fields |>
-  filter(field %in% c("Year", "FlightDate", "Flights")) |>
+  filter(
+    field %in% c(
+      "Year",
+      "FlightDate",
+      "Flights",
+      "DOT_ID_Reporting_Airline",
+      "Reporting_Airline_Name"
+    )
+  ) |>
   select(field, group, source, description, main_presence, div_presence)
 ```
 
 For this vignette, the essential fields are `Year`, `FlightDate`, and
 `Flights`. We use `Year` to normalize within each year, `FlightDate` to classify
 days by weekday or holiday, and `Flights` to count flights.
+
+Carrier metadata are also available directly in the flight records. The
+`Reporting_Airline_Name` field is joined from the reduced Airline ID lookup
+table by `DOT_ID_Reporting_Airline`. The standalone lookup table is available
+with `read_airlines()`:
+
+```{r airline-lookup}
+airlines <- read_airlines()
+
+airlines |>
+  select(
+    DOT_ID_Reporting_Airline,
+    Reporting_Airline_Name,
+    Reporting_Airline_Lookup_Code
+  ) |>
+  head()
+```
 
 ## Calendar helpers
 
@@ -535,15 +564,13 @@ build_slc_data()
 
 By default, `build_slc_data()` rebuilds all bundled data artifacts. It rebuilds
 years 1987 through 2024, filters the national source data to Salt Lake
-City-related records, splits main and diversion-only files, reduces the BTS
-Master Coordinate table, enriches the Parquet files with airport metadata,
-rebuilds the field dictionary, and writes final package data under
-`inst/extdata/`.
+City-related records, splits main and diversion-only files, reduces the BTS Master Coordinate and Airline ID lookup tables, enriches the Parquet files with airport and airline metadata, rebuilds the field dictionary, and writes final package data under `inst/extdata/`.
 
 No source data files need to be present before running this workflow. The
 historical Parquet source files are downloaded into a temporary build directory,
-and the BTS Master Coordinate table is downloaded automatically if
-`data-raw/T_MASTER_CORD.csv` is absent.
+and the BTS Master Coordinate and Airline ID lookup tables are downloaded
+automatically if `data-raw/T_MASTER_CORD.csv` or `data-raw/L_AIRLINE_ID.csv` is
+absent.
 
 The temporary build directory is a maintainer-side artifact. It is not part of
 the installed package and is separate from the local user cache created by

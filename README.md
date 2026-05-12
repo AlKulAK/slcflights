@@ -45,8 +45,9 @@ The installed historical files are derived from the 1987–2024 Parquet
 files released for the 2025 ASA Data Expo Challenge. Those files contain
 national flight records. The `slcflights` build workflow filters them to
 Salt Lake City-related records, removes globally empty columns, splits
-main records from diversion-only records, and enriches airport sequence
-identifiers with coordinate metadata.
+main records from diversion-only records, enriches airport sequence
+identifiers with coordinate metadata, and enriches DOT reporting airline
+identifiers with airline names.
 
 For months after June 2024, `update_slcflights_data()` can download
 monthly BTS files directly from TranStats and build a compatible local
@@ -66,8 +67,10 @@ The package also includes:
 
 - an airport coordinate table derived from the BTS TranStats Master
   Coordinate support table
-- a field dictionary describing selected flight-record and
-  coordinate-table columns
+- an Airline ID lookup table derived from the BTS TranStats  
+  DOT_ID_Reporting_Airline lookup table
+- a field dictionary describing selected flight-record,
+  coordinate-table, and Airline ID lookup-table columns
 - cache-aware readers that combine installed data with compatible local
   cached data when a cache is active
 
@@ -101,7 +104,7 @@ instead of an in-memory data frame.
 ds <- open_main(1988:1989)
 ds
 #> FileSystemDataset with 2 Parquet files
-#> 121 columns
+#> 122 columns
 #> Year: int64
 #> Quarter: int64
 #> Month: int64
@@ -110,6 +113,7 @@ ds
 #> FlightDate: date32[day]
 #> Reporting_Airline: string
 #> DOT_ID_Reporting_Airline: int64
+#> Reporting_Airline_Name: string
 #> IATA_CODE_Reporting_Airline: string
 #> Tail_Number: string
 #> Flight_Number_Reporting_Airline: int64
@@ -121,9 +125,8 @@ ds
 #> OriginAirportThruDate: date32[day]
 #> OriginAirportIsClosed: int32
 #> OriginAirportIsLatest: int32
-#> OriginCityMarketID: int64
 #> ...
-#> 101 more columns
+#> 102 more columns
 #> Use `schema()` to see entire schema
 ```
 
@@ -144,13 +147,20 @@ head(x)[1:10]
 #> 4 1988       1     1          1         5 1988-01-01                DL
 #> 5 1988       1     1          1         5 1988-01-01                DL
 #> 6 1988       1     1          1         5 1988-01-01                DL
-#>   DOT_ID_Reporting_Airline IATA_CODE_Reporting_Airline Tail_Number
-#> 1                    19991                          HP        <NA>
-#> 2                    19790                          DL        <NA>
-#> 3                    19991                          HP        <NA>
-#> 4                    19790                          DL        <NA>
-#> 5                    19790                          DL        <NA>
-#> 6                    19790                          DL        <NA>
+#>   DOT_ID_Reporting_Airline     Reporting_Airline_Name
+#> 1                    19991 America West Airlines Inc.
+#> 2                    19790       Delta Air Lines Inc.
+#> 3                    19991 America West Airlines Inc.
+#> 4                    19790       Delta Air Lines Inc.
+#> 5                    19790       Delta Air Lines Inc.
+#> 6                    19790       Delta Air Lines Inc.
+#>   IATA_CODE_Reporting_Airline
+#> 1                          HP
+#> 2                          DL
+#> 3                          HP
+#> 4                          DL
+#> 5                          DL
+#> 6                          DL
 ```
 
 Use `read_main()` and `read_div()` for one, many, or all available
@@ -159,7 +169,7 @@ years.
 ``` r
 x <- read_main(1988:1989)
 dim(x)
-#> [1] 272755    121
+#> [1] 272755    122
 ```
 
 Diversion-only records are packaged separately because they answer a
@@ -176,13 +186,13 @@ head(div)[1:10]
 #> 4 2015       1     1          5         1 2015-01-05                B6
 #> 5 2015       1     1          6         2 2015-01-06                DL
 #> 6 2015       1     1          6         2 2015-01-06                AA
-#>   DOT_ID_Reporting_Airline IATA_CODE_Reporting_Airline Tail_Number
-#> 1                    20304                          OO      N613SK
-#> 2                    20409                          B6      N534JB
-#> 3                    20409                          B6      N579JB
-#> 4                    20409                          B6      N627JB
-#> 5                    19790                          DL      N3749D
-#> 6                    19805                          AA      N3DDAA
+#>   DOT_ID_Reporting_Airline Reporting_Airline_Name IATA_CODE_Reporting_Airline
+#> 1                    20304  SkyWest Airlines Inc.                          OO
+#> 2                    20409        JetBlue Airways                          B6
+#> 3                    20409        JetBlue Airways                          B6
+#> 4                    20409        JetBlue Airways                          B6
+#> 5                    19790   Delta Air Lines Inc.                          DL
+#> 6                    19805 American Airlines Inc.                          AA
 ```
 
 ### Read metadata tables
@@ -211,6 +221,24 @@ head(coords)
 #> #   CITY_MARKET_WAC <dbl>, LAT_DEGREES <dbl>, LAT_HEMISPHERE <chr>, …
 ```
 
+Use `read_airlines()` when you want the standalone Airline ID lookup
+table.
+
+``` r
+airlines <- read_airlines()
+head(airlines)
+#> # A tibble: 6 × 3
+#>   DOT_ID_Reporting_Airline Reporting_Airline_Name     Reporting_Airline_Lookup…¹
+#>                      <dbl> <chr>                      <chr>                     
+#> 1                    19386 Northwest Airlines Inc.    NW                        
+#> 2                    19393 Southwest Airlines Co.     WN                        
+#> 3                    19687 Horizon Air                QX                        
+#> 4                    19690 Hawaiian Airlines Inc.     HA                        
+#> 5                    19704 Continental Air Lines Inc. CO                        
+#> 6                    19707 Eastern Air Lines Inc.     EA                        
+#> # ℹ abbreviated name: ¹​Reporting_Airline_Lookup_Code
+```
+
 Use `read_field_dictionary()` when you want column descriptions,
 source-table information, and field-presence metadata for main records,
 diversion-only records, and the coordinate table.
@@ -231,8 +259,8 @@ head(fields)
 ```
 
 The flight Parquet files are already enriched with latitude, longitude,
-and other date-bounded airport metadata. In most workflows, you do not
-need a separate coordinate join.
+other date-bounded airport metadata, and `Reporting_Airline_Name`. In
+most workflows, you do not need separate coordinate or Airline ID joins.
 
 ## Updating local data
 
@@ -293,14 +321,16 @@ build_slc_data()
 
 By default, `build_slc_data()` rebuilds years 1987 through 2024, filters
 the national source data to Salt Lake City-related records, splits main
-and diversion-only files, reduces the BTS Master Coordinate table,
-enriches the Parquet files with airport metadata, rebuilds the field
-dictionary, and writes final package data under `inst/extdata/`.
+and diversion-only files, reduces the BTS Master Coordinate and Airline
+ID lookup tables, enriches the Parquet files with airport and airline
+metadata, rebuilds the field dictionary, and writes final package data
+under `inst/extdata/`.
 
 No source data files need to be present before running this workflow.
 The historical Parquet source files are downloaded into a temporary
-build directory, and the BTS Master Coordinate table is downloaded
-automatically if `data-raw/T_MASTER_CORD.csv` is absent.
+build directory, and the BTS Master Coordinate and Airline ID lookup
+tables are downloaded automatically if `data-raw/T_MASTER_CORD.csv` or
+`data-raw/L_AIRLINE_ID.csv` is absent.
 
 The temporary build directory is a maintainer-side artifact. It is not
 part of the installed package and is separate from the local user cache

@@ -56,8 +56,8 @@ The installed historical files are derived from the 1987--2024 Parquet files
 released for the 2025 ASA Data Expo Challenge. Those files contain national
 flight records. The `slcflights` build workflow filters them to Salt Lake
 City-related records, removes globally empty columns, splits main records from
-diversion-only records, and enriches airport sequence identifiers with
-coordinate metadata.
+diversion-only records, enriches airport sequence identifiers with coordinate
+metadata, and enriches DOT reporting airline identifiers with airline names.
 
 For months after June 2024, `update_slcflights_data()` can download monthly
 BTS files directly from TranStats and build a compatible local user cache. The
@@ -77,8 +77,10 @@ The package also includes:
 
 - an airport coordinate table derived from the BTS TranStats Master Coordinate
   support table
-- a field dictionary describing selected flight-record and coordinate-table
-  columns
+- an Airline ID lookup table derived from the BTS TranStats   
+  DOT_ID_Reporting_Airline lookup table
+- a field dictionary describing selected flight-record, coordinate-table, and
+  Airline ID lookup-table columns
 - cache-aware readers that combine installed data with compatible local cached
   data when a cache is active
 
@@ -144,6 +146,13 @@ coords <- read_coords()
 head(coords)
 ```
 
+Use `read_airlines()` when you want the standalone Airline ID lookup table.
+
+```{r}
+airlines <- read_airlines()
+head(airlines)
+```
+
 Use `read_field_dictionary()` when you want column descriptions, source-table
 information, and field-presence metadata for main records, diversion-only
 records, and the coordinate table.
@@ -153,9 +162,9 @@ fields <- read_field_dictionary()
 head(fields)
 ```
 
-The flight Parquet files are already enriched with latitude, longitude, and
-other date-bounded airport metadata. In most workflows, you do not need a
-separate coordinate join.
+The flight Parquet files are already enriched with latitude, longitude, other
+date-bounded airport metadata, and `Reporting_Airline_Name`. In most workflows,
+you do not need separate coordinate or Airline ID joins.
 
 ## Updating local data
 
@@ -215,13 +224,13 @@ build_slc_data()
 
 By default, `build_slc_data()` rebuilds years 1987 through 2024, filters the
 national source data to Salt Lake City-related records, splits main and
-diversion-only files, reduces the BTS Master Coordinate table, enriches the
-Parquet files with airport metadata, rebuilds the field dictionary, and writes
-final package data under `inst/extdata/`.
+diversion-only files, reduces the BTS Master Coordinate and Airline ID lookup tables, enriches the Parquet files with airport and airline metadata, rebuilds the field dictionary, and writes final package data under `inst/extdata/`.
 
-No source data files need to be present before running this workflow. The historical Parquet source files are downloaded into a temporary build
-directory, and the BTS Master Coordinate table is downloaded automatically if
-`data-raw/T_MASTER_CORD.csv` is absent.
+No source data files need to be present before running this workflow. The
+historical Parquet source files are downloaded into a temporary build
+directory, and the BTS Master Coordinate and Airline ID lookup tables are
+downloaded automatically if `data-raw/T_MASTER_CORD.csv` or
+`data-raw/L_AIRLINE_ID.csv` is absent.
 
 The temporary build directory is a maintainer-side artifact. It is not part of the installed package and is separate from the local user cache created by `update_slcflights_data()`.
 
@@ -234,4 +243,3 @@ diversion-only records, and local cache updates. You access it like so:
 ```{r, eval = FALSE}
 vignette("slcflights", package = "slcflights")
 ```
-

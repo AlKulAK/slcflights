@@ -1,5 +1,5 @@
 Package: slcflights
-Title: Salt Lake City Flight Records and Supporting Airport Coordinates
+Title: Salt Lake City Flight Records and Supporting Metadata
 Version: 0.0.0.9000
 Authors@R: 
     person("Aleksey", "Kulyukin", , "aleksey.kulyukin.2022@gmail.com", 
@@ -10,12 +10,14 @@ Description: Provides Salt Lake City-focused subsets of the Bureau of
     On-Time Performance data. The installed Parquet files cover October 1987
     through June 2024 and are derived from the 1987--2024 Parquet files
     distributed for the 2025 ASA Data Expo Challenge. The package also includes
-    airport coordinate metadata derived from the BTS TranStats Master Coordinate
-    support table and a field dictionary describing selected data columns.
-    Helper functions list available years, read selected years into memory,
-    open Parquet files lazily, read airport coordinate metadata, read the field
-    dictionary, and extend the installed data with newer BTS monthly releases in
-    a local user cache.
+    airport coordinate metadata derived from the BTS TranStats Master 
+    Coordinate support table, Airline ID metadata derived from the BTS 
+    TranStats DOT_ID_Reporting_Airline lookup table, and a field dictionary 
+    describing selected data columns. Helper functions list available years, 
+    read selected years into memory, open Parquet files lazily, read airport 
+    coordinate metadata, read Airline ID metadata, read the field dictionary, 
+    and extend the installed data with newer BTS monthly releases in a local 
+    user cache.
 URL: https://github.com/AlKulAK/slcflights
 BugReports: https://github.com/AlKulAK/slcflights/issues
 License: GPL (>= 3)
