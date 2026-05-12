@@ -303,7 +303,7 @@ open_div <- function(years = NULL) {
 #' records with latitude, longitude, and date-bounded airport information.
 #'
 #' @seealso [read_main()], [read_div()], [open_main()], [open_div()],
-#'   [read_field_dictionary()]
+#'   [read_airlines()], [read_field_dictionary()]
 #'
 #' @examples
 #' x <- read_coords()
@@ -312,6 +312,39 @@ open_div <- function(years = NULL) {
 #' @export
 read_coords <- function() {
   readr::read_csv(.coords_path(), show_col_types = FALSE)
+}
+
+#' Read the Airline ID Lookup Table
+#'
+#' Reads the Airline ID lookup table supporting the currently available
+#' slcflights data.
+#'
+#' @returns
+#' A data frame containing DOT reporting airline identifiers, airline names,
+#' and airline lookup codes for airlines referenced by the available flight
+#' data.
+#'
+#' @details
+#' Before any local data update, this function reads the Airline ID lookup
+#' table installed with the package. After a successful local data update, it
+#' reads the validated cached Airline ID lookup table.
+#'
+#' The Airline ID lookup table is derived from the BTS TranStats Airline ID
+#' support table.
+#'
+#' It is intended for joins against `DOT_ID_Reporting_Airline` in the flight
+#' data.
+#'
+#' @seealso [read_main()], [read_div()], [open_main()], [open_div()],
+#'   [read_coords()], [read_field_dictionary()]
+#'
+#' @examples
+#' x <- read_airlines()
+#' head(x)
+#'
+#' @export
+read_airlines <- function() {
+  readr::read_csv(.airlines_path(), show_col_types = FALSE)
 }
 
 #' Read the Field Dictionary
@@ -332,7 +365,7 @@ read_coords <- function() {
 #' in that data grouping.
 #'
 #' @seealso [read_main()], [read_div()], [open_main()], [open_div()],
-#'   [read_coords()]
+#'   [read_coords()], [read_airlines()]
 #'
 #' @examples
 #' fields <- read_field_dictionary()

@@ -1,15 +1,16 @@
 #' slcflights: Salt Lake City-Related Flight Data
 #'
-#' `slcflights` provides Salt Lake City-focused subsets of the Bureau of
+# `slcflights` provides Salt Lake City-focused subsets of the Bureau of
 #' Transportation Statistics (BTS) TranStats On-Time: Reporting Carrier
-#' On-Time Performance data, along with airport coordinate metadata used to
-#' support those records.
+#' On-Time Performance data, along with airport coordinate and Airline ID
+#' metadata used to support those records.
 #'
 #' The installed historical Parquet files cover October 1987 through June 2024
 #' and are derived from the 1987--2024 Parquet files distributed for the 2025
 #' ASA Data Expo Challenge. The underlying records originate from the BTS
-#' TranStats On-Time Performance data, and the coordinate table is derived from
-#' the BTS TranStats Master Coordinate support table.
+#' TranStats On-Time Performance data. The coordinate table is derived from the
+#' BTS TranStats Master Coordinate support table, and the Airline ID lookup
+#' table is derived from the BTS TranStats Airline ID support table.
 #'
 #' The package contains two flight-data groupings:
 #'
@@ -33,6 +34,7 @@
 #' - [read_year_main()] to read one year's main records into memory
 #' - [read_year_div()] to read one year's diversion-only records into memory
 #' - [read_coords()] to read the currently active airport coordinate table
+#' - [read_airlines()] to read the currently active Airline ID lookup table
 #' - [read_field_dictionary()] to read field descriptions and field-presence
 #'   metadata
 #' - [update_slcflights_data()] to extend the installed data with newer BTS
@@ -54,6 +56,12 @@
 #' longitude, and date-bounded airport information. If a compatible local cache
 #' is active, [read_coords()] reads the cached coordinate table; otherwise it
 #' reads the installed package coordinate table.
+#'
+#' The currently active Airline ID lookup table contains DOT reporting airline
+#' identifiers, airline names, and airline lookup codes for airlines referenced
+#' by the available flight data. If a compatible local cache is active,
+#' [read_airlines()] reads the cached Airline ID lookup table; otherwise it
+#' reads the installed package Airline ID lookup table.
 #'
 #' @keywords internal
 "_PACKAGE"

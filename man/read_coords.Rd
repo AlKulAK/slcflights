@@ -36,5 +36,5 @@ head(x)
 }
 \seealso{
 \code{\link[=read_main]{read_main()}}, \code{\link[=read_div]{read_div()}}, \code{\link[=open_main]{open_main()}}, \code{\link[=open_div]{open_div()}},
-\code{\link[=read_field_dictionary]{read_field_dictionary()}}
+\code{\link[=read_airlines]{read_airlines()}}, \code{\link[=read_field_dictionary]{read_field_dictionary()}}
 }

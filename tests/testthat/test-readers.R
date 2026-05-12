@@ -163,6 +163,17 @@ test_that("packaged coordinates CSV is readable and has expected columns", {
   expect_true("LONGITUDE" %in% names(x))
 })
 
+test_that("packaged Airline ID lookup CSV is readable", {
+  x <- read_airlines()
+
+  expect_s3_class(x, "spec_tbl_df", exact = FALSE)
+  expect_true("DOT_ID_Reporting_Airline" %in% names(x))
+  expect_true("Reporting_Airline_Name" %in% names(x))
+  expect_true("Reporting_Airline_Lookup_Code" %in% names(x))
+  expect_true(nrow(x) > 0)
+  expect_true(any(!is.na(x$Reporting_Airline_Name)))
+})
+
 test_that("packaged field dictionary CSV is readable", {
   x <- read_field_dictionary()
 
