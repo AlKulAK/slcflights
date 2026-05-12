@@ -196,8 +196,8 @@ cache_build_coord_sel_terms <- function(con, cols, seq_cols) {
 cache_build_req_air_cols <- function() {
   c(
     "DOT_ID_Reporting_Airline",
-    "Reporting_AirlineName",
-    "Reporting_AirlineLookupCode"
+    "Reporting_Airline_Name",
+    "Reporting_Airline_Lookup_Code"
   )
 }
 
@@ -218,10 +218,7 @@ cache_build_val_air_cols <- function(cols) {
 }
 
 cache_build_air_extra_cols <- function() {
-  c(
-    "Reporting_AirlineName",
-    "Reporting_AirlineLookupCode"
-  )
+  "Reporting_Airline_Name"
 }
 
 #' Create the temporary Airline ID lookup table
@@ -255,8 +252,8 @@ cache_build_create_air_tbl <- function(con, airlines_in) {
       SELECT
         CAST(DOT_ID_Reporting_Airline AS BIGINT)
           AS DOT_ID_Reporting_Airline,
-        Reporting_AirlineName,
-        Reporting_AirlineLookupCode
+        Reporting_Airline_Name,
+        Reporting_Airline_Lookup_Code
       FROM read_csv_auto(%s, all_varchar = true)
       ",
       cache_build_quote_path(con, airlines_in)
@@ -292,12 +289,8 @@ cache_build_air_sel_terms <- function(con, cols) {
       select_terms <- c(
         select_terms,
         sprintf(
-          "a.Reporting_AirlineName AS %s",
-          DBI::dbQuoteIdentifier(con, "Reporting_AirlineName")
-        ),
-        sprintf(
-          "a.Reporting_AirlineLookupCode AS %s",
-          DBI::dbQuoteIdentifier(con, "Reporting_AirlineLookupCode")
+          "a.Reporting_Airline_Name AS %s",
+          DBI::dbQuoteIdentifier(con, "Reporting_Airline_Name")
         )
       )
     }
@@ -449,8 +442,8 @@ cache_build_enrich_file <- function(path, coords_in, con = NULL) {
 #' Enrich one cached Parquet file with Airline ID metadata
 #'
 #' Rewrites one cached Parquet file by joining the reporting airline DOT ID
-#' field to the reduced Airline ID lookup table and adding selected airline
-#' metadata fields.
+#' field to the reduced Airline ID lookup table and adding airline name
+#' metadata.
 #'
 #' @param path Cached Parquet file to enrich.
 #' @param airlines_in Path to the reduced BTS Airline ID lookup CSV.

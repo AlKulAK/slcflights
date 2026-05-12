@@ -305,8 +305,8 @@ make_enrich_air_csv <- function(path) {
     c(
       paste(
         "DOT_ID_Reporting_Airline",
-        "Reporting_AirlineName",
-        "Reporting_AirlineLookupCode",
+        "Reporting_Airline_Name",
+        "Reporting_Airline_Lookup_Code",
         sep = ","
       ),
       "20001,First Airline Inc.,FA",
@@ -324,8 +324,8 @@ test_that("required Airline ID columns are explicit", {
     slcflights:::cache_build_req_air_cols(),
     c(
       "DOT_ID_Reporting_Airline",
-      "Reporting_AirlineName",
-      "Reporting_AirlineLookupCode"
+      "Reporting_Airline_Name",
+      "Reporting_Airline_Lookup_Code"
     )
   )
 })
@@ -333,7 +333,10 @@ test_that("required Airline ID columns are explicit", {
 test_that("Airline ID enrichment validation catches missing columns", {
   expect_error(
     slcflights:::cache_build_val_air_cols(
-      c("DOT_ID_Reporting_Airline", "Reporting_AirlineName")
+      c(
+        "DOT_ID_Reporting_Airline",
+        "Reporting_Airline_Name"
+      )
     ),
     "missing required columns"
   )
@@ -348,10 +351,7 @@ test_that("Airline ID enrichment validation catches missing columns", {
 test_that("Airline ID extra columns are explicit", {
   expect_equal(
     slcflights:::cache_build_air_extra_cols(),
-    c(
-      "Reporting_AirlineName",
-      "Reporting_AirlineLookupCode"
-    )
+    "Reporting_Airline_Name"
   )
 })
 
@@ -365,7 +365,7 @@ test_that("Airline ID join SQL uses DOT reporting airline ID", {
   expect_match(out, "DOT_ID_Reporting_Airline", fixed = TRUE)
 })
 
-test_that("Airline ID select terms insert metadata after DOT ID", {
+test_that("Airline ID select terms insert name after DOT ID", {
   con <- slcflights:::cache_build_connect()
   on.exit(slcflights:::cache_build_disconnect(con), add = TRUE)
 
@@ -380,11 +380,10 @@ test_that("Airline ID select terms insert metadata after DOT ID", {
   )
 
   dot_pos <- grep("DOT_ID_Reporting_Airline", terms, fixed = TRUE)[[1]]
-  name_pos <- grep("Reporting_AirlineName", terms, fixed = TRUE)[[1]]
-  code_pos <- grep("Reporting_AirlineLookupCode", terms, fixed = TRUE)[[1]]
+  name_pos <- grep("Reporting_Airline_Name", terms, fixed = TRUE)[[1]]
 
   expect_equal(name_pos, dot_pos + 1L)
-  expect_equal(code_pos, dot_pos + 2L)
+  expect_false(any(grepl("Reporting_Airline_Lookup_Code", terms)))
 })
 
 test_that("Airline ID enrichment requires existing parquet file", {
@@ -449,7 +448,7 @@ test_that("Airline ID enrichment requires DOT ID column", {
   unlink(root, recursive = TRUE, force = TRUE)
 })
 
-test_that("Airline ID enrichment adds reporting airline metadata", {
+test_that("Airline ID enrichment adds reporting airline name", {
   root <- tempfile("slc-cache-air-enrich-")
   dir.create(root, recursive = TRUE)
 
@@ -477,20 +476,18 @@ test_that("Airline ID enrichment adds reporting airline metadata", {
 
   read <- arrow::read_parquet(path)
 
-  expect_true("Reporting_AirlineName" %in% names(read))
-  expect_true("Reporting_AirlineLookupCode" %in% names(read))
+  expect_true("Reporting_Airline_Name" %in% names(read))
+  expect_false("Reporting_Airline_Lookup_Code" %in% names(read))
 
   expect_equal(
-    read$Reporting_AirlineName,
+    read$Reporting_Airline_Name,
     c("First Airline Inc.", "Second Airline LLC")
   )
-
-  expect_equal(read$Reporting_AirlineLookupCode, c("FA", "SB"))
 
   unlink(root, recursive = TRUE, force = TRUE)
 })
 
-test_that("Airline ID enrichment replaces stale airline columns", {
+test_that("Airline ID enrichment replaces stale airline name column", {
   root <- tempfile("slc-cache-air-enrich-")
   dir.create(root, recursive = TRUE)
 
@@ -500,8 +497,7 @@ test_that("Airline ID enrichment replaces stale airline columns", {
   arrow::write_parquet(
     data.frame(
       DOT_ID_Reporting_Airline = 20001L,
-      Reporting_AirlineName = "Stale Name",
-      Reporting_AirlineLookupCode = "XX"
+      Reporting_Airline_Name = "Stale Name"
     ),
     path
   )
@@ -515,8 +511,7 @@ test_that("Airline ID enrichment replaces stale airline columns", {
 
   read <- arrow::read_parquet(path)
 
-  expect_equal(read$Reporting_AirlineName, "First Airline Inc.")
-  expect_equal(read$Reporting_AirlineLookupCode, "FA")
+  expect_equal(read$Reporting_Airline_Name, "First Airline Inc.")
 
   unlink(root, recursive = TRUE, force = TRUE)
 })
@@ -551,8 +546,8 @@ test_that("Airline ID enrichment works for multiple files", {
   read1 <- arrow::read_parquet(path1)
   read2 <- arrow::read_parquet(path2)
 
-  expect_equal(read1$Reporting_AirlineName, "First Airline Inc.")
-  expect_equal(read2$Reporting_AirlineName, "Second Airline LLC")
+  expect_equal(read1$Reporting_Airline_Name, "First Airline Inc.")
+  expect_equal(read2$Reporting_Airline_Name, "Second Airline LLC")
 
   unlink(root, recursive = TRUE, force = TRUE)
 })

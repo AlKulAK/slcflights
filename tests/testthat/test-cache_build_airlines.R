@@ -34,7 +34,7 @@ test_that("used Airline ID column discovery requires files", {
 })
 
 test_that(
-  "used Airline ID column discovery requires DOT_ID_Reporting_Airline columns",
+  "used Airline ID discovery requires DOT ID columns",
   {
     root <- tempfile("slc-cache-airlines-")
     dir.create(root, recursive = TRUE)
@@ -165,7 +165,7 @@ test_that("Airline ID reduction keeps only used IDs in CSV order", {
     c(
       "Code,Description",
       "20000,Unused Airline: ZZ",
-      "20001,First Airline Inc.: FA",
+      "20001,First Airline Inc.: FA (Merged with Example 1/99.)",
       "20002,Second Airline LLC: SB",
       "20003,Third Airline: TC",
       "20004,Unused Later Airline: UL"
@@ -187,8 +187,8 @@ test_that("Airline ID reduction keeps only used IDs in CSV order", {
     names(reduced),
     c(
       "DOT_ID_Reporting_Airline",
-      "Reporting_AirlineName",
-      "Reporting_AirlineLookupCode"
+      "Reporting_Airline_Name",
+      "Reporting_Airline_Lookup_Code"
     )
   )
 
@@ -198,7 +198,7 @@ test_that("Airline ID reduction keeps only used IDs in CSV order", {
   )
 
   expect_equal(
-    reduced$Reporting_AirlineName,
+    reduced$Reporting_Airline_Name,
     c(
       "First Airline Inc.",
       "Second Airline LLC",
@@ -207,7 +207,7 @@ test_that("Airline ID reduction keeps only used IDs in CSV order", {
   )
 
   expect_equal(
-    reduced$Reporting_AirlineLookupCode,
+    reduced$Reporting_Airline_Lookup_Code,
     c("FA", "SB", "TC")
   )
 

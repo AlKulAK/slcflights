@@ -201,14 +201,13 @@ test_that("staging build creates annual files, coordinates, and manifest", {
 
   expect_true("OriginLatitude" %in% names(read))
   expect_true("DestLatitude" %in% names(read))
-  expect_true("Reporting_AirlineName" %in% names(read))
-  expect_true("Reporting_AirlineLookupCode" %in% names(read))
+  expect_true("Reporting_Airline_Name" %in% names(read))
+  expect_false("Reporting_Airline_Lookup_Code" %in% names(read))
   expect_equal(nrow(read), 2L)
   expect_equal(
-    read$Reporting_AirlineName,
+    read$Reporting_Airline_Name,
     c("First Airline Inc.", "Second Airline LLC")
   )
-  expect_equal(read$Reporting_AirlineLookupCode, c("FA", "SB"))
 
   expect_equal(out$root, root)
   expect_true(main %in% out$files)

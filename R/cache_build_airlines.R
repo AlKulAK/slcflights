@@ -185,23 +185,23 @@ cache_build_reduce_air_csv <- function(
             trim(
               regexp_extract(
                 Description,
-                '^(.*):[[:space:]]*([^:]*)$',
+                '^(.*):[[:space:]]*(.*)$',
                 1
               )
-            ) AS Reporting_AirlineName,
+            ) AS Reporting_Airline_Name,
             trim(
               regexp_extract(
                 Description,
-                '^(.*):[[:space:]]*([^:]*)$',
-                2
+                '^[^:]*:[[:space:]]*([^[:space:]]+)',
+                1
               )
-            ) AS Reporting_AirlineLookupCode
+            ) AS Reporting_Airline_Lookup_Code
           FROM read_csv_auto(%s, all_varchar = true)
         )
         SELECT
           DOT_ID_Reporting_Airline,
-          Reporting_AirlineName,
-          Reporting_AirlineLookupCode
+          Reporting_Airline_Name,
+          Reporting_Airline_Lookup_Code
         FROM airlines_with_rownum
         WHERE DOT_ID_Reporting_Airline IN (
           SELECT DOT_ID_Reporting_Airline
