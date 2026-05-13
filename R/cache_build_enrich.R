@@ -218,7 +218,10 @@ cache_build_val_air_cols <- function(cols) {
 }
 
 cache_build_air_extra_cols <- function() {
-  "Reporting_Airline_Name"
+  c(
+    "Reporting_Airline_Name",
+    "Reporting_Airline_Lookup_Code"
+  )
 }
 
 #' Create the temporary Airline ID lookup table
@@ -291,6 +294,10 @@ cache_build_air_sel_terms <- function(con, cols) {
         sprintf(
           "a.Reporting_Airline_Name AS %s",
           DBI::dbQuoteIdentifier(con, "Reporting_Airline_Name")
+        ),
+        sprintf(
+          "a.Reporting_Airline_Lookup_Code AS %s",
+          DBI::dbQuoteIdentifier(con, "Reporting_Airline_Lookup_Code")
         )
       )
     }
@@ -442,8 +449,8 @@ cache_build_enrich_file <- function(path, coords_in, con = NULL) {
 #' Enrich one cached Parquet file with Airline ID metadata
 #'
 #' Rewrites one cached Parquet file by joining the reporting airline DOT ID
-#' field to the reduced Airline ID lookup table and adding airline name
-#' metadata.
+#' field to the reduced Airline ID lookup table and adding airline name and
+#' lookup-code metadata.
 #'
 #' @param path Cached Parquet file to enrich.
 #' @param airlines_in Path to the reduced BTS Airline ID lookup CSV.
