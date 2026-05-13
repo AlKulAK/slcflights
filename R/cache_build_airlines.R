@@ -165,6 +165,11 @@ cache_build_reduce_air_csv <- function(
     airline_cols = airline_cols
   )
 
+  lookup_code_re <- paste0(
+    "^[^:]*:[[:space:]]*",
+    "([^[:space:]]+(?:[[:space:]]*\\([0-9]+\\))?)"
+  )
+
   dir.create(dirname(airlines_out), recursive = TRUE, showWarnings = FALSE)
 
   DBI::dbExecute(
@@ -192,7 +197,7 @@ cache_build_reduce_air_csv <- function(
             trim(
               regexp_extract(
                 Description,
-                '^[^:]*:[[:space:]]*([^[:space:]]+)',
+                %s,
                 1
               )
             ) AS Reporting_Airline_Lookup_Code
@@ -213,6 +218,7 @@ cache_build_reduce_air_csv <- function(
       (HEADER, DELIMITER ',')
       ",
       union_sql,
+      DBI::dbQuoteString(con, lookup_code_re),
       cache_build_quote_path(con, airlines_in),
       DBI::dbQuoteString(
         con,

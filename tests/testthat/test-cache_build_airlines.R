@@ -166,7 +166,7 @@ test_that("Airline ID reduction keeps only used IDs in CSV order", {
       "Code,Description",
       "20000,Unused Airline: ZZ",
       "20001,First Airline Inc.: FA (Merged with Example 1/99.)",
-      "20002,Second Airline LLC: SB",
+      "20002,Second Airline LLC: SB (1)",
       "20003,Third Airline: TC",
       "20004,Unused Later Airline: UL"
     ),
@@ -208,7 +208,7 @@ test_that("Airline ID reduction keeps only used IDs in CSV order", {
 
   expect_equal(
     reduced$Reporting_Airline_Lookup_Code,
-    c("FA", "SB", "TC")
+    c("FA", "SB (1)", "TC")
   )
 
   unlink(root, recursive = TRUE, force = TRUE)
