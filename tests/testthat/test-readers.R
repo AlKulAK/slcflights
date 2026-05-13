@@ -172,6 +172,20 @@ test_that("packaged Airline ID lookup CSV is readable", {
   expect_true("Reporting_Airline_Lookup_Code" %in% names(x))
   expect_true(nrow(x) > 0)
   expect_true(any(!is.na(x$Reporting_Airline_Name)))
+
+  expect_equal(
+    x$Reporting_Airline_Lookup_Code[
+      x$DOT_ID_Reporting_Airline == 20374
+    ],
+    "XE (1)"
+  )
+
+  expect_equal(
+    x$Reporting_Airline_Lookup_Code[
+      x$DOT_ID_Reporting_Airline == 19991
+    ],
+    "HP"
+  )
 })
 
 test_that("packaged field dictionary CSV is readable", {

@@ -6,6 +6,7 @@
 \alias{slcflights-package}
 \title{slcflights: Salt Lake City-Related Flight Data}
 \description{
+\code{slcflights} provides Salt Lake City-focused subsets of the Bureau of
 Transportation Statistics (BTS) TranStats On-Time: Reporting Carrier
 On-Time Performance data, along with airport coordinate and Airline ID
 metadata used to support those records.

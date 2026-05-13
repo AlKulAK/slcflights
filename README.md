@@ -69,8 +69,8 @@ The package also includes:
   Coordinate support table
 - an Airline ID lookup table derived from the BTS TranStats  
   DOT_ID_Reporting_Airline lookup table
-- a field dictionary describing selected flight-record,
-  coordinate-table, and Airline ID lookup-table columns
+- a field dictionary describing selected flight-record and
+  coordinate-table columns
 - cache-aware readers that combine installed data with compatible local
   cached data when a cache is active
 
