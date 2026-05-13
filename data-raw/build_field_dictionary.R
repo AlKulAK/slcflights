@@ -280,6 +280,7 @@ build_field_dictionary <- function(
       "Reporting_Airline",
       "DOT_ID_Reporting_Airline",
       "Reporting_Airline_Name",
+      "Reporting_Airline_Lookup_Code",
       "IATA_CODE_Reporting_Airline",
       "Tail_Number",
       "Flight_Number_Reporting_Airline"
@@ -291,6 +292,7 @@ build_field_dictionary <- function(
       "date",
       "date",
       "date",
+      "carrier",
       "carrier",
       "carrier",
       "carrier",
@@ -322,6 +324,11 @@ build_field_dictionary <- function(
         "DOT_ID_Reporting_Airline."
       ),
       txt(
+        "Carrier lookup code from the BTS Airline ID lookup table, joined",
+        "by DOT_ID_Reporting_Airline. This preserves disambiguating",
+        "suffixes used by the lookup table, such as OH (1)."
+      ),
+      txt(
         "Code assigned by IATA and commonly used to identify a carrier. As",
         "the same code may have been assigned to different carriers over",
         "time, the code is not always unique. For analysis, use the Unique",
@@ -339,6 +346,7 @@ build_field_dictionary <- function(
       "",
       "BTS recommends this field for carrier analysis across years.",
       "",
+      "Package-added Airline ID enrichment field.",
       "Package-added Airline ID enrichment field.",
       "BTS recommends Reporting_Airline for cross-year carrier analysis.",
       "",

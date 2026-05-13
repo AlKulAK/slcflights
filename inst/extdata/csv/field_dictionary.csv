@@ -142,6 +142,7 @@ OriginStateName,airport,BTS On-Time,"Origin Airport, State Name.",always,always,
 OriginWac,airport,BTS On-Time,"Origin Airport, World Area Code.",always,always,never,
 Quarter,date,BTS On-Time,"Quarter, coded 1 through 4.",always,always,never,
 Reporting_Airline,carrier,BTS On-Time,"Unique Carrier Code. When the same code has been used by multiple carriers, a numeric suffix is used for earlier users, for example PA, PA(1), PA(2). Use this field for analysis across a range of years.",always,always,never,BTS recommends this field for carrier analysis across years.
+Reporting_Airline_Lookup_Code,carrier,BTS On-Time,"Carrier lookup code from the BTS Airline ID lookup table, joined by DOT_ID_Reporting_Airline. This preserves disambiguating suffixes used by the lookup table, such as OH (1).",always,always,never,Package-added Airline ID enrichment field.
 Reporting_Airline_Name,carrier,BTS On-Time,"Airline name from the BTS Airline ID lookup table, joined by DOT_ID_Reporting_Airline.",always,always,never,Package-added Airline ID enrichment field.
 SecurityDelay,delay_cause,BTS On-Time,"Security Delay, in minutes.",always,always,never,
 Tail_Number,flight,BTS On-Time,Tail Number.,always,always,never,
