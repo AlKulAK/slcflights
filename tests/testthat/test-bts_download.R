@@ -102,6 +102,129 @@ test_that("HTML response detection recognizes ordinary HTML", {
   )
 })
 
+test_that("BTS download timeout is at least five minutes", {
+  old_timeout <- getOption("timeout")
+  on.exit(options(timeout = old_timeout), add = TRUE)
+
+  options(timeout = 60)
+
+  expect_equal(slcflights:::bts_download_timeout(), 300)
+})
+
+test_that("BTS download timeout respects larger user timeouts", {
+  old_timeout <- getOption("timeout")
+  on.exit(options(timeout = old_timeout), add = TRUE)
+
+  options(timeout = 900)
+
+  expect_equal(slcflights:::bts_download_timeout(), 900)
+})
+
+test_that("BTS download timeout ignores invalid timeout values", {
+  old_timeout <- getOption("timeout")
+  on.exit(options(timeout = old_timeout), add = TRUE)
+
+  options(timeout = NA_real_)
+  expect_equal(slcflights:::bts_download_timeout(), 300)
+
+  options(timeout = -1)
+  expect_equal(slcflights:::bts_download_timeout(), 300)
+})
+
+test_that("ZIP validation rejects missing and empty files", {
+  missing <- tempfile("missing-zip-")
+
+  expect_error(
+    slcflights:::bts_validate_zip_file(missing),
+    "was not downloaded"
+  )
+
+  empty <- tempfile("empty-zip-")
+  file.create(empty)
+
+  expect_error(
+    slcflights:::bts_validate_zip_file(empty),
+    "is empty"
+  )
+
+  unlink(empty)
+})
+
+test_that("ZIP validation rejects HTML and non-ZIP files", {
+  html <- tempfile("html-zip-")
+  writeLines("<!DOCTYPE html><html></html>", html)
+
+  expect_error(
+    slcflights:::bts_validate_zip_file(html),
+    "returned HTML"
+  )
+
+  text <- tempfile("text-zip-")
+  writeLines("not a zip", text)
+
+  expect_error(
+    slcflights:::bts_validate_zip_file(text),
+    "is not a ZIP file"
+  )
+
+  unlink(c(html, text))
+})
+
+test_that("ZIP validation rejects incomplete ZIP files", {
+  path <- tempfile("partial-zip-")
+  writeBin(as.raw(c(0x50, 0x4b, 0x03, 0x04)), path)
+
+  expect_error(
+    slcflights:::bts_validate_zip_file(path),
+    "is not a readable ZIP archive"
+  )
+
+  unlink(path)
+})
+
+test_that("ZIP validation requires a CSV file", {
+  root <- tempfile("bts-zip-no-csv-")
+  dir.create(root, recursive = TRUE)
+
+  txt <- file.path(root, "notes.txt")
+  writeLines("x", txt)
+
+  old_wd <- getwd()
+  on.exit(setwd(old_wd), add = TRUE)
+  setwd(root)
+
+  zipfile <- file.path(root, "notes.zip")
+  utils::zip(zipfile, files = "notes.txt", flags = "-q")
+
+  expect_error(
+    slcflights:::bts_validate_zip_file(zipfile),
+    "does not contain a CSV file"
+  )
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("ZIP validation returns normalized path for ZIP with CSV", {
+  root <- tempfile("bts-zip-valid-")
+  dir.create(root, recursive = TRUE)
+
+  src_csv <- file.path(root, "data.csv")
+  writeLines("x", src_csv)
+
+  old_wd <- getwd()
+  on.exit(setwd(old_wd), add = TRUE)
+  setwd(root)
+
+  zipfile <- file.path(root, "data.zip")
+  utils::zip(zipfile, files = "data.csv", flags = "-q")
+
+  out <- slcflights:::bts_validate_zip_file(zipfile)
+
+  expect_equal(out, normalizePath(zipfile, mustWork = TRUE))
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
 test_that("CSV validation rejects missing and empty files", {
   missing <- tempfile("missing-csv-")
 

@@ -113,6 +113,132 @@ bts_response_is_html <- function(x) {
   )
 }
 
+#' Return the BTS download timeout
+#'
+#' Returns a timeout long enough for monthly BTS ZIP downloads while preserving
+#' any larger user-configured timeout.
+#'
+#' @returns
+#' Numeric timeout value, in seconds.
+#'
+#' @noRd
+bts_download_timeout <- function() {
+  timeout <- getOption("timeout", 60)
+  timeout <- suppressWarnings(as.numeric(timeout[[1]]))
+
+  if (is.na(timeout) || !is.finite(timeout) || timeout <= 0) {
+    timeout <- 60
+  }
+
+  max(300, timeout)
+}
+
+#' Validate a downloaded BTS ZIP file
+#'
+#' Checks that a downloaded BTS ZIP file exists, is not empty, is not an HTML
+#' response, is a readable ZIP archive, and contains at least one CSV file.
+#'
+#' @param path Path to the ZIP file.
+#' @param label Human-readable file label used in error messages.
+#'
+#' @returns
+#' Invisibly, the normalized path to the ZIP file.
+#'
+#' @noRd
+bts_validate_zip_file <- function(path, label = "BTS ZIP file") {
+  if (!file.exists(path)) {
+    stop(
+      sprintf("%s was not downloaded: %s", label, path),
+      call. = FALSE
+    )
+  }
+
+  size <- file.info(path)$size
+
+  if (is.na(size) || size <= 0) {
+    stop(
+      sprintf("%s is empty: %s", label, path),
+      call. = FALSE
+    )
+  }
+
+  raw <- readBin(path, what = "raw", n = 500L)
+
+  if (bts_response_is_html(raw)) {
+    stop(
+      sprintf("BTS returned HTML instead of %s.", label),
+      call. = FALSE
+    )
+  }
+
+  if (!bts_is_zip_raw(raw)) {
+    stop(
+      sprintf("%s is not a ZIP file: %s", label, path),
+      call. = FALSE
+    )
+  }
+
+  listed <- tryCatch(
+    utils::unzip(path, list = TRUE),
+    error = function(e) NULL,
+    warning = function(w) NULL
+  )
+
+  if (is.null(listed) || !nrow(listed)) {
+    stop(
+      sprintf("%s is not a readable ZIP archive: %s", label, path),
+      call. = FALSE
+    )
+  }
+
+  has_csv <- any(grepl("\\.csv$", listed$Name, ignore.case = TRUE))
+
+  if (!has_csv) {
+    stop(
+      sprintf("%s does not contain a CSV file: %s", label, path),
+      call. = FALSE
+    )
+  }
+
+  invisible(normalizePath(path, mustWork = TRUE))
+}
+
+#' Download a BTS file with a package-safe timeout
+#'
+#' Wraps [utils::download.file()] so monthly BTS downloads do not inherit an
+#' unrealistically short timeout, and checks the returned status.
+#'
+#' @param url Source URL.
+#' @param destfile Destination file path.
+#' @param label Human-readable file label used in error messages.
+#'
+#' @returns
+#' Invisibly, the normalized path to the downloaded file.
+#'
+#' @noRd
+bts_download_file <- function(url, destfile, label = "BTS file") {
+  old_timeout <- getOption("timeout")
+  on.exit(options(timeout = old_timeout), add = TRUE)
+
+  options(timeout = bts_download_timeout())
+
+  status <- utils::download.file(
+    url = url,
+    destfile = destfile,
+    mode = "wb",
+    quiet = TRUE
+  )
+
+  if (!identical(status, 0L)) {
+    stop(
+      sprintf("%s download failed: %s", label, url),
+      call. = FALSE
+    )
+  }
+
+  invisible(normalizePath(destfile, mustWork = TRUE))
+}
+
 #' Validate a downloaded BTS CSV file
 #'
 #' Checks that a downloaded or previously cached BTS CSV file exists and is not
@@ -193,19 +319,16 @@ download_bts_ontime_month <- function(
 
   message("Downloading flight data for ", format_year_month(ym), "...")
 
-  utils::download.file(
+  bts_download_file(
     url = url,
     destfile = zip_path,
-    mode = "wb",
-    quiet = TRUE
+    label = "BTS on-time ZIP"
   )
 
-  if (!file.exists(zip_path)) {
-    stop(
-      sprintf("BTS on-time ZIP was not downloaded: %s", zip_path),
-      call. = FALSE
-    )
-  }
+  bts_validate_zip_file(
+    zip_path,
+    label = "BTS on-time ZIP"
+  )
 
   utils::unzip(zip_path, exdir = month_dir)
 
