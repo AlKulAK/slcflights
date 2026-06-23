@@ -155,6 +155,22 @@ slc_cached_year_dirs <- function(root = NULL) {
   dirs[grepl("^Year=[0-9]{4}$", dirs)]
 }
 
+read_db_manifest_if_active <- function(root = NULL) {
+  path <- slc_db_manifest_path(root = root, create = FALSE)
+
+  if (!file.exists(path)) {
+    return(NULL)
+  }
+
+  manifest <- jsonlite::read_json(path, simplifyVector = FALSE)
+
+  if (is.null(manifest$db_start)) {
+    return(NULL)
+  }
+
+  validate_db_manifest(manifest)
+}
+
 #' List cached years for a flight-data grouping
 #'
 #' Lists years for which the active local cache contains a main or
@@ -198,13 +214,59 @@ slc_available_cached_years <- function(type = c("main", "div"), root = NULL) {
   years[file.exists(paths)]
 }
 
-#' List all available years for a flight-data grouping
+#' List local database years for a flight-data grouping
 #'
-#' Combines installed and cached years for a main or diversion-only data
-#' grouping.
+#' Lists years for which the active local database contains a main or
+#' diversion-only Parquet file and has a readable database manifest.
 #'
 #' @param type Flight-data grouping: `"main"` or `"div"`.
-#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#' @param root Optional database root. Uses the active database root when
+#'   `NULL`.
+#'
+#' @returns
+#' Integer vector of database years sorted in ascending order.
+#'
+#' @noRd
+slc_available_db_years <- function(type = c("main", "div"), root = NULL) {
+  type <- match.arg(type)
+
+  manifest <- read_db_manifest_if_active(root = root)
+
+  if (is.null(manifest)) {
+    return(integer())
+  }
+
+  months <- db_months_from_manifest(manifest)
+  years <- sort(unique(months$year))
+
+  if (!length(years)) {
+    return(integer())
+  }
+
+  paths <- vapply(
+    years,
+    function(year) {
+      slc_db_parquet_path(
+        type,
+        year,
+        root = root,
+        create = FALSE
+      )
+    },
+    character(1)
+  )
+
+  years[file.exists(paths)]
+}
+
+#' List all available years for a flight-data grouping
+#'
+#' Lists reader-facing years for a main or diversion-only data grouping. When a
+#' local database is active, database years are returned. Otherwise, installed
+#' and cached years are combined for the transitional legacy reader path.
+#'
+#' @param type Flight-data grouping: `"main"` or `"div"`.
+#' @param root Optional data root. Uses the active root when `NULL`.
 #'
 #' @returns
 #' Integer vector of available years sorted in ascending order.
@@ -212,6 +274,12 @@ slc_available_cached_years <- function(type = c("main", "div"), root = NULL) {
 #' @noRd
 slc_available_data_years <- function(type = c("main", "div"), root = NULL) {
   type <- match.arg(type)
+
+  db_years <- slc_available_db_years(type, root = root)
+
+  if (length(db_years)) {
+    return(db_years)
+  }
 
   sort(unique(c(
     slc_available_installed_years(type),
@@ -334,25 +402,101 @@ slc_cached_data_paths <- function(
   )
 }
 
-#' Resolve installed and cached Parquet paths
+#' Resolve local database Parquet paths
+#'
+#' Resolves active local database Parquet files for a main or diversion-only
+#' data grouping.
+#'
+#' @param type Flight-data grouping: `"main"` or `"div"`.
+#' @param years Optional integer vector of years. Uses all local database years
+#'   for `type` when `NULL`.
+#' @param root Optional database root. Uses the active database root when
+#'   `NULL`.
+#'
+#' @returns
+#' Data frame with `year`, `source`, and `path` columns. `source` is always
+#' `"database"`.
+#'
+#' @noRd
+slc_db_data_paths <- function(
+  type = c("main", "div"),
+  years = NULL,
+  root = NULL
+) {
+  type <- match.arg(type)
+
+  manifest <- read_db_manifest_if_active(root = root)
+
+  if (is.null(manifest)) {
+    return(data.frame(
+      year = integer(),
+      source = character(),
+      path = character()
+    ))
+  }
+
+  if (is.null(years)) {
+    years <- slc_available_db_years(type, root = root)
+  } else {
+    years <- normalize_data_years(years)
+  }
+
+  if (!length(years)) {
+    return(data.frame(
+      year = integer(),
+      source = character(),
+      path = character()
+    ))
+  }
+
+  paths <- vapply(
+    years,
+    function(year) {
+      slc_db_parquet_path(
+        type,
+        year,
+        root = root,
+        create = FALSE
+      )
+    },
+    character(1)
+  )
+
+  keep <- file.exists(paths)
+
+  data.frame(
+    year = years[keep],
+    source = rep("database", sum(keep)),
+    path = unname(paths[keep])
+  )
+}
+
+#' Resolve reader-facing Parquet paths
 #'
 #' Resolves reader-facing Parquet paths for a main or diversion-only data
-#' grouping, combining installed package files with compatible cached files.
+#' grouping. When a local database is active, only database paths are returned.
+#' Otherwise, installed and cached paths are combined for the transitional
+#' legacy reader path.
 #'
 #' @param type Flight-data grouping: `"main"` or `"div"`.
 #' @param years Optional integer vector of years. Uses all available years for
 #'   `type` when `NULL`.
-#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#' @param root Optional data root. Uses the active root when `NULL`.
 #'
 #' @returns
-#' Data frame with `year`, `source`, and `path` columns, sorted by year and
-#' then source.
+#' Data frame with `year`, `source`, and `path` columns.
 #'
 #' @noRd
 slc_data_paths <- function(
   type = c("main", "div"), years = NULL, root = NULL
 ) {
   type <- match.arg(type)
+
+  db_paths <- slc_db_data_paths(type, years = years, root = root)
+
+  if (nrow(db_paths)) {
+    return(db_paths)
+  }
 
   if (is.null(years)) {
     years <- slc_available_data_years(type, root = root)
@@ -385,17 +529,23 @@ slc_data_paths <- function(
 
 #' Resolve the active coordinate CSV path
 #'
-#' Returns the cached coordinate CSV when a compatible cache is active and the
-#' cached coordinate file exists. Otherwise returns the installed coordinate
-#' CSV.
+#' Returns the local database coordinate CSV when a local database is active.
+#' Otherwise, falls back to the transitional cached or installed coordinate CSV.
 #'
-#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#' @param root Optional data root. Uses the active root when `NULL`.
 #'
 #' @returns
 #' Character path to the coordinate CSV used by [read_coords()].
 #'
 #' @noRd
 slc_coords_path <- function(root = NULL) {
+  manifest <- read_db_manifest_if_active(root = root)
+  db_path <- slc_db_coords_path(root = root, create = FALSE)
+
+  if (!is.null(manifest) && file.exists(db_path)) {
+    return(db_path)
+  }
+
   manifest <- read_cache_manifest(root = root)
   cached <- slc_cache_coords_path(root = root, create = FALSE)
 
@@ -408,17 +558,24 @@ slc_coords_path <- function(root = NULL) {
 
 #' Resolve the active Airline ID lookup CSV
 #'
-#' Uses the active cache Airline ID lookup CSV only when a readable cache
-#' manifest and reduced Airline ID lookup CSV are both present. Otherwise falls
-#' back to the installed package Airline ID lookup CSV.
+#' Returns the local database Airline ID lookup CSV when a local database is
+#' active. Otherwise, falls back to the transitional cached or installed Airline
+#' ID lookup CSV.
 #'
-#' @param root Optional cache root. Uses the active cache root when `NULL`.
+#' @param root Optional data root. Uses the active root when `NULL`.
 #'
 #' @returns
 #' Character path to the active Airline ID lookup CSV.
 #'
 #' @noRd
 slc_airlines_path <- function(root = NULL) {
+  manifest <- read_db_manifest_if_active(root = root)
+  db_path <- slc_db_airlines_path(root = root, create = FALSE)
+
+  if (!is.null(manifest) && file.exists(db_path)) {
+    return(db_path)
+  }
+
   manifest <- read_cache_manifest(root = root)
   cached <- slc_cache_airlines_path(root = root, create = FALSE)
 

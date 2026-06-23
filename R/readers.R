@@ -384,3 +384,75 @@ read_field_dictionary <- function() {
     show_col_types = FALSE
   )
 }
+
+# Internal reader path helpers -----------------------------------------------
+
+#' Resolve reader Parquet paths
+#'
+#' Resolves Parquet paths for the exported flight-data readers.
+#'
+#' @param type Flight-data grouping: `"main"` or `"div"`.
+#' @param years Optional integer vector of years.
+#'
+#' @returns
+#' Character vector of Parquet file paths.
+#'
+#' @noRd
+.parquet_paths <- function(type = c("main", "div"), years = NULL) {
+  type <- match.arg(type)
+
+  avail <- slc_available_data_years(type)
+
+  if (is.null(years)) {
+    years <- avail
+  } else {
+    years <- normalize_data_years(years)
+  }
+
+  missing <- setdiff(years, avail)
+
+  if (length(missing)) {
+    label <- switch(type,
+      main = "main",
+      div = "diversion"
+    )
+
+    stop(
+      sprintf(
+        "No %s parquet file found for year %s",
+        label,
+        missing[[1]]
+      ),
+      call. = FALSE
+    )
+  }
+
+  paths <- slc_data_paths(type, years = years)
+  paths <- paths[match(years, paths$year), , drop = FALSE]
+
+  paths$path
+}
+
+#' Resolve reader coordinate CSV path
+#'
+#' Resolves the coordinate CSV path for [read_coords()].
+#'
+#' @returns
+#' Character path to the active coordinate CSV.
+#'
+#' @noRd
+.coords_path <- function() {
+  slc_coords_path()
+}
+
+#' Resolve reader Airline ID lookup CSV path
+#'
+#' Resolves the Airline ID lookup CSV path for [read_airlines()].
+#'
+#' @returns
+#' Character path to the active Airline ID lookup CSV.
+#'
+#' @noRd
+.airlines_path <- function() {
+  slc_airlines_path()
+}

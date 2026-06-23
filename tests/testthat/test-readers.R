@@ -208,3 +208,312 @@ test_that("packaged field dictionary CSV is readable", {
   expect_true(all(!is.na(x[required_metadata])))
   expect_true(all(x[required_metadata] != ""))
 })
+
+test_that("read_main uses active database paths when present", {
+  root <- tempfile("slc-reader-db-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  main <- slcflights:::slc_db_parquet_path(
+    "main",
+    1987,
+    root = root,
+    create = TRUE
+  )
+
+  x <- data.frame(
+    FlightDate = as.Date("1987-10-01"),
+    OriginAirportID = 14869L,
+    DestAirportID = 10000L
+  )
+
+  arrow::write_parquet(x, main)
+
+  testthat::local_mocked_bindings(
+    slc_available_data_years = function(type = c("main", "div"),
+                                        root = NULL) {
+      type <- match.arg(type)
+      expect_equal(type, "main")
+
+      1987L
+    },
+    slc_data_paths = function(type = c("main", "div"),
+                              years = NULL,
+                              root = NULL) {
+      type <- match.arg(type)
+      expect_equal(type, "main")
+      expect_equal(years, 1987L)
+
+      data.frame(
+        year = 1987L,
+        source = "database",
+        path = main
+      )
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::read_main(years = 1987)
+
+  expect_equal(nrow(out), 1L)
+  expect_equal(out$OriginAirportID, 14869L)
+  expect_equal(out$DestAirportID, 10000L)
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("read_year_main uses active database paths when present", {
+  root <- tempfile("slc-reader-db-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  main <- slcflights:::slc_db_parquet_path(
+    "main",
+    1987,
+    root = root,
+    create = TRUE
+  )
+
+  x <- data.frame(
+    FlightDate = as.Date("1987-10-01"),
+    OriginAirportID = 14869L,
+    DestAirportID = 10000L
+  )
+
+  arrow::write_parquet(x, main)
+
+  testthat::local_mocked_bindings(
+    slc_available_data_years = function(type = c("main", "div"),
+                                        root = NULL) {
+      type <- match.arg(type)
+      expect_equal(type, "main")
+
+      1987L
+    },
+    slc_data_paths = function(type = c("main", "div"),
+                              years = NULL,
+                              root = NULL) {
+      type <- match.arg(type)
+      expect_equal(type, "main")
+      expect_equal(years, 1987L)
+
+      data.frame(
+        year = 1987L,
+        source = "database",
+        path = main
+      )
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::read_year_main(year = 1987)
+
+  expect_equal(nrow(out), 1L)
+  expect_equal(out$OriginAirportID, 14869L)
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("read_div uses active database paths when present", {
+  root <- tempfile("slc-reader-db-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  div <- slcflights:::slc_db_parquet_path(
+    "div",
+    1987,
+    root = root,
+    create = TRUE
+  )
+
+  x <- data.frame(
+    FlightDate = as.Date("1987-10-01"),
+    OriginAirportID = 10000L,
+    DestAirportID = 20000L,
+    Div1AirportID = 14869L
+  )
+
+  arrow::write_parquet(x, div)
+
+  testthat::local_mocked_bindings(
+    slc_available_data_years = function(type = c("main", "div"),
+                                        root = NULL) {
+      type <- match.arg(type)
+      expect_equal(type, "div")
+
+      1987L
+    },
+    slc_data_paths = function(type = c("main", "div"),
+                              years = NULL,
+                              root = NULL) {
+      type <- match.arg(type)
+      expect_equal(type, "div")
+      expect_equal(years, 1987L)
+
+      data.frame(
+        year = 1987L,
+        source = "database",
+        path = div
+      )
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::read_div(years = 1987)
+
+  expect_equal(nrow(out), 1L)
+  expect_equal(out$Div1AirportID, 14869L)
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("read_year_div uses active database paths when present", {
+  root <- tempfile("slc-reader-db-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  div <- slcflights:::slc_db_parquet_path(
+    "div",
+    1987,
+    root = root,
+    create = TRUE
+  )
+
+  x <- data.frame(
+    FlightDate = as.Date("1987-10-01"),
+    OriginAirportID = 10000L,
+    DestAirportID = 20000L,
+    Div1AirportID = 14869L
+  )
+
+  arrow::write_parquet(x, div)
+
+  testthat::local_mocked_bindings(
+    slc_available_data_years = function(type = c("main", "div"),
+                                        root = NULL) {
+      type <- match.arg(type)
+      expect_equal(type, "div")
+
+      1987L
+    },
+    slc_data_paths = function(type = c("main", "div"),
+                              years = NULL,
+                              root = NULL) {
+      type <- match.arg(type)
+      expect_equal(type, "div")
+      expect_equal(years, 1987L)
+
+      data.frame(
+        year = 1987L,
+        source = "database",
+        path = div
+      )
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::read_year_div(year = 1987)
+
+  expect_equal(nrow(out), 1L)
+  expect_equal(out$Div1AirportID, 14869L)
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("read_coords uses active database metadata when present", {
+  root <- tempfile("slc-reader-db-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  coords <- slcflights:::slc_db_coords_path(
+    root = root,
+    create = TRUE
+  )
+
+  writeLines(
+    c(
+      "AIRPORT_SEQ_ID,LATITUDE,LONGITUDE",
+      "1,40.1,-111.1"
+    ),
+    coords
+  )
+
+  testthat::local_mocked_bindings(
+    slc_coords_path = function(root = NULL) {
+      coords
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::read_coords()
+
+  expect_equal(nrow(out), 1L)
+  expect_equal(out$AIRPORT_SEQ_ID, 1L)
+  expect_equal(out$LATITUDE, 40.1)
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("read_airlines uses active database metadata when present", {
+  root <- tempfile("slc-reader-db-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  airlines <- slcflights:::slc_db_airlines_path(
+    root = root,
+    create = TRUE
+  )
+
+  writeLines(
+    c(
+      "Code,Description",
+      "20001,First Airline Inc.: FA"
+    ),
+    airlines
+  )
+
+  testthat::local_mocked_bindings(
+    slc_airlines_path = function(root = NULL) {
+      airlines
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::read_airlines()
+
+  expect_equal(nrow(out), 1L)
+  expect_equal(out$Code, 20001L)
+  expect_equal(out$Description, "First Airline Inc.: FA")
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
