@@ -92,13 +92,11 @@ test_that("cache build passes raw metadata paths to staging", {
 
       root
     },
-    cache_stage_build = function(
-      months,
-      root,
-      coords_in,
-      airlines_in,
-      include_installed
-    ) {
+    cache_stage_build = function(months,
+                                 root,
+                                 coords_in,
+                                 airlines_in,
+                                 include_installed) {
       expect_equal(months, data.frame(year = 2024L, month = 7L))
       expect_equal(
         root,
