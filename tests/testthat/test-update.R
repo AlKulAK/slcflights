@@ -335,7 +335,7 @@ test_that("database build passes raw metadata paths to staging", {
 
       invisible(TRUE)
     },
-    cache_stage_promote = function(staging_root, active_root) {
+    db_stage_promote = function(staging_root, active_root) {
       expect_equal(
         staging_root,
         slcflights:::slc_db_staging_root(create = FALSE)
@@ -430,4 +430,106 @@ test_that("large initial database build requires confirmation", {
     ),
     "confirm = TRUE"
   )
+})
+
+test_that("database build creates one-month active database", {
+  root <- tempfile("slc-db-build-")
+
+  on.exit(unlink(root, recursive = TRUE, force = TRUE), add = TRUE)
+
+  testthat::local_mocked_bindings(
+    slc_cache_root = function(create = TRUE) {
+      if (isTRUE(create)) {
+        dir.create(root, recursive = TRUE, showWarnings = FALSE)
+      }
+
+      root
+    },
+    download_bts_ontime_month = function(year,
+                                         month,
+                                         overwrite = FALSE,
+                                         keep_zip = TRUE) {
+      expect_equal(year, 1987L)
+      expect_equal(month, 10L)
+      expect_false(overwrite)
+      expect_true(keep_zip)
+
+      month_dir <- slcflights:::slc_cache_raw_ontime_month_dir(
+        year,
+        month,
+        create = TRUE
+      )
+
+      path <- file.path(month_dir, "bts_ontime.csv")
+      make_stage_bts_csv(path)
+    },
+    download_bts_master_coords = function(destfile, overwrite = FALSE) {
+      expect_equal(
+        destfile,
+        slcflights:::slc_cache_raw_coords_path(create = TRUE)
+      )
+      expect_false(overwrite)
+
+      make_stage_coords_csv(destfile)
+    },
+    download_bts_airline_id = function(destfile, overwrite = FALSE) {
+      expect_equal(
+        destfile,
+        slcflights:::slc_cache_raw_airlines_path(create = TRUE)
+      )
+      expect_false(overwrite)
+
+      make_stage_airlines_csv(destfile)
+    },
+    .package = "slcflights"
+  )
+
+  info <- suppressMessages(
+    slcflights:::build_slcflights_db(
+      until = "1987-10",
+      confirm = TRUE
+    )
+  )
+
+  expect_true(info$exists)
+  expect_true(info$complete)
+  expect_equal(info$endpoint$year, 1987L)
+  expect_equal(info$endpoint$month, 10L)
+  expect_equal(info$manifest$db_start, "1987-10")
+  expect_equal(info$manifest$db_end, "1987-10")
+
+  main <- slcflights:::slc_db_parquet_path(
+    "main",
+    1987,
+    root = slcflights:::slc_db_root(create = FALSE),
+    create = FALSE
+  )
+
+  coords <- slcflights:::slc_db_coords_path(
+    root = slcflights:::slc_db_root(create = FALSE),
+    create = FALSE
+  )
+
+  airlines <- slcflights:::slc_db_airlines_path(
+    root = slcflights:::slc_db_root(create = FALSE),
+    create = FALSE
+  )
+
+  manifest <- slcflights:::slc_db_manifest_path(
+    root = slcflights:::slc_db_root(create = FALSE),
+    create = FALSE
+  )
+
+  expect_true(file.exists(main))
+  expect_true(file.exists(coords))
+  expect_true(file.exists(airlines))
+  expect_true(file.exists(manifest))
+
+  x <- arrow::read_parquet(main)
+
+  expect_equal(nrow(x), 2L)
+  expect_true("OriginLatitude" %in% names(x))
+  expect_true("DestLatitude" %in% names(x))
+  expect_true("Reporting_Airline_Name" %in% names(x))
+  expect_true("Reporting_Airline_Lookup_Code" %in% names(x))
 })

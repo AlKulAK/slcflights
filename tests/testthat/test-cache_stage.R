@@ -1,66 +1,3 @@
-make_stage_coords_csv <- function(path) {
-  writeLines(
-    c(
-      paste(
-        "AIRPORT_SEQ_ID",
-        "LATITUDE",
-        "LONGITUDE",
-        "AIRPORT_START_DATE",
-        "AIRPORT_THRU_DATE",
-        "AIRPORT_IS_CLOSED",
-        "AIRPORT_IS_LATEST",
-        sep = ","
-      ),
-      "1,40.1,-111.1,01/01/2020 12:00:00 AM,12/31/2099 12:00:00 AM,0,1",
-      "2,40.2,-111.2,01/01/2020 12:00:00 AM,12/31/2099 12:00:00 AM,0,1",
-      "3,40.3,-111.3,01/01/2020 12:00:00 AM,12/31/2099 12:00:00 AM,0,1",
-      "4,40.4,-111.4,01/01/2020 12:00:00 AM,12/31/2099 12:00:00 AM,0,1"
-    ),
-    path
-  )
-
-  path
-}
-
-make_stage_airlines_csv <- function(path) {
-  writeLines(
-    c(
-      paste(
-        "Code",
-        "Description",
-        sep = ","
-      ),
-      "20001,First Airline Inc.: FA",
-      "20002,Second Airline LLC: SB",
-      "20003,Third Airline: TC"
-    ),
-    path
-  )
-
-  path
-}
-
-make_stage_bts_csv <- function(path) {
-  rows <- data.frame(
-    FlightDate = c("2024-07-02", "2024-07-01", "2024-07-03"),
-    CRSDepTime = c(900L, 800L, 700L),
-    DOT_ID_Reporting_Airline = c(20001L, 20002L, 20003L),
-    OriginAirportID = c(14869L, 11111L, 22222L),
-    DestAirportID = c(33333L, 14869L, 44444L),
-    OriginAirportSeqID = c(1L, 2L, 3L),
-    DestAirportSeqID = c(2L, 3L, 4L)
-  )
-
-  utils::write.csv(
-    rows,
-    path,
-    row.names = FALSE,
-    na = ""
-  )
-
-  path
-}
-
 test_that("staging prepare clears and recreates directory", {
   root <- tempfile("slc-cache-stage-")
   dir.create(root, recursive = TRUE)
@@ -359,4 +296,49 @@ test_that("staging promotion moves validated staging to active", {
   expect_true(slcflights:::validate_cache_files(root = active))
 
   unlink(c(parent, csv, coords, airlines), recursive = TRUE, force = TRUE)
+})
+
+test_that("database staging promotion activates staged database", {
+  staging <- tempfile("slc-db-staging-")
+  active <- tempfile("slc-db-active-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = staging,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  main <- slcflights:::slc_db_parquet_path(
+    "main",
+    1987,
+    root = staging,
+    create = TRUE
+  )
+
+  coords <- slcflights:::slc_db_coords_path(
+    root = staging,
+    create = TRUE
+  )
+
+  airlines <- slcflights:::slc_db_airlines_path(
+    root = staging,
+    create = TRUE
+  )
+
+  writeLines("main", main)
+  writeLines("coords", coords)
+  writeLines("airlines", airlines)
+
+  out <- slcflights:::db_stage_promote(
+    staging_root = staging,
+    active_root = active
+  )
+
+  expect_equal(out, active)
+  expect_false(dir.exists(staging))
+  expect_true(dir.exists(active))
+  expect_true(slcflights:::validate_db_files(root = active))
+
+  unlink(active, recursive = TRUE, force = TRUE)
 })

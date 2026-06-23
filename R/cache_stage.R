@@ -484,3 +484,43 @@ cache_stage_promote <- function(
 
   invisible(active_root)
 }
+
+#' Promote a staged local database
+#'
+#' Validates a staged local database, removes any existing active database, and
+#' promotes the staged database to the active database location.
+#'
+#' @param staging_root Staged database root.
+#' @param active_root Active database root.
+#'
+#' @returns
+#' Invisibly, the active database root.
+#'
+#' @noRd
+db_stage_promote <- function(
+  staging_root = slc_db_staging_root(create = FALSE),
+  active_root = slc_db_root(create = FALSE)
+) {
+  db_stage_validate(staging_root)
+
+  if (dir.exists(active_root)) {
+    unlink(active_root, recursive = TRUE, force = TRUE)
+  }
+
+  parent <- dirname(active_root)
+
+  if (!dir.exists(parent)) {
+    dir.create(parent, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  ok <- file.rename(staging_root, active_root)
+
+  if (!isTRUE(ok)) {
+    stop(
+      "Failed to activate the staged slcflights database.",
+      call. = FALSE
+    )
+  }
+
+  invisible(active_root)
+}

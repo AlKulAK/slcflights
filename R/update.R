@@ -204,7 +204,7 @@ build_db_cache <- function(months) {
 
   message("Activating local slcflights database...")
 
-  cache_stage_promote(
+  db_stage_promote(
     staging_root = slc_db_staging_root(create = FALSE),
     active_root = slc_db_root(create = FALSE)
   )
