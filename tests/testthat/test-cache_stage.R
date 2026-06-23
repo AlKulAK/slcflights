@@ -342,3 +342,64 @@ test_that("database staging promotion activates staged database", {
 
   unlink(active, recursive = TRUE, force = TRUE)
 })
+
+test_that("database staging extension rebuilds affected years", {
+  active <- tempfile("slc-db-active-")
+  staging <- tempfile("slc-db-staging-")
+  csv_oct <- tempfile("slc-stage-oct-", fileext = ".csv")
+  csv_nov <- tempfile("slc-stage-nov-", fileext = ".csv")
+  coords <- tempfile("slc-stage-coords-", fileext = ".csv")
+  airlines <- tempfile("slc-stage-airlines-", fileext = ".csv")
+
+  make_stage_bts_csv(csv_oct)
+  make_stage_bts_csv(csv_nov)
+  make_stage_coords_csv(coords)
+  make_stage_airlines_csv(airlines)
+
+  slcflights:::db_stage_build(
+    months = data.frame(year = 1987L, month = 10L),
+    root = active,
+    coords_in = coords,
+    airlines_in = airlines,
+    csv_files = list("1987" = csv_oct),
+    finalize_schema = FALSE
+  )
+
+  out <- slcflights:::db_stage_extend(
+    months = data.frame(
+      year = c(1987L, 1987L),
+      month = c(10L, 11L)
+    ),
+    extend_months = data.frame(year = 1987L, month = 11L),
+    active_root = active,
+    root = staging,
+    coords_in = coords,
+    airlines_in = airlines,
+    csv_files = list("1987" = c(csv_oct, csv_nov)),
+    finalize_schema = FALSE
+  )
+
+  main <- slcflights:::slc_db_parquet_path(
+    "main",
+    1987,
+    root = staging,
+    create = FALSE
+  )
+
+  expect_true(file.exists(main))
+  expect_true(slcflights:::validate_db_files(root = staging))
+  expect_equal(out$manifest$db_start, "1987-10")
+  expect_equal(out$manifest$db_end, "1987-11")
+
+  x <- arrow::read_parquet(main)
+
+  expect_equal(nrow(x), 4L)
+  expect_true("OriginLatitude" %in% names(x))
+  expect_true("Reporting_Airline_Name" %in% names(x))
+
+  unlink(
+    c(active, staging, csv_oct, csv_nov, coords, airlines),
+    recursive = TRUE,
+    force = TRUE
+  )
+})

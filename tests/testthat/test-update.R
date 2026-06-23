@@ -533,3 +533,104 @@ test_that("database build creates one-month active database", {
   expect_true("Reporting_Airline_Name" %in% names(x))
   expect_true("Reporting_Airline_Lookup_Code" %in% names(x))
 })
+
+test_that("database build extends active database", {
+  root <- tempfile("slc-db-build-")
+  calls <- character()
+
+  on.exit(unlink(root, recursive = TRUE, force = TRUE), add = TRUE)
+
+  testthat::local_mocked_bindings(
+    slc_cache_root = function(create = TRUE) {
+      if (isTRUE(create)) {
+        dir.create(root, recursive = TRUE, showWarnings = FALSE)
+      }
+
+      root
+    },
+    download_bts_ontime_month = function(year,
+                                         month,
+                                         overwrite = FALSE,
+                                         keep_zip = TRUE) {
+      calls <<- c(calls, sprintf("%04d-%02d", year, month))
+
+      month_dir <- slcflights:::slc_cache_raw_ontime_month_dir(
+        year,
+        month,
+        create = TRUE
+      )
+
+      path <- file.path(month_dir, "bts_ontime.csv")
+      make_stage_bts_csv(path)
+    },
+    download_bts_master_coords = function(destfile, overwrite = FALSE) {
+      make_stage_coords_csv(destfile)
+    },
+    download_bts_airline_id = function(destfile, overwrite = FALSE) {
+      make_stage_airlines_csv(destfile)
+    },
+    .package = "slcflights"
+  )
+
+  suppressMessages(
+    slcflights:::build_slcflights_db(
+      until = "1987-10",
+      confirm = TRUE
+    )
+  )
+
+  info <- suppressMessages(
+    slcflights:::build_slcflights_db(
+      until = "1987-11",
+      confirm = TRUE
+    )
+  )
+
+  expect_equal(calls, c("1987-10", "1987-11"))
+  expect_true(info$exists)
+  expect_true(info$complete)
+  expect_equal(info$endpoint$year, 1987L)
+  expect_equal(info$endpoint$month, 11L)
+  expect_equal(info$manifest$db_start, "1987-10")
+  expect_equal(info$manifest$db_end, "1987-11")
+
+  main <- slcflights:::slc_db_parquet_path(
+    "main",
+    1987,
+    root = slcflights:::slc_db_root(create = FALSE),
+    create = FALSE
+  )
+
+  x <- arrow::read_parquet(main)
+
+  expect_equal(nrow(x), 4L)
+})
+
+test_that("download month validation allows extension months", {
+  months <- slcflights:::validate_download_months(
+    data.frame(
+      year = c(2024L, 2024L),
+      month = c(7L, 8L)
+    )
+  )
+
+  expect_equal(
+    months,
+    data.frame(
+      year = c(2024L, 2024L),
+      month = c(7L, 8L)
+    )
+  )
+})
+
+test_that("download month validation rejects duplicates", {
+  expect_error(
+    slcflights:::validate_download_months(
+      data.frame(
+        year = c(2024L, 2024L),
+        month = c(7L, 7L)
+      )
+    ),
+    "duplicate"
+  )
+})

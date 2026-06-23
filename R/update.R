@@ -161,8 +161,49 @@ db_months_for_until <- function(until) {
   db_month_sequence(resolve_db_until(until))
 }
 
+validate_download_months <- function(months, arg = "months") {
+  if (!is.data.frame(months)) {
+    stop(sprintf("`%s` must be a data frame.", arg), call. = FALSE)
+  }
+
+  if (!all(c("year", "month") %in% names(months))) {
+    stop(
+      sprintf("`%s` must contain `year` and `month` columns.", arg),
+      call. = FALSE
+    )
+  }
+
+  if (!nrow(months)) {
+    stop(sprintf("`%s` must contain at least one month.", arg), call. = FALSE)
+  }
+
+  months <- months[, c("year", "month"), drop = FALSE]
+  months$year <- as.integer(months$year)
+  months$month <- as.integer(months$month)
+
+  for (i in seq_len(nrow(months))) {
+    as_year_month(
+      months$year[[i]],
+      months$month[[i]],
+      arg = sprintf("%s[%s, ]", arg, i)
+    )
+  }
+
+  months <- months[order(months$year, months$month), , drop = FALSE]
+  row.names(months) <- NULL
+
+  if (any(duplicated(months))) {
+    stop(
+      sprintf("`%s` must not contain duplicate months.", arg),
+      call. = FALSE
+    )
+  }
+
+  months
+}
+
 download_db_months <- function(months, overwrite = FALSE) {
-  months <- validate_db_months(months)
+  months <- validate_download_months(months)
 
   out <- vector("list", nrow(months))
 
@@ -203,6 +244,26 @@ build_db_cache <- function(months) {
   )
 
   message("Activating local slcflights database...")
+
+  db_stage_promote(
+    staging_root = slc_db_staging_root(create = FALSE),
+    active_root = slc_db_root(create = FALSE)
+  )
+}
+
+extend_db_cache <- function(months, extend_months) {
+  message("Extending local slcflights database...")
+
+  db_stage_extend(
+    months = months,
+    extend_months = extend_months,
+    active_root = slc_db_root(create = FALSE),
+    root = slc_db_staging_root(create = TRUE),
+    coords_in = slc_cache_raw_coords_path(create = FALSE),
+    airlines_in = slc_cache_raw_airlines_path(create = FALSE)
+  )
+
+  message("Activating extended local slcflights database...")
 
   db_stage_promote(
     staging_root = slc_db_staging_root(create = FALSE),
@@ -353,9 +414,8 @@ clear_cache_root <- function(root, confirm = interactive()) {
 #' Invisibly, a list describing the active local database.
 #'
 #' @details
-#' This first-pass implementation supports initial database builds beginning
-#' with October 1987. Existing database extension will be added after active
-#' database and staged-extension promotion are wired together.
+#' Builds an initial local database beginning with October 1987, or extends an
+#' existing local database forward from its current endpoint.
 #'
 #' @noRd
 build_slcflights_db <- function(
@@ -366,28 +426,35 @@ build_slcflights_db <- function(
   message("Resolving requested slcflights database endpoint...")
 
   active <- read_db_manifest(root = slc_db_root(create = FALSE))
+  endpoint <- resolve_db_until(until)
+  months <- db_month_sequence(endpoint)
 
-  if (!is.null(active)) {
-    stop(
-      paste(
-        "A local slcflights database is already active.",
-        "Database extension support is not wired in this step."
-      ),
-      call. = FALSE
+  if (is.null(active)) {
+    dl_months <- months
+  } else {
+    current_end <- db_endpoint_from_manifest(active)
+
+    dl_months <- db_extension_months(
+      current_end = current_end,
+      until = endpoint
     )
+
+    if (!nrow(dl_months)) {
+      stop(
+        paste(
+          "The local slcflights database already covers the requested",
+          "endpoint."
+        ),
+        call. = FALSE
+      )
+    }
   }
 
-  months <- db_months_for_until(until)
-  endpoint <- as_year_month(
-    months$year[[nrow(months)]],
-    months$month[[nrow(months)]]
-  )
-
-  if (nrow(months) > 24L && !isTRUE(confirm)) {
+  if (nrow(dl_months) > 24L && !isTRUE(confirm)) {
     stop(
       paste(
         "This operation would download and process",
-        nrow(months),
+        nrow(dl_months),
         "monthly BTS files.",
         "Run again with `confirm = TRUE` to proceed."
       ),
@@ -398,7 +465,7 @@ build_slcflights_db <- function(
   message("Building slcflights through ", format_year_month(endpoint), ".")
 
   download_db_months(
-    months = months,
+    months = dl_months,
     overwrite = overwrite
   )
 
@@ -410,7 +477,14 @@ build_slcflights_db <- function(
 
   download_db_airlines(overwrite = overwrite)
 
-  build_db_cache(months)
+  if (is.null(active)) {
+    build_db_cache(months)
+  } else {
+    extend_db_cache(
+      months = months,
+      extend_months = dl_months
+    )
+  }
 
   info <- slc_db_info()
 

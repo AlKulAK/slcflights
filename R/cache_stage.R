@@ -417,6 +417,243 @@ db_stage_build <- function(
   ))
 }
 
+#' Copy the active database into staging
+#'
+#' Prepares a staging root and copies the active local database into it.
+#'
+#' @param active_root Active local database root.
+#' @param root Staging database root.
+#'
+#' @returns
+#' Invisibly, the staging root.
+#'
+#' @noRd
+db_stage_copy_active <- function(
+  active_root = slc_db_root(create = FALSE),
+  root = slc_db_staging_root(create = TRUE)
+) {
+  if (!dir.exists(active_root)) {
+    stop(
+      "No active slcflights database was found.",
+      call. = FALSE
+    )
+  }
+
+  root <- cache_stage_prepare(root)
+
+  files <- list.files(
+    active_root,
+    all.files = TRUE,
+    no.. = TRUE,
+    full.names = TRUE
+  )
+
+  if (length(files)) {
+    ok <- file.copy(
+      from = files,
+      to = root,
+      recursive = TRUE,
+      copy.date = TRUE
+    )
+
+    if (!all(ok)) {
+      stop(
+        "Failed to copy the active slcflights database into staging.",
+        call. = FALSE
+      )
+    }
+  }
+
+  invisible(root)
+}
+
+#' Extend a local database in a staging directory
+#'
+#' Copies the active local database into staging, rebuilds annual files affected
+#' by the extension months, refreshes metadata, writes a database manifest, and
+#' validates the staged database.
+#'
+#' @param months Full database month sequence through the requested endpoint.
+#' @param extend_months Extension months to add to the active database.
+#' @param active_root Active local database root.
+#' @param root Staging database root.
+#' @param slc_id BTS airport ID for Salt Lake City.
+#' @param coords_in Path to the raw BTS Master Coordinate CSV.
+#' @param airlines_in Path to the raw BTS Airline ID lookup CSV.
+#' @param csv_files Optional named list of monthly BTS CSV files by year. Used
+#'   by tests and lower-level workflows.
+#' @param finalize_schema If `TRUE`, finalize staged Parquet files after
+#'   metadata enrichment.
+#'
+#' @returns
+#' Invisibly, a list containing the staging root, requested months, extension
+#' months, rebuilt files, metadata CSV paths, and manifest.
+#'
+#' @noRd
+db_stage_extend <- function(
+  months,
+  extend_months,
+  active_root = slc_db_root(create = FALSE),
+  root = slc_db_staging_root(create = TRUE),
+  slc_id = 14869L,
+  coords_in = slc_cache_raw_coords_path(create = FALSE),
+  airlines_in = slc_cache_raw_airlines_path(create = FALSE),
+  csv_files = NULL,
+  finalize_schema = TRUE
+) {
+  months <- validate_db_months(months)
+
+  if (!is.data.frame(extend_months)) {
+    stop("`extend_months` must be a data frame.", call. = FALSE)
+  }
+
+  if (!all(c("year", "month") %in% names(extend_months))) {
+    stop(
+      "`extend_months` must contain `year` and `month` columns.",
+      call. = FALSE
+    )
+  }
+
+  if (!nrow(extend_months)) {
+    stop("`extend_months` must contain at least one month.", call. = FALSE)
+  }
+
+  extend_months <- extend_months[, c("year", "month"), drop = FALSE]
+  extend_months$year <- as.integer(extend_months$year)
+  extend_months$month <- as.integer(extend_months$month)
+
+  root <- db_stage_copy_active(
+    active_root = active_root,
+    root = root
+  )
+
+  years <- sort(unique(extend_months$year))
+  con <- cache_build_connect()
+
+  on.exit(
+    {
+      if (!is.null(con)) {
+        cache_build_disconnect(con)
+      }
+    },
+    add = TRUE
+  )
+
+  built_files <- character()
+
+  for (year in years) {
+    year_name <- as.character(year)
+    year_months <- months$month[months$year == year]
+    year_csv <- NULL
+
+    if (!is.null(csv_files)) {
+      year_csv <- csv_files[[year_name]]
+    }
+
+    unlink(
+      c(
+        slc_db_parquet_path(
+          "main",
+          year,
+          root = root,
+          create = FALSE
+        ),
+        slc_db_parquet_path(
+          "div",
+          year,
+          root = root,
+          create = FALSE
+        )
+      ),
+      force = TRUE
+    )
+
+    built_files <- c(
+      built_files,
+      cache_build_write_year_files(
+        year = year,
+        months = year_months,
+        root = root,
+        slc_id = slc_id,
+        csv_files = year_csv,
+        con = con
+      )
+    )
+  }
+
+  all_years <- sort(unique(months$year))
+
+  coord_files <- cache_stage_parquet_files(
+    root = root,
+    years = all_years
+  )
+
+  coords_out <- slc_db_coords_path(
+    root = root,
+    create = TRUE
+  )
+
+  airlines_out <- slc_db_airlines_path(
+    root = root,
+    create = TRUE
+  )
+
+  cache_build_reduce_coords_csv(
+    parquet_files = coord_files,
+    coords_in = coords_in,
+    coords_out = coords_out,
+    con = con
+  )
+
+  cache_build_reduce_air_csv(
+    parquet_files = coord_files,
+    airlines_in = airlines_in,
+    airlines_out = airlines_out,
+    con = con
+  )
+
+  cache_build_enrich_files(
+    parquet_files = built_files,
+    coords_in = coords_out,
+    con = con
+  )
+
+  cache_build_disconnect(con)
+  con <- cache_build_connect()
+
+  cache_build_enrich_air_files(
+    parquet_files = built_files,
+    airlines_in = airlines_out,
+    con = con
+  )
+
+  if (isTRUE(finalize_schema)) {
+    cache_build_disconnect(con)
+    con <- NULL
+
+    cache_schema_align_files(
+      files = built_files
+    )
+  }
+
+  manifest <- write_db_manifest(
+    months = months,
+    root = root
+  )
+
+  db_stage_validate(root)
+
+  invisible(list(
+    root = root,
+    months = months,
+    extend_months = extend_months,
+    files = unname(built_files),
+    coords = coords_out,
+    airlines = airlines_out,
+    manifest = manifest
+  ))
+}
+
 #' Promote a staged cache to the active cache
 #'
 #' Validates a staged cache and atomically promotes it to the active cache
