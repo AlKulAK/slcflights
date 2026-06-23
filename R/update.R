@@ -147,6 +147,121 @@ build_update_cache <- function(months) {
   )
 }
 
+resolve_db_until <- function(until) {
+  until <- normalize_db_until(until)
+
+  if (identical(until, "latest")) {
+    return(bts_latest_month())
+  }
+
+  validate_db_until(until)
+}
+
+db_months_for_until <- function(until) {
+  db_month_sequence(resolve_db_until(until))
+}
+
+download_db_months <- function(months, overwrite = FALSE) {
+  months <- validate_db_months(months)
+
+  out <- vector("list", nrow(months))
+
+  for (i in seq_len(nrow(months))) {
+    out[[i]] <- download_bts_ontime_month(
+      year = months$year[[i]],
+      month = months$month[[i]],
+      overwrite = overwrite,
+      keep_zip = TRUE
+    )
+  }
+
+  unlist(out, use.names = FALSE)
+}
+
+download_db_coords <- function(overwrite = FALSE) {
+  download_bts_master_coords(
+    destfile = slc_cache_raw_coords_path(create = TRUE),
+    overwrite = overwrite
+  )
+}
+
+download_db_airlines <- function(overwrite = FALSE) {
+  download_bts_airline_id(
+    destfile = slc_cache_raw_airlines_path(create = TRUE),
+    overwrite = overwrite
+  )
+}
+
+build_db_cache <- function(months) {
+  message("Building local slcflights database...")
+
+  db_stage_build(
+    months = months,
+    root = slc_db_staging_root(create = TRUE),
+    coords_in = slc_cache_raw_coords_path(create = FALSE),
+    airlines_in = slc_cache_raw_airlines_path(create = FALSE)
+  )
+
+  message("Activating local slcflights database...")
+
+  cache_stage_promote(
+    staging_root = slc_db_staging_root(create = FALSE),
+    active_root = slc_db_root(create = FALSE)
+  )
+}
+
+slc_db_info <- function(root = NULL) {
+  if (is.null(root)) {
+    root <- slc_db_root(create = FALSE)
+  }
+
+  root <- normalizePath(root, winslash = "/", mustWork = FALSE)
+
+  manifest <- read_db_manifest(root = root)
+  complete <- db_months_are_complete(root = root)
+
+  months <- if (is.null(manifest)) {
+    data.frame(year = integer(), month = integer())
+  } else {
+    db_months_from_manifest(manifest)
+  }
+
+  endpoint <- if (is.null(manifest)) {
+    NULL
+  } else {
+    db_endpoint_from_manifest(manifest)
+  }
+
+  list(
+    root = root,
+    exists = !is.null(manifest),
+    complete = complete,
+    months = months,
+    endpoint = endpoint,
+    manifest = manifest
+  )
+}
+
+print_db_info <- function(info) {
+  if (!isTRUE(info$exists)) {
+    message("No local slcflights database is currently active.")
+    message("Database location: ", info$root)
+    return(invisible(info))
+  }
+
+  endpoint <- format_year_month(info$endpoint)
+
+  message("Local slcflights database is active.")
+  message("Database location: ", info$root)
+  message("Database data through: ", endpoint)
+  message(
+    "Database status: ",
+    if (isTRUE(info$complete)) "complete" else "incomplete"
+  )
+
+  invisible(info)
+}
+
 slc_cache_info <- function(root = NULL) {
   if (is.null(root)) {
     root <- slc_cache_active_root(create = FALSE)
@@ -222,6 +337,86 @@ clear_cache_root <- function(root, confirm = interactive()) {
   }
 
   invisible(TRUE)
+}
+
+#' Build a Local slcflights Database
+#'
+#' Builds a local slcflights database from BTS monthly source files.
+#'
+#' @param until Endpoint through which to build. Use `"latest"`, a four-digit
+#'   year, a string of the form `"YYYY-MM"`, or `c(year, month)`.
+#' @param overwrite If `TRUE`, re-downloads raw BTS source files already present
+#'   in the local raw-data cache.
+#' @param confirm If `TRUE`, confirms large initial database builds.
+#'
+#' @returns
+#' Invisibly, a list describing the active local database.
+#'
+#' @details
+#' This first-pass implementation supports initial database builds beginning
+#' with October 1987. Existing database extension will be added after active
+#' database and staged-extension promotion are wired together.
+#'
+#' @noRd
+build_slcflights_db <- function(
+  until,
+  overwrite = FALSE,
+  confirm = FALSE
+) {
+  message("Resolving requested slcflights database endpoint...")
+
+  active <- read_db_manifest(root = slc_db_root(create = FALSE))
+
+  if (!is.null(active)) {
+    stop(
+      paste(
+        "A local slcflights database is already active.",
+        "Database extension support is not wired in this step."
+      ),
+      call. = FALSE
+    )
+  }
+
+  months <- db_months_for_until(until)
+  endpoint <- as_year_month(
+    months$year[[nrow(months)]],
+    months$month[[nrow(months)]]
+  )
+
+  if (nrow(months) > 24L && !isTRUE(confirm)) {
+    stop(
+      paste(
+        "This operation would download and process",
+        nrow(months),
+        "monthly BTS files.",
+        "Run again with `confirm = TRUE` to proceed."
+      ),
+      call. = FALSE
+    )
+  }
+
+  message("Building slcflights through ", format_year_month(endpoint), ".")
+
+  download_db_months(
+    months = months,
+    overwrite = overwrite
+  )
+
+  message("Downloading airport coordinate data...")
+
+  download_db_coords(overwrite = overwrite)
+
+  message("Downloading airline lookup data...")
+
+  download_db_airlines(overwrite = overwrite)
+
+  build_db_cache(months)
+
+  info <- slc_db_info()
+
+  message("slcflights database build complete.")
+
+  invisible(info)
 }
 
 #' Update Locally Available slcflights Data

@@ -213,3 +213,221 @@ test_that("clearing cache root deletes directory without confirmation", {
   expect_true(out)
   expect_false(dir.exists(root))
 })
+
+test_that("explicit database endpoint resolves without network probing", {
+  out <- slcflights:::resolve_db_until("2024-06")
+
+  expect_equal(out$year, 2024L)
+  expect_equal(out$month, 6L)
+})
+
+test_that("database months for endpoint begin in October 1987", {
+  out <- slcflights:::db_months_for_until("1987-12")
+
+  expect_equal(
+    out,
+    data.frame(
+      year = c(1987L, 1987L, 1987L),
+      month = c(10L, 11L, 12L)
+    )
+  )
+})
+
+test_that("database month download uses BTS monthly downloader", {
+  months <- data.frame(
+    year = c(1987L, 1987L),
+    month = c(10L, 11L)
+  )
+
+  calls <- list()
+
+  testthat::local_mocked_bindings(
+    download_bts_ontime_month = function(year,
+                                         month,
+                                         overwrite = FALSE,
+                                         keep_zip = TRUE) {
+      calls[[length(calls) + 1L]] <<- list(
+        year = year,
+        month = month,
+        overwrite = overwrite,
+        keep_zip = keep_zip
+      )
+
+      paste0(year, "-", month, ".csv")
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights:::download_db_months(
+    months = months,
+    overwrite = TRUE
+  )
+
+  expect_equal(out, c("1987-10.csv", "1987-11.csv"))
+  expect_equal(length(calls), 2L)
+  expect_true(calls[[1L]]$overwrite)
+  expect_true(calls[[1L]]$keep_zip)
+})
+
+test_that("database metadata downloads write to raw cache paths", {
+  testthat::local_mocked_bindings(
+    download_bts_master_coords = function(destfile, overwrite = FALSE) {
+      expect_equal(
+        destfile,
+        slcflights:::slc_cache_raw_coords_path(create = TRUE)
+      )
+      expect_false(overwrite)
+      destfile
+    },
+    download_bts_airline_id = function(destfile, overwrite = FALSE) {
+      expect_equal(
+        destfile,
+        slcflights:::slc_cache_raw_airlines_path(create = TRUE)
+      )
+      expect_false(overwrite)
+      destfile
+    },
+    .package = "slcflights"
+  )
+
+  expect_equal(
+    slcflights:::download_db_coords(overwrite = FALSE),
+    slcflights:::slc_cache_raw_coords_path(create = TRUE)
+  )
+
+  expect_equal(
+    slcflights:::download_db_airlines(overwrite = FALSE),
+    slcflights:::slc_cache_raw_airlines_path(create = TRUE)
+  )
+})
+
+test_that("database build passes raw metadata paths to staging", {
+  months <- data.frame(year = 1987L, month = 10L)
+  root <- tempfile("slc-db-cache-")
+
+  on.exit(unlink(root, recursive = TRUE, force = TRUE), add = TRUE)
+
+  testthat::local_mocked_bindings(
+    slc_cache_root = function(create = TRUE) {
+      if (isTRUE(create)) {
+        dir.create(root, recursive = TRUE, showWarnings = FALSE)
+      }
+
+      root
+    },
+    db_stage_build = function(months,
+                              root,
+                              coords_in,
+                              airlines_in) {
+      expect_equal(months, data.frame(year = 1987L, month = 10L))
+      expect_equal(
+        root,
+        slcflights:::slc_db_staging_root(create = TRUE)
+      )
+      expect_equal(
+        coords_in,
+        slcflights:::slc_cache_raw_coords_path(create = FALSE)
+      )
+      expect_equal(
+        airlines_in,
+        slcflights:::slc_cache_raw_airlines_path(create = FALSE)
+      )
+
+      invisible(TRUE)
+    },
+    cache_stage_promote = function(staging_root, active_root) {
+      expect_equal(
+        staging_root,
+        slcflights:::slc_db_staging_root(create = FALSE)
+      )
+      expect_equal(
+        active_root,
+        slcflights:::slc_db_root(create = FALSE)
+      )
+
+      invisible(active_root)
+    },
+    .package = "slcflights"
+  )
+
+  out <- suppressMessages(
+    slcflights:::build_db_cache(months)
+  )
+
+  expect_equal(out, slcflights:::slc_db_root(create = FALSE))
+})
+
+test_that("database info reports absent database", {
+  root <- tempfile("slc-db-info-")
+
+  info <- slcflights:::slc_db_info(root = root)
+
+  expect_equal(
+    info$root,
+    normalizePath(root, winslash = "/", mustWork = FALSE)
+  )
+  expect_false(info$exists)
+  expect_false(info$complete)
+  expect_equal(
+    info$months,
+    data.frame(year = integer(), month = integer())
+  )
+  expect_null(info$endpoint)
+  expect_null(info$manifest)
+})
+
+test_that("database info reports present database", {
+  root <- tempfile("slc-db-info-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  main <- slcflights:::slc_db_parquet_path(
+    "main",
+    1987,
+    root = root,
+    create = TRUE
+  )
+
+  coords <- slcflights:::slc_db_coords_path(
+    root = root,
+    create = TRUE
+  )
+
+  airlines <- slcflights:::slc_db_airlines_path(
+    root = root,
+    create = TRUE
+  )
+
+  writeLines("main", main)
+  writeLines("coords", coords)
+  writeLines("airlines", airlines)
+
+  info <- slcflights:::slc_db_info(root = root)
+
+  expect_true(info$exists)
+  expect_true(info$complete)
+  expect_equal(info$endpoint$year, 1987L)
+  expect_equal(info$endpoint$month, 10L)
+  expect_equal(info$manifest$db_end, "1987-10")
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("large initial database build requires confirmation", {
+  testthat::local_mocked_bindings(
+    read_db_manifest = function(root = NULL) NULL,
+    .package = "slcflights"
+  )
+
+  expect_error(
+    suppressMessages(
+      slcflights:::build_slcflights_db(until = "1989-12")
+    ),
+    "confirm = TRUE"
+  )
+})

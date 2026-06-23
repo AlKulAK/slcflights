@@ -1,8 +1,8 @@
 # Internal cache schema finalization helpers ---------------------------------
 #
-# These helpers make cached Parquet files conform to the installed package
-# schema contract. They drop cache-only columns, preserve installed column
-# order, and error if a cached file is missing an installed template column.
+# These helpers finalize cached Parquet files after annual construction and
+# enrichment. They preserve all columns already present in the cached files and
+# rewrite each file in the package's canonical flight order.
 #
 # They do not download data, enrich coordinates, write manifests, or expose
 # user-facing update behavior.
@@ -37,53 +37,16 @@ cache_schema_year_for_file <- function(path) {
   as.integer(sub("^Year=", "", year_dir))
 }
 
-#' Resolve an installed schema template
-#'
-#' Finds the installed Parquet file whose schema should be used as the template
-#' for a cached main or diversion-only Parquet file. If the same year is not
-#' installed, the most recent installed year for that data grouping is used.
-#'
-#' @param type Flight-data grouping: `"main"` or `"div"`.
-#' @param year Integer-like calendar year for the cached file being aligned.
-#'
-#' @returns
-#' Character path to an installed Parquet schema template.
-#'
-#' @noRd
-cache_schema_template <- function(type = c("main", "div"), year) {
-  type <- match.arg(type)
-  year <- normalize_cache_year(year)
-
-  candidate <- slc_installed_parquet_path(type, year)
-
-  if (file.exists(candidate)) {
-    return(candidate)
-  }
-
-  years <- slc_available_installed_years(type)
-
-  if (!length(years)) {
-    stop(
-      sprintf("No installed %s schema template is available.", type),
-      call. = FALSE
-    )
-  }
-
-  slc_installed_parquet_path(type, max(years))
-}
-
 cache_schema_cols <- function(con, path) {
   cache_build_read_parquet_cols(con, path)
 }
 
-#' Align one cached Parquet file to the installed schema
+#' Finalize one cached Parquet file
 #'
-#' Rewrites one cached Parquet file so its columns match the installed package
-#' schema for the corresponding main or diversion-only data grouping.
-#' Cache-only columns are dropped, installed column order is preserved, and
-#' missing installed columns cause an error.
+#' Rewrites one cached Parquet file in canonical flight order while preserving
+#' all columns already present in the file.
 #'
-#' @param path Cached Parquet file to align.
+#' @param path Cached Parquet file to finalize.
 #' @param con Optional DuckDB connection. When `NULL`, a temporary connection
 #'   is opened and closed by this function.
 #'
@@ -104,29 +67,12 @@ cache_schema_align_file <- function(path, con = NULL) {
     on.exit(cache_build_disconnect(con), add = TRUE)
   }
 
-  type <- cache_schema_type_for_file(path)
-  year <- cache_schema_year_for_file(path)
+  cache_schema_type_for_file(path)
+  cache_schema_year_for_file(path)
 
-  template <- cache_schema_template(type, year)
-
-  template_cols <- cache_schema_cols(con, template)
-  cached_cols <- cache_schema_cols(con, path)
-
-  missing_cols <- setdiff(template_cols, cached_cols)
-
-  if (length(missing_cols)) {
-    stop(
-      sprintf(
-        "Cached %s Parquet file is missing required columns: %s",
-        type,
-        paste(missing_cols, collapse = ", ")
-      ),
-      call. = FALSE
-    )
-  }
-
-  sel <- cache_build_sql_ider_list(con, template_cols)
-  order_clause <- cache_build_order_clause(cached_cols, con)
+  cols <- cache_schema_cols(con, path)
+  sel <- cache_build_sql_ider_list(con, cols)
+  order_clause <- cache_build_order_clause(cols, con)
   tmp <- paste0(path, ".tmp")
 
   DBI::dbExecute(
@@ -156,16 +102,16 @@ cache_schema_align_file <- function(path, con = NULL) {
   invisible(path)
 }
 
-#' Align cached Parquet files to installed schemas
+#' Finalize cached Parquet files
 #'
-#' Applies installed-schema alignment to one or more cached Parquet files.
+#' Applies cache schema finalization to one or more cached Parquet files.
 #'
-#' @param files Character vector of cached Parquet files to align.
+#' @param files Character vector of cached Parquet files to finalize.
 #' @param con Optional DuckDB connection. When `NULL`, a temporary connection
 #'   is opened and closed by this function.
 #'
 #' @returns
-#' Character vector of aligned cached Parquet file paths.
+#' Character vector of finalized cached Parquet file paths.
 #'
 #' @noRd
 cache_schema_align_files <- function(files, con = NULL) {

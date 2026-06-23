@@ -327,3 +327,18 @@ test_that("annual cache builder errors without Origin/Dest columns", {
 
   unlink(c(root, csv), recursive = TRUE, force = TRUE)
 })
+
+test_that("cache_build_bts_cols drops malformed columns", {
+  cols <- c(
+    "FlightDate",
+    "Origin",
+    "Div5TailNum",
+    "column109",
+    ""
+  )
+
+  expect_equal(
+    cache_build_bts_cols(cols),
+    c("FlightDate", "Origin", "Div5TailNum")
+  )
+})

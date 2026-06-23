@@ -5,6 +5,9 @@
 
 slc_schema_version <- 1L
 
+slc_db_start_year <- 1987L
+slc_db_start_month <- 10L
+
 slc_bundled_start_year <- 1987L
 slc_bundled_start_month <- 10L
 
@@ -316,6 +319,20 @@ slc_first_download <- function() {
   )
 }
 
+#' Return the first slcflights database month
+#'
+#' Returns the first month represented in the local slcflights database.
+#'
+#' @returns
+#' A `"slc_year_month"` object for October 1987.
+#'
+#' @noRd
+slc_db_start <- function() {
+  new_year_month(
+    slc_db_start_year,
+    slc_db_start_month
+  )
+}
 
 # Update endpoint helpers ----------------------------------------------------
 
@@ -400,6 +417,129 @@ update_month_sequence <- function(until) {
   )
 
   months <- lapply(indexes, index_to_year_month)
+
+  data.frame(
+    year = vapply(months, `[[`, integer(1), "year"),
+    month = vapply(months, `[[`, integer(1), "month")
+  )
+}
+
+# Database endpoint helpers --------------------------------------------------
+
+#' Normalize a database endpoint
+#'
+#' Normalizes the user-facing `until` argument used by local database build
+#' workflows.
+#'
+#' @param until Database endpoint: `"latest"`, a four-digit year, a
+#'   `"YYYY-MM"` string, or `c(year, month)`.
+#'
+#' @returns
+#' Either the string `"latest"` or a validated `"slc_year_month"` object.
+#'
+#' @noRd
+normalize_db_until <- function(until) {
+  if (is.character(until) && identical(until, "latest")) {
+    return("latest")
+  }
+
+  if (is.character(until)) {
+    return(as_year_month_string(until, arg = "until"))
+  }
+
+  if (is.numeric(until) && length(until) == 1L) {
+    return(as_year_month(until, 12, arg = "until"))
+  }
+
+  if (is.numeric(until) && length(until) == 2L) {
+    return(as_year_month(until[[1]], until[[2]], arg = "until"))
+  }
+
+  stop(
+    paste(
+      "`until` must be \"latest\", a four-digit year,",
+      "a string of the form \"YYYY-MM\", or c(year, month)."
+    ),
+    call. = FALSE
+  )
+}
+
+#' Validate a concrete database endpoint
+#'
+#' Checks that a concrete database endpoint is not earlier than the first
+#' supported slcflights database month.
+#'
+#' @param until Internal `"slc_year_month"` object.
+#'
+#' @returns
+#' The validated `"slc_year_month"` object.
+#'
+#' @noRd
+validate_db_until <- function(until) {
+  until <- validate_year_month(until, arg = "until")
+  db_start <- slc_db_start()
+
+  if (year_month_index(until) < year_month_index(db_start)) {
+    stop(
+      "The slcflights database must begin with October 1987.",
+      call. = FALSE
+    )
+  }
+
+  until
+}
+
+#' Build the consecutive database month table
+#'
+#' Builds the consecutive sequence of database months from October 1987 through
+#' the requested endpoint.
+#'
+#' @param until Internal `"slc_year_month"` database endpoint.
+#'
+#' @returns
+#' A data frame with integer `year` and `month` columns.
+#'
+#' @noRd
+db_month_sequence <- function(until) {
+  until <- validate_db_until(until)
+
+  indexes <- seq.int(
+    year_month_index(slc_db_start()),
+    year_month_index(until)
+  )
+
+  months <- lapply(indexes, index_to_year_month)
+
+  data.frame(
+    year = vapply(months, `[[`, integer(1), "year"),
+    month = vapply(months, `[[`, integer(1), "month")
+  )
+}
+
+#' Build the contiguous database extension month table
+#'
+#' Builds the consecutive sequence of months needed to extend a local database
+#' from its current endpoint through a requested endpoint.
+#'
+#' @param current_end Current local database endpoint.
+#' @param until Requested local database endpoint.
+#'
+#' @returns
+#' A data frame with integer `year` and `month` columns.
+#'
+#' @noRd
+db_extension_months <- function(current_end, until) {
+  current_end <- validate_year_month(current_end, arg = "current_end")
+  until <- validate_db_until(until)
+
+  first_index <- year_month_index(current_end) + 1L
+  last_index <- year_month_index(until)
+
+  if (last_index < first_index) {
+    return(data.frame(year = integer(), month = integer()))
+  }
+
+  months <- lapply(seq.int(first_index, last_index), index_to_year_month)
 
   data.frame(
     year = vapply(months, `[[`, integer(1), "year"),

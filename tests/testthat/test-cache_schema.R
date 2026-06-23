@@ -33,24 +33,6 @@ test_that("schema year is inferred from cache path", {
   )
 })
 
-test_that("schema template uses installed file when year exists", {
-  out <- slcflights:::cache_schema_template("main", 2024)
-
-  expect_equal(
-    out,
-    slcflights:::slc_installed_parquet_path("main", 2024)
-  )
-})
-
-test_that("schema template falls back to latest installed year", {
-  out <- slcflights:::cache_schema_template("main", 2025)
-
-  expect_equal(
-    out,
-    slcflights:::slc_installed_parquet_path("main", 2024)
-  )
-})
-
 test_that("schema alignment requires existing cached file", {
   expect_error(
     slcflights:::cache_schema_align_file(
@@ -60,7 +42,7 @@ test_that("schema alignment requires existing cached file", {
   )
 })
 
-test_that("schema alignment drops cache-only columns and preserves order", {
+test_that("schema finalization preserves columns", {
   root <- tempfile("slc-cache-schema-")
 
   cache_main <- slcflights:::slc_cache_parquet_path(
@@ -70,12 +52,12 @@ test_that("schema alignment drops cache-only columns and preserves order", {
     create = TRUE
   )
 
-  installed <- arrow::read_parquet(
-    slcflights:::slc_installed_parquet_path("main", 2024)
+  x <- data.frame(
+    FlightDate = as.Date(c("2024-07-02", "2024-07-01")),
+    OriginAirportID = c(14869L, 14869L),
+    DestAirportID = c(12000L, 13000L),
+    ExtraColumn = c("keep a", "keep b")
   )
-
-  x <- installed[seq_len(min(2L, nrow(installed))), ]
-  x$CacheOnlyColumn <- "drop me"
 
   arrow::write_parquet(x, cache_main)
 
@@ -85,37 +67,30 @@ test_that("schema alignment drops cache-only columns and preserves order", {
 
   aligned <- arrow::read_parquet(cache_main)
 
-  expect_equal(names(aligned), names(installed))
-  expect_false("CacheOnlyColumn" %in% names(aligned))
-  expect_equal(nrow(aligned), nrow(x))
+  expect_equal(
+    names(aligned),
+    c(
+      "FlightDate",
+      "OriginAirportID",
+      "DestAirportID",
+      "ExtraColumn",
+      "Year"
+    )
+  )
+
+  expect_equal(
+    aligned$FlightDate,
+    as.Date(c("2024-07-01", "2024-07-02"))
+  )
+
+  expect_equal(aligned$ExtraColumn, c("keep b", "keep a"))
+
+  expect_equal(unique(aligned$Year), 2024L)
 
   unlink(root, recursive = TRUE, force = TRUE)
 })
 
-test_that("schema alignment errors when cached file misses template columns", {
-  root <- tempfile("slc-cache-schema-")
-
-  cache_main <- slcflights:::slc_cache_parquet_path(
-    "main",
-    2024,
-    root = root,
-    create = TRUE
-  )
-
-  arrow::write_parquet(
-    data.frame(FlightDate = as.Date("2024-07-01")),
-    cache_main
-  )
-
-  expect_error(
-    slcflights:::cache_schema_align_file(cache_main),
-    "missing required columns"
-  )
-
-  unlink(root, recursive = TRUE, force = TRUE)
-})
-
-test_that("schema alignment works for multiple files", {
+test_that("schema finalization works for multiple files", {
   root <- tempfile("slc-cache-schema-")
 
   cache_main <- slcflights:::slc_cache_parquet_path(
@@ -132,21 +107,18 @@ test_that("schema alignment works for multiple files", {
     create = TRUE
   )
 
-  installed_main <- arrow::read_parquet(
-    slcflights:::slc_installed_parquet_path("main", 2024)
+  x_main <- data.frame(
+    FlightDate = as.Date(c("2024-07-02", "2024-07-01")),
+    OriginAirportID = c(14869L, 14869L),
+    DestAirportID = c(12000L, 13000L),
+    MainExtra = c("keep a", "keep b")
   )
 
-  div_year <- max(slcflights:::slc_available_installed_years("div"))
-
-  installed_div <- arrow::read_parquet(
-    slcflights:::slc_installed_parquet_path("div", div_year)
+  x_div <- data.frame(
+    FlightDate = as.Date(c("2024-07-02", "2024-07-01")),
+    Div1AirportID = c(14869L, 14869L),
+    DivExtra = c("keep c", "keep d")
   )
-
-  x_main <- installed_main[seq_len(min(2L, nrow(installed_main))), ]
-  x_div <- installed_div[seq_len(min(2L, nrow(installed_div))), ]
-
-  x_main$CacheOnlyColumn <- "drop me"
-  x_div$CacheOnlyColumn <- "drop me"
 
   arrow::write_parquet(x_main, cache_main)
   arrow::write_parquet(x_div, cache_div)
@@ -160,8 +132,21 @@ test_that("schema alignment works for multiple files", {
   aligned_main <- arrow::read_parquet(cache_main)
   aligned_div <- arrow::read_parquet(cache_div)
 
-  expect_equal(names(aligned_main), names(installed_main))
-  expect_equal(names(aligned_div), names(installed_div))
+  expect_equal(
+    names(aligned_main),
+    c(names(x_main), "Year")
+  )
+
+  expect_equal(
+    names(aligned_div),
+    c(names(x_div), "Year")
+  )
+
+  expect_equal(aligned_main$MainExtra, c("keep b", "keep a"))
+  expect_equal(aligned_div$DivExtra, c("keep d", "keep c"))
+
+  expect_equal(unique(aligned_main$Year), 2024L)
+  expect_equal(unique(aligned_div$Year), 2024L)
 
   unlink(root, recursive = TRUE, force = TRUE)
 })
@@ -194,13 +179,15 @@ test_that("schema alignment writes files in route-first flight order", {
   x$OriginAirportSeqID <- c(1486901L, 1486901L, 1486901L, 1486901L)
   x$DestAirportSeqID <- c(1500001L, 1400001L, 1300001L, 1200001L)
   x$DOT_ID_Reporting_Airline <- c(999L, 100L, 100L, 100L)
-  x$CacheOnlyColumn <- "drop me"
+  x$CacheOnlyColumn <- "keep me"
 
   arrow::write_parquet(x, cache_main)
 
   slcflights:::cache_schema_align_file(cache_main)
 
   aligned <- arrow::read_parquet(cache_main)
+
+  expect_true("CacheOnlyColumn" %in% names(aligned))
 
   expect_equal(
     aligned$FlightDate,

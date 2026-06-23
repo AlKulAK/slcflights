@@ -25,6 +25,18 @@ test_that("active, staging, and raw cache roots are under cache root", {
   ))
 })
 
+test_that("database roots use active cache layout", {
+  expect_equal(
+    slcflights:::slc_db_root(create = FALSE),
+    slcflights:::slc_cache_active_root(create = FALSE)
+  )
+
+  expect_equal(
+    slcflights:::slc_db_staging_root(create = FALSE),
+    slcflights:::slc_cache_staging_root(create = FALSE)
+  )
+})
+
 test_that("cache extdata structure mirrors package structure", {
   root <- tempfile("slc-cache-test-")
 
@@ -40,6 +52,30 @@ test_that("cache extdata structure mirrors package structure", {
 
   expect_equal(
     slcflights:::slc_cache_manifest_path(root = root, create = FALSE),
+    file.path(root, "manifest.json")
+  )
+})
+
+test_that("database extdata structure mirrors cache structure", {
+  root <- tempfile("slc-db-test-")
+
+  expect_equal(
+    slcflights:::slc_db_extdata_root(root = root, create = FALSE),
+    file.path(root, "extdata")
+  )
+
+  expect_equal(
+    slcflights:::slc_db_parquet_root(root = root, create = FALSE),
+    file.path(root, "extdata", "parquet")
+  )
+
+  expect_equal(
+    slcflights:::slc_db_csv_root(root = root, create = FALSE),
+    file.path(root, "extdata", "csv")
+  )
+
+  expect_equal(
+    slcflights:::slc_db_manifest_path(root = root, create = FALSE),
     file.path(root, "manifest.json")
   )
 })
@@ -80,6 +116,42 @@ test_that("cache parquet paths preserve annual layout", {
   )
 })
 
+test_that("database parquet paths preserve annual layout", {
+  root <- tempfile("slc-db-test-")
+
+  expect_equal(
+    slcflights:::slc_db_parquet_path(
+      "main",
+      2025,
+      root = root,
+      create = FALSE
+    ),
+    file.path(
+      root,
+      "extdata",
+      "parquet",
+      "Year=2025",
+      "data_0_main.parquet"
+    )
+  )
+
+  expect_equal(
+    slcflights:::slc_db_parquet_path(
+      "div",
+      2025,
+      root = root,
+      create = FALSE
+    ),
+    file.path(
+      root,
+      "extdata",
+      "parquet",
+      "Year=2025",
+      "data_0_div.parquet"
+    )
+  )
+})
+
 test_that("cache coordinate path preserves package filename", {
   root <- tempfile("slc-cache-test-")
 
@@ -105,6 +177,20 @@ test_that("cache airline path preserves package filename", {
       "csv",
       "L_AIRLINE_ID_reduced.csv"
     )
+  )
+})
+
+test_that("database metadata paths preserve package filenames", {
+  root <- tempfile("slc-db-test-")
+
+  expect_equal(
+    slcflights:::slc_db_coords_path(root = root, create = FALSE),
+    file.path(root, "extdata", "csv", "T_MASTER_CORD_reduced.csv")
+  )
+
+  expect_equal(
+    slcflights:::slc_db_airlines_path(root = root, create = FALSE),
+    file.path(root, "extdata", "csv", "L_AIRLINE_ID_reduced.csv")
   )
 })
 

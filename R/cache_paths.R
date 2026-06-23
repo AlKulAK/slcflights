@@ -24,6 +24,14 @@ slc_cache_active_root <- function(create = TRUE) {
   path
 }
 
+slc_db_root <- function(create = TRUE) {
+  slc_cache_active_root(create = create)
+}
+
+slc_db_staging_root <- function(create = TRUE) {
+  slc_cache_staging_root(create = create)
+}
+
 slc_cache_staging_root <- function(create = TRUE) {
   path <- file.path(slc_cache_root(create = create), "staging")
 
@@ -84,6 +92,30 @@ slc_cache_csv_root <- function(root = NULL, create = TRUE) {
   path
 }
 
+slc_db_extdata_root <- function(root = NULL, create = TRUE) {
+  if (is.null(root)) {
+    root <- slc_db_root(create = create)
+  }
+
+  slc_cache_extdata_root(root = root, create = create)
+}
+
+slc_db_parquet_root <- function(root = NULL, create = TRUE) {
+  if (is.null(root)) {
+    root <- slc_db_root(create = create)
+  }
+
+  slc_cache_parquet_root(root = root, create = create)
+}
+
+slc_db_csv_root <- function(root = NULL, create = TRUE) {
+  if (is.null(root)) {
+    root <- slc_db_root(create = create)
+  }
+
+  slc_cache_csv_root(root = root, create = create)
+}
+
 slc_cache_manifest_path <- function(root = NULL, create = TRUE) {
   if (is.null(root)) {
     root <- slc_cache_active_root(create = create)
@@ -94,6 +126,14 @@ slc_cache_manifest_path <- function(root = NULL, create = TRUE) {
   }
 
   file.path(root, "manifest.json")
+}
+
+slc_db_manifest_path <- function(root = NULL, create = TRUE) {
+  if (is.null(root)) {
+    root <- slc_db_root(create = create)
+  }
+
+  slc_cache_manifest_path(root = root, create = create)
 }
 
 slc_cache_year_dir <- function(year, root = NULL, create = TRUE) {
@@ -131,6 +171,32 @@ slc_cache_parquet_path <- function(
   )
 }
 
+slc_db_year_dir <- function(year, root = NULL, create = TRUE) {
+  if (is.null(root)) {
+    root <- slc_db_root(create = create)
+  }
+
+  slc_cache_year_dir(year, root = root, create = create)
+}
+
+slc_db_parquet_path <- function(
+  type = c("main", "div"),
+  year,
+  root = NULL,
+  create = TRUE
+) {
+  if (is.null(root)) {
+    root <- slc_db_root(create = create)
+  }
+
+  slc_cache_parquet_path(
+    type = type,
+    year = year,
+    root = root,
+    create = create
+  )
+}
+
 slc_cache_coords_path <- function(root = NULL, create = TRUE) {
   file.path(
     slc_cache_csv_root(root = root, create = create),
@@ -143,6 +209,22 @@ slc_cache_airlines_path <- function(root = NULL, create = TRUE) {
     slc_cache_csv_root(root = root, create = create),
     "L_AIRLINE_ID_reduced.csv"
   )
+}
+
+slc_db_coords_path <- function(root = NULL, create = TRUE) {
+  if (is.null(root)) {
+    root <- slc_db_root(create = create)
+  }
+
+  slc_cache_coords_path(root = root, create = create)
+}
+
+slc_db_airlines_path <- function(root = NULL, create = TRUE) {
+  if (is.null(root)) {
+    root <- slc_db_root(create = create)
+  }
+
+  slc_cache_airlines_path(root = root, create = create)
 }
 
 slc_cache_raw_ontime_root <- function(create = TRUE) {

@@ -31,6 +31,21 @@ cache_build_csv_relation <- function(con, csv_files) {
   )
 }
 
+#' Keep valid BTS CSV columns
+#'
+#' @param cols Character vector of column names returned by DuckDB.
+#'
+#' @returns Character vector of valid BTS column names.
+#'
+#' @noRd
+cache_build_bts_cols <- function(cols) {
+  cols <- as.character(cols)
+
+  cols <- cols[nzchar(cols)]
+
+  cols[!grepl("^column[0-9]+$", cols)]
+}
+
 cache_build_order_clause <- function(cols, con) {
   if (!("FlightDate" %in% cols)) {
     return("")
@@ -398,7 +413,9 @@ cache_build_write_year_files <- function(
   )
 
   relation <- cache_build_csv_relation(con, csv_files)
-  cols <- cache_build_read_bts_csv_cols(con, csv_files)
+  cols <- cache_build_bts_cols(
+    cache_build_read_bts_csv_cols(con, csv_files)
+  )
 
   if (!length(cols)) {
     stop(
