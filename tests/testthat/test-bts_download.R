@@ -294,3 +294,59 @@ test_that("coordinate ZIP extraction writes the expected CSV", {
 
   unlink(root, recursive = TRUE, force = TRUE)
 })
+
+test_that("selected field names normalize to PREZIP names", {
+  cols <- c(
+    "ORIGIN_AIRPORT_ID",
+    "ORIGIN_AIRPORT_SEQ_ID",
+    "DEST_AIRPORT_ID",
+    "DEST_AIRPORT_SEQ_ID",
+    "FL_DATE",
+    "UNKNOWN_FIELD"
+  )
+
+  expect_equal(
+    slcflights:::bts_normalize_selected_names(cols),
+    c(
+      "OriginAirportID",
+      "OriginAirportSeqID",
+      "DestAirportID",
+      "DestAirportSeqID",
+      "FlightDate",
+      "UNKNOWN_FIELD"
+    )
+  )
+})
+
+test_that("selected-fields CSV header is rewritten", {
+  path <- tempfile(fileext = ".csv")
+
+  writeLines(
+    c(
+      paste(
+        "ORIGIN_AIRPORT_ID",
+        "ORIGIN_AIRPORT_SEQ_ID",
+        "DEST_AIRPORT_ID",
+        "DEST_AIRPORT_SEQ_ID",
+        sep = ","
+      ),
+      "14869,1486901,11292,1129202"
+    ),
+    path,
+    useBytes = TRUE
+  )
+
+  out <- slcflights:::bts_rewrite_csv_header(path)
+
+  expect_equal(normalizePath(path), out)
+  expect_equal(
+    readLines(path, n = 1),
+    paste(
+      "OriginAirportID",
+      "OriginAirportSeqID",
+      "DestAirportID",
+      "DestAirportSeqID",
+      sep = ","
+    )
+  )
+})

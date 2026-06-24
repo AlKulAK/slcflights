@@ -75,6 +75,149 @@ bts_csv_files <- function(path) {
   )
 }
 
+bts_selected_name_map <- function() {
+  c(
+    YEAR = "Year",
+    QUARTER = "Quarter",
+    MONTH = "Month",
+    DAY_OF_MONTH = "DayofMonth",
+    DAY_OF_WEEK = "DayOfWeek",
+    FL_DATE = "FlightDate",
+    FLIGHT_DATE = "FlightDate",
+    REPORTING_AIRLINE = "Reporting_Airline",
+    DOT_ID_REPORTING_AIRLINE = "DOT_ID_Reporting_Airline",
+    IATA_CODE_REPORTING_AIRLINE = "IATA_CODE_Reporting_Airline",
+    TAIL_NUMBER = "Tail_Number",
+    FLIGHT_NUMBER_REPORTING_AIRLINE = "Flight_Number_Reporting_Airline",
+    ORIGIN_AIRPORT_ID = "OriginAirportID",
+    ORIGIN_AIRPORT_SEQ_ID = "OriginAirportSeqID",
+    ORIGIN_CITY_MARKET_ID = "OriginCityMarketID",
+    ORIGIN = "Origin",
+    ORIGIN_CITY_NAME = "OriginCityName",
+    ORIGIN_STATE_ABR = "OriginState",
+    ORIGIN_STATE_FIPS = "OriginStateFips",
+    ORIGIN_STATE_NM = "OriginStateName",
+    ORIGIN_WAC = "OriginWac",
+    DEST_AIRPORT_ID = "DestAirportID",
+    DEST_AIRPORT_SEQ_ID = "DestAirportSeqID",
+    DEST_CITY_MARKET_ID = "DestCityMarketID",
+    DEST = "Dest",
+    DEST_CITY_NAME = "DestCityName",
+    DEST_STATE_ABR = "DestState",
+    DEST_STATE_FIPS = "DestStateFips",
+    DEST_STATE_NM = "DestStateName",
+    DEST_WAC = "DestWac",
+    CRS_DEP_TIME = "CRSDepTime",
+    DEP_TIME = "DepTime",
+    DEP_DELAY = "DepDelay",
+    DEP_DELAY_NEW = "DepDelayMinutes",
+    DEP_DEL15 = "DepDel15",
+    DEP_DELAY_GROUP = "DepDelayGroups",
+    DEP_TIME_BLK = "DepTimeBlk",
+    TAXI_OUT = "TaxiOut",
+    WHEELS_OFF = "WheelsOff",
+    WHEELS_ON = "WheelsOn",
+    TAXI_IN = "TaxiIn",
+    CRS_ARR_TIME = "CRSArrTime",
+    ARR_TIME = "ArrTime",
+    ARR_DELAY = "ArrDelay",
+    ARR_DELAY_NEW = "ArrDelayMinutes",
+    ARR_DEL15 = "ArrDel15",
+    ARR_DELAY_GROUP = "ArrDelayGroups",
+    ARR_TIME_BLK = "ArrTimeBlk",
+    CANCELLED = "Cancelled",
+    CANCELLATION_CODE = "CancellationCode",
+    DIVERTED = "Diverted",
+    CRS_ELAPSED_TIME = "CRSElapsedTime",
+    ACTUAL_ELAPSED_TIME = "ActualElapsedTime",
+    AIR_TIME = "AirTime",
+    FLIGHTS = "Flights",
+    DISTANCE = "Distance",
+    DISTANCE_GROUP = "DistanceGroup",
+    CARRIER_DELAY = "CarrierDelay",
+    WEATHER_DELAY = "WeatherDelay",
+    NAS_DELAY = "NASDelay",
+    SECURITY_DELAY = "SecurityDelay",
+    LATE_AIRCRAFT_DELAY = "LateAircraftDelay",
+    FIRST_DEP_TIME = "FirstDepTime",
+    TOTAL_ADD_GTIME = "TotalAddGTime",
+    LONGEST_ADD_GTIME = "LongestAddGTime",
+    DIV_AIRPORT_LANDINGS = "DivAirportLandings",
+    DIV_REACHED_DEST = "DivReachedDest",
+    DIV_ACTUAL_ELAPSED_TIME = "DivActualElapsedTime",
+    DIV_ARR_DELAY = "DivArrDelay",
+    DIV_DISTANCE = "DivDistance",
+    DIV1_AIRPORT = "Div1Airport",
+    DIV1_AIRPORT_ID = "Div1AirportID",
+    DIV1_AIRPORT_SEQ_ID = "Div1AirportSeqID",
+    DIV1_WHEELS_ON = "Div1WheelsOn",
+    DIV1_TOTAL_GTIME = "Div1TotalGTime",
+    DIV1_LONGEST_GTIME = "Div1LongestGTime",
+    DIV1_WHEELS_OFF = "Div1WheelsOff",
+    DIV1_TAIL_NUM = "Div1TailNum",
+    DIV2_AIRPORT = "Div2Airport",
+    DIV2_AIRPORT_ID = "Div2AirportID",
+    DIV2_AIRPORT_SEQ_ID = "Div2AirportSeqID",
+    DIV2_WHEELS_ON = "Div2WheelsOn",
+    DIV2_TOTAL_GTIME = "Div2TotalGTime",
+    DIV2_LONGEST_GTIME = "Div2LongestGTime",
+    DIV2_WHEELS_OFF = "Div2WheelsOff",
+    DIV2_TAIL_NUM = "Div2TailNum",
+    DIV3_AIRPORT = "Div3Airport",
+    DIV3_AIRPORT_ID = "Div3AirportID",
+    DIV3_AIRPORT_SEQ_ID = "Div3AirportSeqID",
+    DIV3_WHEELS_ON = "Div3WheelsOn",
+    DIV3_TOTAL_GTIME = "Div3TotalGTime",
+    DIV3_LONGEST_GTIME = "Div3LongestGTime",
+    DIV3_WHEELS_OFF = "Div3WheelsOff",
+    DIV3_TAIL_NUM = "Div3TailNum",
+    DIV4_AIRPORT = "Div4Airport",
+    DIV4_AIRPORT_ID = "Div4AirportID",
+    DIV4_AIRPORT_SEQ_ID = "Div4AirportSeqID",
+    DIV4_WHEELS_ON = "Div4WheelsOn",
+    DIV4_TOTAL_GTIME = "Div4TotalGTime",
+    DIV4_LONGEST_GTIME = "Div4LongestGTime",
+    DIV4_WHEELS_OFF = "Div4WheelsOff",
+    DIV4_TAIL_NUM = "Div4TailNum",
+    DIV5_AIRPORT = "Div5Airport",
+    DIV5_AIRPORT_ID = "Div5AirportID",
+    DIV5_AIRPORT_SEQ_ID = "Div5AirportSeqID",
+    DIV5_WHEELS_ON = "Div5WheelsOn",
+    DIV5_TOTAL_GTIME = "Div5TotalGTime",
+    DIV5_LONGEST_GTIME = "Div5LongestGTime",
+    DIV5_WHEELS_OFF = "Div5WheelsOff",
+    DIV5_TAIL_NUM = "Div5TailNum"
+  )
+}
+
+bts_normalize_selected_names <- function(cols) {
+  cols <- as.character(cols)
+  map <- bts_selected_name_map()
+
+  out <- unname(map[cols])
+  out[is.na(out)] <- cols[is.na(out)]
+  out
+}
+
+bts_rewrite_csv_header <- function(path) {
+  bts_validate_csv_file(path, label = "BTS selected-fields CSV file")
+
+  lines <- readLines(path, warn = FALSE)
+  if (!length(lines)) {
+    stop("BTS selected-fields CSV file is empty.", call. = FALSE)
+  }
+
+  cols <- strsplit(lines[[1]], ",", fixed = TRUE)[[1]]
+  lines[[1]] <- paste(bts_normalize_selected_names(cols), collapse = ",")
+
+  writeLines(lines, path, useBytes = TRUE)
+
+  bts_validate_csv_file(
+    path,
+    label = "BTS selected-fields CSV file with normalized header"
+  )
+}
+
 bts_readme_files <- function(path) {
   list.files(
     path,
