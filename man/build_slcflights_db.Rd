@@ -2,9 +2,9 @@
 % Please edit documentation in R/update.R
 \name{build_slcflights_db}
 \alias{build_slcflights_db}
-\title{Build or Extend the Local slcflights Database}
+\title{Build the Local slcflights Database}
 \usage{
-build_slcflights_db(until, overwrite = FALSE, confirm = FALSE)
+build_slcflights_db(until = "latest", overwrite = FALSE, confirm = FALSE)
 }
 \arguments{
 \item{until}{Database endpoint. Use \code{"latest"}, a four-digit year, a string
@@ -24,14 +24,12 @@ Downloads BTS monthly on-time performance files and builds a local
 Salt Lake City-focused database.
 }
 \details{
-The local database always begins with October 1987. If no local database is
-active, \code{build_slcflights_db()} builds one from October 1987 through the
-requested endpoint. If a compatible local database already exists, the
-function extends it forward to the requested endpoint.
+The local database always begins with October 1987. Use
+\code{build_slcflights_db()} to create the local database from October 1987
+through the requested endpoint.
 
-Extensions are contiguous. For example, if the active database ends with
-June 2024, a request through December 2024 downloads and processes July
-through December 2024.
+If a local database already exists, use \code{\link[=update_slcflights_db]{update_slcflights_db()}} to extend it
+or \code{\link[=delete_slcflights_db]{delete_slcflights_db()}} before rebuilding.
 
 For large initial builds, use \code{confirm = TRUE}.
 }
@@ -43,6 +41,6 @@ build_slcflights_db(until = "latest", confirm = TRUE)
 
 }
 \seealso{
-\code{\link[=update_slcflights_data]{update_slcflights_data()}}, \code{\link[=slcflights_cache_info]{slcflights_cache_info()}},
-\code{\link[=clear_slcflights_cache]{clear_slcflights_cache()}}
+\code{\link[=update_slcflights_db]{update_slcflights_db()}}, \code{\link[=status_slcflights_db]{status_slcflights_db()}},
+\code{\link[=delete_slcflights_db]{delete_slcflights_db()}}
 }

@@ -534,76 +534,37 @@ test_that("database build creates one-month active database", {
   expect_true("Reporting_Airline_Lookup_Code" %in% names(x))
 })
 
-test_that("database build extends active database", {
+test_that("database build refuses to overwrite active database", {
   root <- tempfile("slc-db-build-")
-  calls <- character()
-
-  on.exit(unlink(root, recursive = TRUE, force = TRUE), add = TRUE)
 
   testthat::local_mocked_bindings(
-    slc_cache_root = function(create = TRUE) {
-      if (isTRUE(create)) {
-        dir.create(root, recursive = TRUE, showWarnings = FALSE)
-      }
-
+    slc_db_root = function(create = TRUE) {
       root
-    },
-    download_bts_ontime_month = function(year,
-                                         month,
-                                         overwrite = FALSE,
-                                         keep_zip = TRUE) {
-      calls <<- c(calls, sprintf("%04d-%02d", year, month))
-
-      month_dir <- slcflights:::slc_cache_raw_ontime_month_dir(
-        year,
-        month,
-        create = TRUE
-      )
-
-      path <- file.path(month_dir, "bts_ontime.csv")
-      make_stage_bts_csv(path)
-    },
-    download_bts_master_coords = function(destfile, overwrite = FALSE) {
-      make_stage_coords_csv(destfile)
-    },
-    download_bts_airline_id = function(destfile, overwrite = FALSE) {
-      make_stage_airlines_csv(destfile)
     },
     .package = "slcflights"
   )
 
-  suppressMessages(
-    slcflights:::build_slcflights_db(
-      until = "1987-10",
-      confirm = TRUE
-    )
+  months <- data.frame(
+    year = 1987L,
+    month = 10L
   )
 
-  info <- suppressMessages(
+  slcflights:::write_db_manifest(
+    months = months,
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  expect_error(
     slcflights:::build_slcflights_db(
       until = "1987-11",
       confirm = TRUE
-    )
+    ),
+    "Use `update_slcflights_db\\(\\)` to extend it"
   )
 
-  expect_equal(calls, c("1987-10", "1987-11"))
-  expect_true(info$exists)
-  expect_true(info$complete)
-  expect_equal(info$endpoint$year, 1987L)
-  expect_equal(info$endpoint$month, 11L)
-  expect_equal(info$manifest$db_start, "1987-10")
-  expect_equal(info$manifest$db_end, "1987-11")
-
-  main <- slcflights:::slc_db_parquet_path(
-    "main",
-    1987,
-    root = slcflights:::slc_db_root(create = FALSE),
-    create = FALSE
-  )
-
-  x <- arrow::read_parquet(main)
-
-  expect_equal(nrow(x), 4L)
+  unlink(root, recursive = TRUE, force = TRUE)
 })
 
 test_that("download month validation allows extension months", {
@@ -635,16 +596,16 @@ test_that("download month validation rejects duplicates", {
   )
 })
 
-test_that("update_slcflights_data delegates to database build", {
+test_that("update_slcflights_data delegates to database update", {
   called <- FALSE
   got_until <- NULL
   got_overwrite <- NULL
   got_confirm <- NULL
 
   testthat::local_mocked_bindings(
-    build_slcflights_db = function(until,
-                                   overwrite = FALSE,
-                                   confirm = FALSE) {
+    update_slcflights_db = function(until,
+                                    overwrite = FALSE,
+                                    confirm = FALSE) {
       called <<- TRUE
       got_until <<- until
       got_overwrite <<- overwrite
@@ -737,16 +698,41 @@ test_that("database info ignores old cache manifests", {
   unlink(root, recursive = TRUE, force = TRUE)
 })
 
-test_that("update_slcflights_db delegates to database build", {
+test_that("update_slcflights_db requires active database", {
+  root <- tempfile("slc-db-update-")
+
+  testthat::local_mocked_bindings(
+    slc_db_root = function(create = TRUE) {
+      root
+    },
+    .package = "slcflights"
+  )
+
+  expect_error(
+    slcflights::update_slcflights_db(
+      until = "2025-06",
+      confirm = TRUE
+    ),
+    "Use `build_slcflights_db\\(\\)` before calling"
+  )
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("update_slcflights_db delegates to database engine", {
+  root <- tempfile("slc-db-update-")
   called <- FALSE
   got_until <- NULL
   got_overwrite <- NULL
   got_confirm <- NULL
 
   testthat::local_mocked_bindings(
-    build_slcflights_db = function(until,
-                                   overwrite = FALSE,
-                                   confirm = FALSE) {
+    slc_db_root = function(create = TRUE) {
+      root
+    },
+    run_db_build = function(until,
+                            overwrite = FALSE,
+                            confirm = FALSE) {
       called <<- TRUE
       got_until <<- until
       got_overwrite <<- overwrite
@@ -755,6 +741,13 @@ test_that("update_slcflights_db delegates to database build", {
       invisible(list(ok = TRUE))
     },
     .package = "slcflights"
+  )
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
   )
 
   out <- slcflights::update_slcflights_db(
@@ -768,6 +761,8 @@ test_that("update_slcflights_db delegates to database build", {
   expect_true(got_overwrite)
   expect_true(got_confirm)
   expect_equal(out, list(ok = TRUE))
+
+  unlink(root, recursive = TRUE, force = TRUE)
 })
 
 test_that("status_slcflights_db reports database info", {

@@ -382,14 +382,14 @@ clear_cache_root <- function(root, confirm = interactive()) {
   if (isTRUE(confirm)) {
     answer <- readline(
       paste0(
-        "Delete the local slcflights cache at ",
+        "Delete the local slcflights data at ",
         root,
         "? [y/N] "
       )
     )
 
     if (!tolower(answer) %in% c("y", "yes")) {
-      message("Cache was not deleted.")
+      message("Local slcflights data were not deleted.")
       return(invisible(FALSE))
     }
   }
@@ -401,91 +401,16 @@ clear_cache_root <- function(root, confirm = interactive()) {
   invisible(TRUE)
 }
 
-#' Update the Local slcflights Database
-#'
-#' Extends the local slcflights database to a requested endpoint.
-#'
-#' @param until Database endpoint. Use `"latest"`, a four-digit year, a string
-#'   of the form `"YYYY-MM"`, or `c(year, month)`.
-#' @param overwrite If `TRUE`, re-downloads raw BTS source files already
-#'   present in the local raw-data cache.
-#' @param confirm If `TRUE`, allows operations that download and process more
-#'   than 24 monthly BTS files.
-#'
-#' @returns
-#' Invisibly, a list describing the active local database.
-#'
-#' @details
-#' Use `update_slcflights_db()` after a local database has been built. The
-#' update extends the database forward to the requested endpoint.
-#'
-#' @seealso [build_slcflights_db()], [status_slcflights_db()],
-#'   [delete_slcflights_db()]
-#'
-#' @examples
-#' \dontrun{
-#' update_slcflights_db(until = "2025-06", confirm = TRUE)
-#' update_slcflights_db(until = "latest", confirm = TRUE)
-#' }
-#'
-#' @export
-update_slcflights_db <- function(
-  until = "latest",
-  overwrite = FALSE,
-  confirm = FALSE
-) {
-  build_slcflights_db(
-    until = until,
-    overwrite = overwrite,
-    confirm = confirm
-  )
-}
-
-#' Build or Extend the Local slcflights Database
-#'
-#' Downloads BTS monthly on-time performance files and builds a local
-#' Salt Lake City-focused database.
-#'
-#' @param until Database endpoint. Use `"latest"`, a four-digit year, a string
-#'   of the form `"YYYY-MM"`, or `c(year, month)`.
-#' @param overwrite If `TRUE`, re-downloads raw BTS source files already
-#'   present in the local raw-data cache.
-#' @param confirm If `TRUE`, allows operations that download and process more
-#'   than 24 monthly BTS files.
-#'
-#' @returns
-#' Invisibly, a list describing the active local database.
-#'
-#' @details
-#' The local database always begins with October 1987. If no local database is
-#' active, `build_slcflights_db()` builds one from October 1987 through the
-#' requested endpoint. If a compatible local database already exists, the
-#' function extends it forward to the requested endpoint.
-#'
-#' Extensions are contiguous. For example, if the active database ends with
-#' June 2024, a request through December 2024 downloads and processes July
-#' through December 2024.
-#'
-#' For large initial builds, use `confirm = TRUE`.
-#'
-#' @seealso [update_slcflights_data()], [slcflights_cache_info()],
-#'   [clear_slcflights_cache()]
-#'
-#' @examples
-#' \dontrun{
-#' build_slcflights_db(until = "2024-12", confirm = TRUE)
-#' build_slcflights_db(until = "latest", confirm = TRUE)
-#' }
-#'
-#' @export
-build_slcflights_db <- function(
-  until,
-  overwrite = FALSE,
-  confirm = FALSE
+run_db_build <- function(
+    until,
+    overwrite = FALSE,
+    confirm = FALSE
 ) {
   message("Resolving requested slcflights database endpoint...")
 
-  active <- read_db_manifest(root = slc_db_root(create = FALSE))
+  active <- read_db_manifest_if_active(
+    root = slc_db_root(create = FALSE)
+  )
   endpoint <- resolve_db_until(until)
   months <- db_month_sequence(endpoint)
 
@@ -500,13 +425,14 @@ build_slcflights_db <- function(
     )
 
     if (!nrow(dl_months)) {
-      stop(
+      message(
         paste(
           "The local slcflights database already covers the requested",
           "endpoint."
-        ),
-        call. = FALSE
+        )
       )
+
+      return(invisible(slc_db_info()))
     }
   }
 
@@ -553,6 +479,123 @@ build_slcflights_db <- function(
   invisible(info)
 }
 
+#' Update the Local slcflights Database
+#'
+#' Extends the local slcflights database to a requested endpoint.
+#'
+#' @param until Database endpoint. Use `"latest"`, a four-digit year, a string
+#'   of the form `"YYYY-MM"`, or `c(year, month)`.
+#' @param overwrite If `TRUE`, re-downloads raw BTS source files already
+#'   present in the local raw-data cache.
+#' @param confirm If `TRUE`, allows operations that download and process more
+#'   than 24 monthly BTS files.
+#'
+#' @returns
+#' Invisibly, a list describing the active local database.
+#'
+#' @details
+#' Use `update_slcflights_db()` after a local database has been built. The
+#' update extends the database forward to the requested endpoint.
+#'
+#' @seealso [build_slcflights_db()], [status_slcflights_db()],
+#'   [delete_slcflights_db()]
+#'
+#' @examples
+#' \dontrun{
+#' update_slcflights_db(until = "2025-06", confirm = TRUE)
+#' update_slcflights_db(until = "latest", confirm = TRUE)
+#' }
+#'
+#' @export
+update_slcflights_db <- function(
+    until = "latest",
+    overwrite = FALSE,
+    confirm = FALSE
+) {
+  active <- read_db_manifest_if_active(
+    root = slc_db_root(create = FALSE)
+  )
+
+  if (is.null(active)) {
+    stop(
+      paste(
+        "No local slcflights database is active.",
+        "Use `build_slcflights_db()` before calling",
+        "`update_slcflights_db()`."
+      ),
+      call. = FALSE
+    )
+  }
+
+  run_db_build(
+    until = until,
+    overwrite = overwrite,
+    confirm = confirm
+  )
+}
+
+#' Build the Local slcflights Database
+#'
+#' Downloads BTS monthly on-time performance files and builds a local
+#' Salt Lake City-focused database.
+#'
+#' @param until Database endpoint. Use `"latest"`, a four-digit year, a string
+#'   of the form `"YYYY-MM"`, or `c(year, month)`.
+#' @param overwrite If `TRUE`, re-downloads raw BTS source files already
+#'   present in the local raw-data cache.
+#' @param confirm If `TRUE`, allows operations that download and process more
+#'   than 24 monthly BTS files.
+#'
+#' @returns
+#' Invisibly, a list describing the active local database.
+#'
+#' @details
+#' The local database always begins with October 1987. Use
+#' `build_slcflights_db()` to create the local database from October 1987
+#' through the requested endpoint.
+#'
+#' If a local database already exists, use [update_slcflights_db()] to extend it
+#' or [delete_slcflights_db()] before rebuilding.
+#'
+#' For large initial builds, use `confirm = TRUE`.
+#'
+#' @seealso [update_slcflights_db()], [status_slcflights_db()],
+#'   [delete_slcflights_db()]
+#'
+#' @examples
+#' \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#' build_slcflights_db(until = "latest", confirm = TRUE)
+#' }
+#'
+#' @export
+build_slcflights_db <- function(
+    until = "latest",
+    overwrite = FALSE,
+    confirm = FALSE
+) {
+  active <- read_db_manifest_if_active(
+    root = slc_db_root(create = FALSE)
+  )
+
+  if (!is.null(active)) {
+    stop(
+      paste(
+        "A local slcflights database is already active.",
+        "Use `update_slcflights_db()` to extend it or",
+        "`delete_slcflights_db()` before rebuilding."
+      ),
+      call. = FALSE
+    )
+  }
+
+  run_db_build(
+    until = until,
+    overwrite = overwrite,
+    confirm = confirm
+  )
+}
+
 #' Update Locally Available slcflights Data
 #'
 #' Builds or extends the local slcflights database.
@@ -576,7 +619,7 @@ build_slcflights_db <- function(
 #'
 #' @export
 update_slcflights_data <- function(until = "latest", overwrite = FALSE) {
-  build_slcflights_db(
+  update_slcflights_db(
     until = until,
     overwrite = overwrite,
     confirm = TRUE
@@ -645,8 +688,7 @@ status_slcflights_db <- function() {
 #'
 #' @export
 slcflights_cache_info <- function() {
-  info <- slc_db_info()
-  print_db_info(info)
+  status_slcflights_db()
 }
 
 #' Delete the Local slcflights Database
@@ -705,8 +747,5 @@ delete_slcflights_db <- function(confirm = interactive()) {
 #'
 #' @export
 clear_slcflights_cache <- function(confirm = interactive()) {
-  clear_cache_root(
-    root = slc_db_root(create = FALSE),
-    confirm = confirm
-  )
+  delete_slcflights_db(confirm = confirm)
 }
