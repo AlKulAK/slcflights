@@ -33,6 +33,22 @@ bts_ontime_url <- function(year, month) {
   )
 }
 
+#' Return the BTS On-Time Performance selected-fields page URL
+#'
+#' Returns the TranStats select-fields page used when a static PREZIP monthly
+#' ZIP file is not available.
+#'
+#' @returns
+#' Character URL for the BTS On-Time Performance selected-fields form.
+#'
+#' @noRd
+bts_ontime_select_url <- function() {
+  paste0(
+    "https://www.transtats.bts.gov/DL_SelectFields.aspx?",
+    "QO_fu146_anzr=b0-gvzr&gnoyr_VQ=FGJ"
+  )
+}
+
 #' Return the BTS Master Coordinate download page URL
 #'
 #' Returns the TranStats select-fields page used to request the Master
@@ -84,6 +100,11 @@ bts_selected_name_map <- function() {
     DAY_OF_WEEK = "DayOfWeek",
     FL_DATE = "FlightDate",
     FLIGHT_DATE = "FlightDate",
+    OP_UNIQUE_CARRIER = "Reporting_Airline",
+    OP_CARRIER_AIRLINE_ID = "DOT_ID_Reporting_Airline",
+    OP_CARRIER = "IATA_CODE_Reporting_Airline",
+    TAIL_NUM = "Tail_Number",
+    OP_CARRIER_FL_NUM = "Flight_Number_Reporting_Airline",
     REPORTING_AIRLINE = "Reporting_Airline",
     DOT_ID_REPORTING_AIRLINE = "DOT_ID_Reporting_Airline",
     IATA_CODE_REPORTING_AIRLINE = "IATA_CODE_Reporting_Airline",
@@ -410,6 +431,78 @@ bts_download_zip_file <- function(url, destfile, label = "BTS ZIP") {
   )
 }
 
+bts_download_selected_zip <- function(year, month, destfile) {
+  ym <- as_year_month(year, month, arg = "year/month")
+
+  page_url <- bts_ontime_select_url()
+  cookie_file <- tempfile("bts-cookies-")
+
+  req_base <- function(url) {
+    httr2::request(url) |>
+      httr2::req_user_agent("Mozilla/5.0 slcflights") |>
+      httr2::req_headers(
+        Accept = paste(
+          "text/html,application/xhtml+xml,application/xml;q=0.9,",
+          "*/*;q=0.8",
+          sep = ""
+        ),
+        `Accept-Language` = "en-US,en;q=0.9",
+        Referer = "https://www.transtats.bts.gov/"
+      ) |>
+      httr2::req_cookie_preserve(cookie_file)
+  }
+
+  get_resp <- httr2::req_perform(req_base(page_url))
+  doc <- xml2::read_html(httr2::resp_body_string(get_resp))
+
+  form <- xml2::xml_find_first(doc, ".//form[@id='form1']")
+  if (inherits(form, "xml_missing")) {
+    stop(
+      "Could not find the BTS On-Time Performance download form.",
+      call. = FALSE
+    )
+  }
+
+  action <- xml2::xml_attr(form, "action")
+  post_url <- xml2::url_absolute(action, page_url)
+
+  body <- bts_form_body(form)
+  body$`__EVENTTARGET` <- "chkAllVars"
+  body$`__EVENTARGUMENT` <- ""
+  body$chkAllVars <- "on"
+  body$cboYear <- as.character(ym$year)
+  body$cboPeriod <- as.character(ym$month)
+  body$btnDownload <- "Download"
+
+  resp <- httr2::req_perform(
+    req_base(post_url) |>
+      httr2::req_method("POST") |>
+      httr2::req_headers(
+        Origin = "https://www.transtats.bts.gov",
+        Referer = page_url,
+        Accept = "application/zip,text/csv,text/plain,*/*"
+      ) |>
+      httr2::req_body_form(!!!body)
+  )
+
+  raw <- httr2::resp_body_raw(resp)
+
+  if (bts_response_is_html(raw)) {
+    stop(
+      "BTS returned HTML instead of the selected-fields ZIP file.",
+      call. = FALSE
+    )
+  }
+
+  dir.create(dirname(destfile), recursive = TRUE, showWarnings = FALSE)
+  writeBin(raw, destfile)
+
+  bts_validate_zip_file(
+    destfile,
+    label = "BTS selected-fields ZIP"
+  )
+}
+
 #' Validate a downloaded BTS CSV file
 #'
 #' Checks that a downloaded or previously cached BTS CSV file exists and is not
@@ -490,11 +583,36 @@ download_bts_ontime_month <- function(
 
   message("Downloading flight data for ", format_year_month(ym), "...")
 
-  bts_download_zip_file(
-    url = url,
-    destfile = zip_path,
-    label = "BTS on-time ZIP"
+  zip_source <- "prezip"
+
+  prezip_ok <- tryCatch(
+    {
+      bts_download_zip_file(
+        url = url,
+        destfile = zip_path,
+        label = "BTS on-time ZIP"
+      )
+
+      TRUE
+    },
+    error = function(e) FALSE
   )
+
+  if (!prezip_ok) {
+    zip_source <- "selected-fields"
+
+    message(
+      "Static BTS PREZIP file was not available for ",
+      format_year_month(ym),
+      "; requesting TranStats selected-fields export..."
+    )
+
+    bts_download_selected_zip(
+      year = ym$year,
+      month = ym$month,
+      destfile = zip_path
+    )
+  }
 
   bts_validate_zip_file(
     zip_path,
@@ -518,6 +636,10 @@ download_bts_ontime_month <- function(
       ),
       call. = FALSE
     )
+  }
+
+  if (identical(zip_source, "selected-fields")) {
+    bts_rewrite_csv_header(csv_files[[1]])
   }
 
   if (!isTRUE(keep_zip)) {
