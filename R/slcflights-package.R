@@ -1,16 +1,15 @@
 #' slcflights: Salt Lake City-Related Flight Data
 #'
-#' `slcflights` provides Salt Lake City-focused subsets of the Bureau of
-#' Transportation Statistics (BTS) TranStats On-Time: Reporting Carrier
-#' On-Time Performance data, along with airport coordinate and Airline ID
-#' metadata used to support those records.
+#' `slcflights` provides tools for building and reading Salt Lake City-focused
+#' subsets of the Bureau of Transportation Statistics (BTS) TranStats On-Time:
+#' Reporting Carrier On-Time Performance data, along with airport coordinate
+#' and Airline ID metadata for those records.
 #'
-#' The installed historical Parquet files cover October 1987 through June 2024
-#' and are derived from the 1987--2024 Parquet files distributed for the 2025
-#' ASA Data Expo Challenge. The underlying records originate from the BTS
-#' TranStats On-Time Performance data. The coordinate table is derived from the
-#' BTS TranStats Master Coordinate support table, and the Airline ID lookup
-#' table is derived from the BTS TranStats Airline ID support table.
+#' The package builds a local BTS-sourced database from monthly BTS source
+#' files. The local database begins with October 1987 and extends through a
+#' user-selected endpoint. Use [build_slcflights_db()] or
+#' [update_slcflights_data()] to build or extend the database before reading
+#' flight records.
 #'
 #' The package contains two flight-data groupings:
 #'
@@ -20,10 +19,13 @@
 #'   in one of `Div1AirportID` through `Div5AirportID`, but not in
 #'   `OriginAirportID` or `DestAirportID`
 #'
-#' The main user-facing functions are
+#' The main user-facing functions are:
 #'
-#' - [available_years()] to list currently available years for main or
-#'   diversion-only records, including compatible local cache years when present
+#' - [build_slcflights_db()] to build or extend the local BTS-sourced database
+#' - [update_slcflights_data()] to build or extend the local BTS-sourced
+#'   database
+#' - [available_years()] to list years available in the active local database
+#'   for main or diversion-only records
 #' - [read_main()] to read one, many, or all years of main records into memory
 #' - [read_div()] to read one, many, or all years of diversion-only records
 #'   into memory
@@ -33,35 +35,31 @@
 #'   lazily as an Arrow dataset
 #' - [read_year_main()] to read one year's main records into memory
 #' - [read_year_div()] to read one year's diversion-only records into memory
-#' - [read_coords()] to read the currently active airport coordinate table
-#' - [read_airlines()] to read the currently active Airline ID lookup table
+#' - [read_coords()] to read the airport coordinate table from the active local
+#'   database
+#' - [read_airlines()] to read the Airline ID lookup table from the active
+#'   local database
 #' - [read_field_dictionary()] to read field descriptions and field-presence
 #'   metadata
-#' - [update_slcflights_data()] to extend the installed data with newer BTS
-#'   monthly releases in a local user cache
-#' - [slcflights_cache_info()] to inspect the local cache
-#' - [clear_slcflights_cache()] to remove the local cache
+#' - [slcflights_cache_info()] to inspect the active local database
+#' - [clear_slcflights_cache()] to remove the active local database
 #'
 #' @section Fields:
-#' Flight-record columns use BTS TranStats field names where those fields are
-#' present in the package data. Not every BTS field is guaranteed to appear in
-#' every package Parquet file. The data-build process removes columns that are
-#' globally all missing before and after filtering to Salt Lake City-related
-#' records. Use `names(read_year_main(year))`, `names(read_year_div(year))`,
+#' Flight-record columns use BTS TranStats field names from the monthly source
+#' files. Some BTS fields can be entirely missing within a month, a year, or a
+#' record grouping after filtering to Salt Lake City-related records. Those
+#' fields are retained as all-null columns when they are valid BTS fields. Use
+#' `names(read_year_main(year))`, `names(read_year_div(year))`,
 #' `names(open_main(year))`, or `names(open_div(year))` to inspect the fields
 #' available for a particular year and record type.
 #'
-#' The currently active coordinate table contains airport sequence identifiers
-#' and associated airport metadata used to enrich flight records with latitude,
-#' longitude, and date-bounded airport information. If a compatible local cache
-#' is active, [read_coords()] reads the cached coordinate table; otherwise it
-#' reads the installed package coordinate table.
+#' The airport coordinate table contains airport sequence identifiers and
+#' associated airport metadata used to enrich flight records with latitude,
+#' longitude, and date-bounded airport information.
 #'
-#' The currently active Airline ID lookup table contains DOT reporting airline
-#' identifiers, airline names, and airline lookup codes for airlines referenced
-#' by the available flight data. If a compatible local cache is active,
-#' [read_airlines()] reads the cached Airline ID lookup table; otherwise it
-#' reads the installed package Airline ID lookup table.
+#' The Airline ID lookup table contains DOT reporting airline identifiers,
+#' airline names, and airline lookup codes for airlines referenced by the active
+#' local database.
 #'
 #' @keywords internal
 "_PACKAGE"
