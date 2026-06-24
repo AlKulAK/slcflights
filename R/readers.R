@@ -12,9 +12,10 @@
 #' An integer vector of available years, sorted in ascending order.
 #'
 #' @examples
-#' available_years("main")
-#'
 #' \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#'
+#' available_years("main")
 #' available_years("div")
 #' }
 #'
@@ -49,8 +50,12 @@ available_years <- function(type = c("main", "div")) {
 #'   [read_field_dictionary()]
 #'
 #' @examples
+#' \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#'
 #' x <- read_year_main(1987)
 #' head(x)
+#' }
 #'
 #' @export
 read_year_main <- function(year) {
@@ -87,6 +92,8 @@ read_year_main <- function(year) {
 #'
 #' @examples
 #' \dontrun{
+#' #' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#'
 #' x <- read_year_div(2015)
 #' head(x)
 #' }
@@ -124,10 +131,11 @@ read_year_div <- function(year) {
 #'   [read_field_dictionary()]
 #'
 #' @examples
+#' \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#'
 #' x1 <- read_main(1987)
 #' x2 <- read_main(1987:1988)
-#'
-#' \dontrun{
 #' x_all <- read_main()
 #' }
 #'
@@ -178,6 +186,8 @@ read_main <- function(years = NULL) {
 #'
 #' @examples
 #' \dontrun{
+#' #' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#'
 #' x1 <- read_div(2015)
 #' head(x1)
 #'
@@ -228,8 +238,12 @@ read_div <- function(years = NULL) {
 #'   [read_field_dictionary()]
 #'
 #' @examples
+#' \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#'
 #' ds <- open_main(1987:1988)
 #' ds
+#' }
 #'
 #' @export
 open_main <- function(years = NULL) {
@@ -269,6 +283,8 @@ open_main <- function(years = NULL) {
 #'
 #' @examples
 #' \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#'
 #' ds <- open_div(2015:2016)
 #' ds
 #' }
@@ -306,8 +322,12 @@ open_div <- function(years = NULL) {
 #'   [read_airlines()], [read_field_dictionary()]
 #'
 #' @examples
+#' \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#'
 #' x <- read_coords()
 #' head(x)
+#' }
 #'
 #' @export
 read_coords <- function() {
@@ -339,8 +359,12 @@ read_coords <- function() {
 #'   [read_coords()], [read_field_dictionary()]
 #'
 #' @examples
+#' \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#'
 #' x <- read_airlines()
 #' head(x)
+#' }
 #'
 #' @export
 read_airlines <- function() {
@@ -401,14 +425,13 @@ read_field_dictionary <- function() {
 .parquet_paths <- function(type = c("main", "div"), years = NULL) {
   type <- match.arg(type)
 
-  avail <- slc_available_data_years(type)
-
   if (is.null(years)) {
-    years <- avail
+    years <- slc_available_data_years(type)
   } else {
     years <- normalize_data_years(years)
   }
 
+  avail <- slc_available_data_years(type)
   missing <- setdiff(years, avail)
 
   if (length(missing)) {

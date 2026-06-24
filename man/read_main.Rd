@@ -31,10 +31,11 @@ the same files lazily as an Arrow dataset, allowing filtering or column
 selection before materializing results in memory.
 }
 \examples{
+\dontrun{
+build_slcflights_db(until = "2024-12", confirm = TRUE)
+
 x1 <- read_main(1987)
 x2 <- read_main(1987:1988)
-
-\dontrun{
 x_all <- read_main()
 }
 

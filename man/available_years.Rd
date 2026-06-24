@@ -21,9 +21,10 @@ Available years may come from the packaged data installed with the package
 or from a validated local user cache.
 }
 \examples{
-available_years("main")
-
 \dontrun{
+build_slcflights_db(until = "2024-12", confirm = TRUE)
+
+available_years("main")
 available_years("div")
 }
 

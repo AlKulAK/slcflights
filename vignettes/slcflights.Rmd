@@ -24,11 +24,15 @@ knitr::opts_chunk$set(
 Transportation Statistics (BTS) TranStats **On-Time: Reporting Carrier
 On-Time Performance** data.
 
-The installed package data cover **October 1, 1987 through June 30, 2024**.
-The first and last calendar years are therefore partial years. The package keeps
-those endpoint years because they are part of the historical source data used to
-build the package, but analyses that require complete calendar years should
-treat 1987 and 2024 with care.
+The package does not install the flight-record database itself. Instead, users
+build a local BTS-sourced database with `build_slcflights_db()`. The local
+database begins with October 1987 and extends through the endpoint chosen by the
+user.
+
+The first calendar year is therefore partial. The final calendar year may also
+be partial, depending on the endpoint used when building the local database.
+Analyses that require complete calendar years should treat endpoint years with
+care.
 
 This vignette uses the package for a Salt Lake City-centered adaptation of an
 idea from Wickham's ASA 2009 Data Expo paper [@wickham2011asa]. Wickham used
@@ -65,11 +69,6 @@ The BTS field documentation for this table is available at:
 
 [https://www.transtats.bts.gov/Fields.asp?gnoyr_VQ=FGJ](https://www.transtats.bts.gov/Fields.asp?gnoyr_VQ=FGJ)
 
-The installed historical files in `slcflights` are derived from the 1987--2024
-Parquet files distributed for the 2025 ASA Data Expo Challenge:
-
-[https://community.amstat.org/jointscsg-section/dataexpo/dataexpo202136710288](https://community.amstat.org/jointscsg-section/dataexpo/dataexpo202136710288)
-
 Airport coordinate metadata come from the BTS TranStats Master Coordinate
 support table in the Aviation Support Tables family:
 
@@ -79,12 +78,30 @@ Airline ID metadata come from the BTS TranStats DOT_ID_Reporting_Airline lookup 
 
 [https://www.transtats.bts.gov/Download_Lookup.asp?Y11x72=Y_NVeYVaR_VQ](https://www.transtats.bts.gov/Download_Lookup.asp?Y11x72=Y_NVeYVaR_VQ)
 
-The package build workflow transforms the national source files into Salt Lake
-City-focused data by filtering to records involving Salt Lake City's BTS airport
-ID, splitting scheduled origin/destination records from diversion-only records,
-removing globally empty columns, sorting records, reducing the coordinate and
-Airline ID lookup tables to metadata rows referenced by retained records, and
-enriching the Parquet files with coordinate metadata and airline names.
+The local database build workflow downloads monthly BTS source files directly,
+filters the national records to flights involving Salt Lake City's BTS airport
+ID, splits scheduled origin/destination records from diversion-only records,
+sorts records, reduces the coordinate and Airline ID lookup tables to metadata
+rows referenced by retained records, and enriches the Parquet files with
+coordinate metadata and airline names.
+
+## Building a local database
+
+Before reading flight records, build a local slcflights database. The database
+always begins with October 1987. The endpoint can be a year, a year-month string,
+or `"latest"`.
+
+```{r build-database, eval = FALSE}
+build_slcflights_db(until = "2024-12", confirm = TRUE)
+```
+
+After a database exists, the ordinary reader functions use it automatically.
+Later calls to `build_slcflights_db()` can extend the database forward to a
+later endpoint.
+
+```{r extend-database, eval = FALSE}
+build_slcflights_db(until = "2025-06", confirm = TRUE)
+```
 
 ## What data are available?
 
@@ -97,15 +114,13 @@ The **diversion-only** records are flights where Salt Lake City's BTS airport
 ID appears in one of `Div1AirportID` through `Div5AirportID`, but not in
 `OriginAirportID` or `DestAirportID`.
 
-```{r available-years}
+```{r available-years, eval = FALSE}
 available_years("main")
 available_years("div")
 ```
 
-The main records are available for the full installed historical range,
-including the partial endpoint years 1987 and 2024. Diversion-only records
-begin later because the relevant diversion fields are not present throughout
-the full historical period.
+The main records are available for the months present in the active local
+database. Diversion-only records begin in October 2008.
 
 ## Looking up fields
 
@@ -138,7 +153,7 @@ Carrier metadata are also available directly in the flight records. The
 table by `DOT_ID_Reporting_Airline`. The standalone lookup table is available
 with `read_airlines()`:
 
-```{r airline-lookup}
+```{r airline-lookup, eval = FALSE}
 airlines <- read_airlines()
 
 airlines |>
@@ -480,7 +495,7 @@ count.
 The main and diversion-only plots use different x-axis ranges because the
 diversion-only records are much more variable.
 
-```{r paired-chronological, fig.width = 12, fig.height = 6, out.width = "100%", fig.align = "center"}
+```{r paired-chronological, eval = FALSE, fig.width = 12, fig.height = 6, out.width = "100%", fig.align = "center"}
 draw_plot_pair(ordering = "chronological")
 ```
 
@@ -489,7 +504,7 @@ average day. This ordering makes the contrast easier to read: the main-record
 plot reflects a regular scheduled-service rhythm, while the diversion-only plot
 is much more variable.
 
-```{r paired-median-desc, fig.width = 12, fig.height = 6, out.width = "100%", fig.align = "center"}
+```{r paired-median-desc, eval = FALSE, fig.width = 12, fig.height = 6, out.width = "100%", fig.align = "center"}
 draw_plot_pair(ordering = "median_desc")
 ```
 
@@ -506,82 +521,53 @@ annual summaries. The same normalization remains useful, but it should be read
 as a comparison of operational volatility rather than a regular travel-demand
 pattern.
 
-## Local updates
+## Extending the local database
 
-The installed package data end on **June 30, 2024**. To extend the available
-data with newer BTS monthly releases, run:
+A local database can be extended forward after it has been built. Extensions are
+contiguous: if the active database ends with June 2024, the next extension
+starts with July 2024.
 
-```{r update-data, eval = FALSE}
-update_slcflights_data()
+```{r extend-data, eval = FALSE}
+build_slcflights_db(until = "2024-07")
 ```
 
-By default, `update_slcflights_data()` checks BTS for the latest available
-monthly data and downloads every available month after June 2024. You can also
-request an explicit endpoint:
+You can also request a later endpoint:
 
-```{r update-data-explicit, eval = FALSE}
-# One additional month of data
-update_slcflights_data(until = "2024-07")
-
-# Six additional months of data
-update_slcflights_data(until = c(2024, 12))
+```{r extend-data-explicit, eval = FALSE}
+build_slcflights_db(until = "2024-12")
 ```
 
-Local updates always begin with July 2024 and form a consecutive extension of
-the installed data. The update process stores data in the user cache directory
-returned by `tools::R_user_dir("slcflights", "cache")`. The installed package
-files are not modified.
+For large initial builds or large extensions, use `confirm = TRUE`:
 
-You can inspect the active cache with `slcflights_cache_info()`. This is useful
-after an update because it reports whether a compatible local cache is active
-and which years are available from it.
-
-If you want to discard the local cache and return to using only the data
-installed with the package, run:
-
-```{r clear-cache, eval = FALSE}
-clear_slcflights_cache()
+```{r extend-data-confirm, eval = FALSE}
+build_slcflights_db(until = "latest", confirm = TRUE)
 ```
 
-After a compatible cache is active, ordinary reader functions use it
-automatically. For example, after updating through July 2024,
-`read_year_main(2024)` reads the installed January-through-June records and the
-cached July records as one combined data frame.
+The local database is stored in the user cache directory returned by
+`tools::R_user_dir("slcflights", "cache")`. The installed package files are not
+modified.
 
-## Rebuilding the bundled data
+## Rebuilding data
 
-Most users should **not** rebuild the bundled data. They should use the installed
-files and, when needed, `update_slcflights_data()` for post-June-2024 monthly
-updates.
+Most users should not run maintainer-side data-building workflows. The public
+workflow is to build or extend a local BTS-sourced database with
+`build_slcflights_db()`.
 
-The maintainer build workflow lives in `data-raw/build_data.R`. From a source
-checkout, maintainers can rebuild all bundled data artifacts with:
-
-```{r rebuild-data, eval = FALSE}
-source("data-raw/build_data.R")
-build_slc_data()
+```{r build-local-summary, eval = FALSE}
+build_slcflights_db(until = "latest", confirm = TRUE)
 ```
 
-By default, `build_slc_data()` rebuilds all bundled data artifacts. It rebuilds
-years 1987 through 2024, filters the national source data to Salt Lake
-City-related records, splits main and diversion-only files, reduces the BTS Master Coordinate and Airline ID lookup tables, enriches the Parquet files with airport and airline metadata, rebuilds the field dictionary, and writes final package data under `inst/extdata/`.
-
-No source data files need to be present before running this workflow. The
-historical Parquet source files are downloaded into a temporary build directory,
-and the BTS Master Coordinate and Airline ID lookup tables are downloaded
-automatically if `data-raw/T_MASTER_CORD.csv` or `data-raw/L_AIRLINE_ID.csv` is
-absent.
-
-The temporary build directory is a maintainer-side artifact. It is not part of
-the installed package and is separate from the local user cache created by
-`update_slcflights_data()`.
+This downloads BTS monthly source files, filters them to Salt Lake
+City-related records, builds local Parquet files, writes reduced metadata
+tables, and records the completed endpoint in a local database manifest.
 
 ## Summary
 
-This vignette used `slcflights` to adapt Wickham's weekday/holiday
-normalization idea to Salt Lake City-centered flight records. The main records
-show regular scheduled-service patterns, while the diversion-only records are
-sparser and more volatile. The contrast illustrates why `slcflights` keeps
-these two data groupings separate.
+This vignette showed how `slcflights` can be used to adapt Wickham's
+weekday/holiday normalization idea to Salt Lake City-centered flight records
+after a local BTS-sourced database has been built. The main records describe
+scheduled SLC origin/destination service, while the diversion-only records
+describe rarer operational disruptions. The contrast illustrates why
+`slcflights` keeps these two data groupings separate.
 
 ## References {#refs}

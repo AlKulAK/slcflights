@@ -30,8 +30,12 @@ The table contains the airport-level metadata used to enrich the flight
 records with latitude, longitude, and date-bounded airport information.
 }
 \examples{
+\dontrun{
+build_slcflights_db(until = "2024-12", confirm = TRUE)
+
 x <- read_coords()
 head(x)
+}
 
 }
 \seealso{

@@ -27,8 +27,12 @@ It is intended for joins against \code{DOT_ID_Reporting_Airline} in the flight
 data.
 }
 \examples{
+\dontrun{
+build_slcflights_db(until = "2024-12", confirm = TRUE)
+
 x <- read_airlines()
 head(x)
+}
 
 }
 \seealso{

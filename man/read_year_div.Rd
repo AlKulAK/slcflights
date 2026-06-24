@@ -33,6 +33,8 @@ lazily with one or more years as an Arrow dataset.
 }
 \examples{
 \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+
 x <- read_year_div(2015)
 head(x)
 }

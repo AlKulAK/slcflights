@@ -36,6 +36,8 @@ selection before materializing results in memory.
 }
 \examples{
 \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+
 x1 <- read_div(2015)
 head(x1)
 

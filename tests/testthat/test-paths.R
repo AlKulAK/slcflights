@@ -20,12 +20,8 @@ test_that("path helpers are not exported", {
 })
 
 test_that("public API remains sufficient without path access", {
-  expect_type(available_years("main"), "integer")
-  expect_type(available_years("div"), "integer")
-
-  x <- read_coords()
-  expect_s3_class(x, "spec_tbl_df", exact = FALSE)
-  expect_true("AIRPORT_SEQ_ID" %in% names(x))
-  expect_true("LATITUDE" %in% names(x))
-  expect_true("LONGITUDE" %in% names(x))
+  expect_error(
+    available_years("main"),
+    "No local slcflights database is active"
+  )
 })

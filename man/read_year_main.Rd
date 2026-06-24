@@ -28,8 +28,12 @@ Use \code{\link[=read_main]{read_main()}} to read multiple years at once. Use \c
 lazily with one or more years as an Arrow dataset.
 }
 \examples{
+\dontrun{
+build_slcflights_db(until = "2024-12", confirm = TRUE)
+
 x <- read_year_main(1987)
 head(x)
+}
 
 }
 \seealso{

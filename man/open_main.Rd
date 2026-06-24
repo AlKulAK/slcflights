@@ -30,8 +30,12 @@ or otherwise work lazily before collecting results into memory. Use
 \code{\link[=read_main]{read_main()}} when you want an in-memory data frame instead.
 }
 \examples{
+\dontrun{
+build_slcflights_db(until = "2024-12", confirm = TRUE)
+
 ds <- open_main(1987:1988)
 ds
+}
 
 }
 \seealso{

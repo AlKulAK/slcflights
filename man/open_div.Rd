@@ -36,6 +36,8 @@ Parquet file.
 }
 \examples{
 \dontrun{
+build_slcflights_db(until = "2024-12", confirm = TRUE)
+
 ds <- open_div(2015:2016)
 ds
 }

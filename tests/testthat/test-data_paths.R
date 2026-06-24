@@ -77,45 +77,6 @@ test_that("cached years require files listed by manifest years", {
   unlink(root, recursive = TRUE, force = TRUE)
 })
 
-test_that("combined available years include installed and cached years", {
-  root <- tempfile("slc-data-paths-")
-
-  slcflights:::write_cache_manifest(
-    months = data.frame(
-      year = c(rep(2024L, 6L), 2025L),
-      month = c(7:12, 1L)
-    ),
-    root = root,
-    package_version = "0.0.0.9000",
-    created_at = "2026-05-01T00:00:00Z"
-  )
-
-  path_2024 <- slcflights:::slc_cache_parquet_path(
-    "main",
-    2024,
-    root = root,
-    create = TRUE
-  )
-
-  path_2025 <- slcflights:::slc_cache_parquet_path(
-    "main",
-    2025,
-    root = root,
-    create = TRUE
-  )
-
-  writeLines("not real parquet", path_2024)
-  writeLines("not real parquet", path_2025)
-
-  years <- slcflights:::slc_available_data_years("main", root = root)
-
-  expect_true(1987L %in% years)
-  expect_true(2024L %in% years)
-  expect_true(2025L %in% years)
-
-  unlink(root, recursive = TRUE, force = TRUE)
-})
-
 test_that("installed data paths return installed files only", {
   paths <- slcflights:::slc_installed_data_paths("main", years = 1987)
 
@@ -158,114 +119,19 @@ test_that("cached data paths return cache files only", {
   unlink(root, recursive = TRUE, force = TRUE)
 })
 
-test_that("combined data paths order installed path before cache overlay", {
+test_that("data paths error clearly when requested database year is missing", {
   root <- tempfile("slc-data-paths-")
 
-  slcflights:::write_cache_manifest(
-    months = data.frame(year = 2024L, month = 7L),
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
     root = root,
     package_version = "0.0.0.9000",
     created_at = "2026-05-01T00:00:00Z"
   )
 
-  cache_path <- slcflights:::slc_cache_parquet_path(
-    "main",
-    2024,
-    root = root,
-    create = TRUE
-  )
-
-  writeLines("not real parquet", cache_path)
-
-  paths <- slcflights:::slc_data_paths(
-    "main",
-    years = 2024,
-    root = root
-  )
-
-  expect_equal(paths$source, c("installed", "cache"))
-  expect_equal(paths$year, c(2024L, 2024L))
-  expect_equal(paths$path[[2]], cache_path)
-
-  unlink(root, recursive = TRUE, force = TRUE)
-})
-
-test_that("combined data paths error clearly when no requested year exists", {
   expect_error(
-    slcflights:::slc_data_paths("main", years = 3000),
+    slcflights:::slc_data_paths("main", years = 3000, root = root),
     "No main Parquet files are available"
-  )
-})
-
-test_that("coordinate path prefers cache only when manifest and file exist", {
-  root <- tempfile("slc-data-paths-")
-
-  installed <- slcflights:::slc_installed_coords_path()
-
-  expect_equal(
-    slcflights:::slc_coords_path(root = root),
-    installed
-  )
-
-  slcflights:::write_cache_manifest(
-    months = data.frame(year = 2024L, month = 7L),
-    root = root,
-    package_version = "0.0.0.9000",
-    created_at = "2026-05-01T00:00:00Z"
-  )
-
-  expect_equal(
-    slcflights:::slc_coords_path(root = root),
-    installed
-  )
-
-  cached <- slcflights:::slc_cache_coords_path(
-    root = root,
-    create = TRUE
-  )
-
-  writeLines("coords", cached)
-
-  expect_equal(
-    slcflights:::slc_coords_path(root = root),
-    cached
-  )
-
-  unlink(root, recursive = TRUE, force = TRUE)
-})
-
-test_that("airline path prefers cache only when manifest and file exist", {
-  root <- tempfile("slc-data-paths-")
-
-  installed <- slcflights:::slc_installed_airlines_path()
-
-  expect_equal(
-    slcflights:::slc_airlines_path(root = root),
-    installed
-  )
-
-  slcflights:::write_cache_manifest(
-    months = data.frame(year = 2024L, month = 7L),
-    root = root,
-    package_version = "0.0.0.9000",
-    created_at = "2026-05-01T00:00:00Z"
-  )
-
-  expect_equal(
-    slcflights:::slc_airlines_path(root = root),
-    installed
-  )
-
-  cached <- slcflights:::slc_cache_airlines_path(
-    root = root,
-    create = TRUE
-  )
-
-  writeLines("airlines", cached)
-
-  expect_equal(
-    slcflights:::slc_airlines_path(root = root),
-    cached
   )
 
   unlink(root, recursive = TRUE, force = TRUE)
@@ -316,6 +182,42 @@ test_that("database years require files listed by manifest years", {
   expect_equal(
     slcflights:::slc_available_db_years("main", root = root),
     1987L
+  )
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("coordinate path requires database coordinate file", {
+  root <- tempfile("slc-data-paths-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  expect_error(
+    slcflights:::slc_coords_path(root = root),
+    "missing its coordinate CSV"
+  )
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("airline path requires database airline file", {
+  root <- tempfile("slc-data-paths-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(year = 1987L, month = 10L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  expect_error(
+    slcflights:::slc_airlines_path(root = root),
+    "missing its Airline ID lookup CSV"
   )
 
   unlink(root, recursive = TRUE, force = TRUE)
@@ -428,5 +330,41 @@ test_that("data year normalization validates years", {
   expect_error(
     slcflights:::normalize_data_years(NA),
     "missing values"
+  )
+})
+
+test_that("data years require an active database", {
+  root <- tempfile("slc-data-paths-")
+
+  expect_error(
+    slcflights:::slc_available_data_years("main", root = root),
+    "No local slcflights database is active"
+  )
+})
+
+test_that("data paths require an active database", {
+  root <- tempfile("slc-data-paths-")
+
+  expect_error(
+    slcflights:::slc_data_paths("main", years = 1987, root = root),
+    "No local slcflights database is active"
+  )
+})
+
+test_that("coordinate path requires an active database", {
+  root <- tempfile("slc-data-paths-")
+
+  expect_error(
+    slcflights:::slc_coords_path(root = root),
+    "No local slcflights database is active"
+  )
+})
+
+test_that("airline path requires an active database", {
+  root <- tempfile("slc-data-paths-")
+
+  expect_error(
+    slcflights:::slc_airlines_path(root = root),
+    "No local slcflights database is active"
   )
 })
