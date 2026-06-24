@@ -96,11 +96,11 @@ build_slcflights_db(until = "2024-12", confirm = TRUE)
 ```
 
 After a database exists, the ordinary reader functions use it automatically.
-Later calls to `build_slcflights_db()` can extend the database forward to a
-later endpoint.
+Use `update_slcflights_db()` to extend an existing database forward to a later
+endpoint.
 
 ```{r extend-database, eval = FALSE}
-build_slcflights_db(until = "2025-06", confirm = TRUE)
+update_slcflights_db(until = "2025-06", confirm = TRUE)
 ```
 
 ## What data are available?
@@ -528,19 +528,19 @@ contiguous: if the active database ends with June 2024, the next extension
 starts with July 2024.
 
 ```{r extend-data, eval = FALSE}
-build_slcflights_db(until = "2024-07")
+update_slcflights_db(until = "2024-07", confirm = TRUE)
 ```
 
 You can also request a later endpoint:
 
 ```{r extend-data-explicit, eval = FALSE}
-build_slcflights_db(until = "2024-12")
+update_slcflights_db(until = "2024-12", confirm = TRUE)
 ```
 
 For large initial builds or large extensions, use `confirm = TRUE`:
 
 ```{r extend-data-confirm, eval = FALSE}
-build_slcflights_db(until = "latest", confirm = TRUE)
+update_slcflights_db(until = "latest", confirm = TRUE)
 ```
 
 The local database is stored in the user cache directory returned by
@@ -549,9 +549,8 @@ modified.
 
 ## Rebuilding data
 
-Most users should not run maintainer-side data-building workflows. The public
-workflow is to build or extend a local BTS-sourced database with
-`build_slcflights_db()`.
+Most users should not run maintainer-side data-building workflows. The public workflow is to build a local BTS-sourced database with
+`build_slcflights_db()` and extend it with `update_slcflights_db()`.
 
 ```{r build-local-summary, eval = FALSE}
 build_slcflights_db(until = "latest", confirm = TRUE)

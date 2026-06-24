@@ -12,3 +12,5 @@ src/
 *.bak
 data-raw/cache
 inst/doc
+/doc/
+/Meta/
