@@ -152,58 +152,35 @@ test_that("schema finalization works for multiple files", {
 })
 
 test_that("schema alignment writes files in route-first flight order", {
-  root <- tempfile("slc-cache-schema-")
-
-  cache_main <- slcflights:::slc_cache_parquet_path(
+  root <- tempfile("slc-schema-")
+  path <- slcflights:::slc_cache_parquet_path(
     "main",
     2024,
     root = root,
     create = TRUE
   )
 
-  installed <- arrow::read_parquet(
-    slcflights:::slc_installed_parquet_path("main", 2024)
+  x <- data.frame(
+    OriginAirportID = c(14869L, 12889L, 14869L),
+    DestAirportID = c(11292L, 14869L, 11292L),
+    FlightDate = as.Date(c("2024-07-03", "2024-07-01", "2024-07-02")),
+    CRSDepTime = c(900L, 800L, 700L)
   )
 
-  x <- installed[seq_len(min(4L, nrow(installed))), ]
+  arrow::write_parquet(x, path)
 
-  x <- x[rev(seq_len(nrow(x))), ]
-  x$FlightDate <- as.Date(
-    c("2024-07-02", "2024-07-01", "2024-07-01", "2024-07-01")
-  )
-  x$CRSDepTime <- c("0900", NA, "0702", "0700")
-  x$OriginAirportID <- c(14869L, 14869L, 14869L, 14869L)
-  x$DestAirportID <- c(15000L, 14000L, 13000L, 12000L)
-  x$Reporting_Airline <- c("ZZ", "AA", "AA", "AA")
-  x$Flight_Number_Reporting_Airline <- c(9L, 2L, 2L, 1L)
-  x$OriginAirportSeqID <- c(1486901L, 1486901L, 1486901L, 1486901L)
-  x$DestAirportSeqID <- c(1500001L, 1400001L, 1300001L, 1200001L)
-  x$DOT_ID_Reporting_Airline <- c(999L, 100L, 100L, 100L)
-  x$CacheOnlyColumn <- "keep me"
+  slcflights:::cache_schema_align_file(path)
 
-  arrow::write_parquet(x, cache_main)
-
-  slcflights:::cache_schema_align_file(cache_main)
-
-  aligned <- arrow::read_parquet(cache_main)
-
-  expect_true("CacheOnlyColumn" %in% names(aligned))
+  out <- arrow::read_parquet(path)
 
   expect_equal(
-    aligned$FlightDate,
-    as.Date(c("2024-07-01", "2024-07-01", "2024-07-01", "2024-07-02"))
+    out$OriginAirportID,
+    c(12889L, 14869L, 14869L)
   )
 
   expect_equal(
-    sprintf("%04d", as.integer(aligned$CRSDepTime))[1:2],
-    c("0700", "0702")
-  )
-
-  expect_true(is.na(aligned$CRSDepTime[[3]]))
-
-  expect_equal(
-    aligned$DestAirportID,
-    c(12000L, 13000L, 14000L, 15000L)
+    out$FlightDate,
+    as.Date(c("2024-07-01", "2024-07-02", "2024-07-03"))
   )
 
   unlink(root, recursive = TRUE, force = TRUE)

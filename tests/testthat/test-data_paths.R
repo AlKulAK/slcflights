@@ -1,30 +1,15 @@
-test_that("installed extdata paths exist", {
+test_that("installed CSV extdata paths exist", {
+  field_dict <- system.file(
+    "extdata",
+    "csv",
+    "field_dictionary.csv",
+    package = "slcflights",
+    mustWork = TRUE
+  )
+
   expect_true(dir.exists(slcflights:::slc_installed_extdata_root()))
-  expect_true(dir.exists(slcflights:::slc_installed_parquet_root()))
   expect_true(dir.exists(slcflights:::slc_installed_csv_root()))
-  expect_true(file.exists(slcflights:::slc_installed_coords_path()))
-})
-
-test_that("installed parquet paths follow package annual layout", {
-  path <- slcflights:::slc_installed_parquet_path("main", 1987)
-
-  expect_match(path, "Year=1987")
-  expect_match(path, "data_0_main[.]parquet$")
-})
-
-test_that("installed available years discover main files", {
-  years <- slcflights:::slc_available_installed_years("main")
-
-  expect_true(1987L %in% years)
-  expect_true(2024L %in% years)
-  expect_true(all(years == sort(unique(years))))
-})
-
-test_that("installed available years discover diversion files separately", {
-  years <- slcflights:::slc_available_installed_years("div")
-
-  expect_type(years, "integer")
-  expect_true(all(years == sort(unique(years))))
+  expect_true(file.exists(field_dict))
 })
 
 test_that("cached years are empty without a manifest", {
@@ -75,15 +60,6 @@ test_that("cached years require files listed by manifest years", {
   )
 
   unlink(root, recursive = TRUE, force = TRUE)
-})
-
-test_that("installed data paths return installed files only", {
-  paths <- slcflights:::slc_installed_data_paths("main", years = 1987)
-
-  expect_equal(nrow(paths), 1L)
-  expect_equal(paths$year, 1987L)
-  expect_equal(paths$source, "installed")
-  expect_true(file.exists(paths$path))
 })
 
 test_that("cached data paths return cache files only", {

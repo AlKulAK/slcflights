@@ -213,25 +213,15 @@ cache_build_reduce_coords_csv <- function(
 #' @noRd
 cache_build_avail_pq_files <- function(
   years,
-  root = NULL,
-  include_installed = TRUE
+  root = slc_cache_active_root(create = FALSE)
 ) {
-  years <- normalize_data_years(years)
+  years <- as.integer(years)
 
-  cached <- rbind(
-    slc_cached_data_paths("main", years = years, root = root),
-    slc_cached_data_paths("div", years = years, root = root)
+  paths <- slc_cached_data_paths(
+    "main",
+    years = years,
+    root = root
   )
 
-  if (!isTRUE(include_installed)) {
-    return(unname(cached$path))
-  }
-
-  installed <- rbind(
-    slc_installed_data_paths("main", years = years),
-    slc_installed_data_paths("div", years = years)
-  )
-
-  paths <- c(installed$path, cached$path)
-  unname(paths[file.exists(paths)])
+  paths$path
 }

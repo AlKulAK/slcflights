@@ -186,8 +186,8 @@ test_that("coordinate reduction keeps only used sequence IDs in CSV order", {
   unlink(root, recursive = TRUE, force = TRUE)
 })
 
-test_that("available cache build parquet files can include installed files", {
-  root <- tempfile("slc-cache-coords-")
+test_that("available cache build parquet files use cache files", {
+  root <- tempfile("slc-cache-build-")
 
   slcflights:::write_cache_manifest(
     months = data.frame(year = 2024L, month = 7L),
@@ -196,30 +196,21 @@ test_that("available cache build parquet files can include installed files", {
     created_at = "2026-05-01T00:00:00Z"
   )
 
-  cache_main <- slcflights:::slc_cache_parquet_path(
+  path <- slcflights:::slc_cache_parquet_path(
     "main",
     2024,
     root = root,
     create = TRUE
   )
 
-  writeLines("not real parquet", cache_main)
+  writeLines("not real parquet", path)
 
-  with_installed <- slcflights:::cache_build_avail_pq_files(
+  out <- slcflights:::cache_build_avail_pq_files(
     years = 2024,
-    root = root,
-    include_installed = TRUE
+    root = root
   )
 
-  without_installed <- slcflights:::cache_build_avail_pq_files(
-    years = 2024,
-    root = root,
-    include_installed = FALSE
-  )
-
-  expect_true(cache_main %in% with_installed)
-  expect_true(cache_main %in% without_installed)
-  expect_gt(length(with_installed), length(without_installed))
+  expect_equal(out, path)
 
   unlink(root, recursive = TRUE, force = TRUE)
 })
