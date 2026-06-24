@@ -7,9 +7,8 @@
 #'
 #' The package builds a local BTS-sourced database from monthly BTS source
 #' files. The local database begins with October 1987 and extends through a
-#' user-selected endpoint. Use [build_slcflights_db()] or
-#' [update_slcflights_data()] to build or extend the database before reading
-#' flight records.
+#' user-selected endpoint. Use [build_slcflights_db()] before reading flight
+#' records. Use [update_slcflights_db()] to extend an existing local database.
 #'
 #' The package contains two flight-data groupings:
 #'
@@ -21,9 +20,10 @@
 #'
 #' The main user-facing functions are:
 #'
-#' - [build_slcflights_db()] to build or extend the local BTS-sourced database
-#' - [update_slcflights_data()] to build or extend the local BTS-sourced
-#'   database
+#' - [build_slcflights_db()] to build the local BTS-sourced database
+#' - [update_slcflights_db()] to extend an existing local BTS-sourced database
+#' - [status_slcflights_db()] to inspect the active local database
+#' - [delete_slcflights_db()] to remove the active local database
 #' - [available_years()] to list years available in the active local database
 #'   for main or diversion-only records
 #' - [read_main()] to read one, many, or all years of main records into memory
@@ -41,8 +41,6 @@
 #'   local database
 #' - [read_field_dictionary()] to read field descriptions and field-presence
 #'   metadata
-#' - [slcflights_cache_info()] to inspect the active local database
-#' - [clear_slcflights_cache()] to remove the active local database
 #'
 #' @section Fields:
 #' Flight-record columns use BTS TranStats field names from the monthly source

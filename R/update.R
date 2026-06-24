@@ -402,9 +402,9 @@ clear_cache_root <- function(root, confirm = interactive()) {
 }
 
 run_db_build <- function(
-    until,
-    overwrite = FALSE,
-    confirm = FALSE
+  until,
+  overwrite = FALSE,
+  confirm = FALSE
 ) {
   message("Resolving requested slcflights database endpoint...")
 
@@ -508,9 +508,9 @@ run_db_build <- function(
 #'
 #' @export
 update_slcflights_db <- function(
-    until = "latest",
-    overwrite = FALSE,
-    confirm = FALSE
+  until = "latest",
+  overwrite = FALSE,
+  confirm = FALSE
 ) {
   active <- read_db_manifest_if_active(
     root = slc_db_root(create = FALSE)
@@ -570,9 +570,9 @@ update_slcflights_db <- function(
 #'
 #' @export
 build_slcflights_db <- function(
-    until = "latest",
-    overwrite = FALSE,
-    confirm = FALSE
+  until = "latest",
+  overwrite = FALSE,
+  confirm = FALSE
 ) {
   active <- read_db_manifest_if_active(
     root = slc_db_root(create = FALSE)

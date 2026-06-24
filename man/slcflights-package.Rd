@@ -14,9 +14,8 @@ and Airline ID metadata for those records.
 \details{
 The package builds a local BTS-sourced database from monthly BTS source
 files. The local database begins with October 1987 and extends through a
-user-selected endpoint. Use \code{\link[=build_slcflights_db]{build_slcflights_db()}} or
-\code{\link[=update_slcflights_data]{update_slcflights_data()}} to build or extend the database before reading
-flight records.
+user-selected endpoint. Use \code{\link[=build_slcflights_db]{build_slcflights_db()}} before reading flight
+records. Use \code{\link[=update_slcflights_db]{update_slcflights_db()}} to extend an existing local database.
 
 The package contains two flight-data groupings:
 \itemize{
@@ -29,9 +28,10 @@ in one of \code{Div1AirportID} through \code{Div5AirportID}, but not in
 
 The main user-facing functions are:
 \itemize{
-\item \code{\link[=build_slcflights_db]{build_slcflights_db()}} to build or extend the local BTS-sourced database
-\item \code{\link[=update_slcflights_data]{update_slcflights_data()}} to build or extend the local BTS-sourced
-database
+\item \code{\link[=build_slcflights_db]{build_slcflights_db()}} to build the local BTS-sourced database
+\item \code{\link[=update_slcflights_db]{update_slcflights_db()}} to extend an existing local BTS-sourced database
+\item \code{\link[=status_slcflights_db]{status_slcflights_db()}} to inspect the active local database
+\item \code{\link[=delete_slcflights_db]{delete_slcflights_db()}} to remove the active local database
 \item \code{\link[=available_years]{available_years()}} to list years available in the active local database
 for main or diversion-only records
 \item \code{\link[=read_main]{read_main()}} to read one, many, or all years of main records into memory
@@ -49,8 +49,6 @@ database
 local database
 \item \code{\link[=read_field_dictionary]{read_field_dictionary()}} to read field descriptions and field-presence
 metadata
-\item \code{\link[=slcflights_cache_info]{slcflights_cache_info()}} to inspect the active local database
-\item \code{\link[=clear_slcflights_cache]{clear_slcflights_cache()}} to remove the active local database
 }
 }
 \section{Fields}{
