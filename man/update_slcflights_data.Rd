@@ -7,43 +7,26 @@
 update_slcflights_data(until = "latest", overwrite = FALSE)
 }
 \arguments{
-\item{until}{Endpoint through which to update. Use \code{"latest"} to download
-all currently available new data, a string of the form \code{"YYYY-MM"}, or
-\code{c(year, month)}.}
+\item{until}{Database endpoint. Use \code{"latest"}, a four-digit year, a string
+of the form \code{"YYYY-MM"}, or \code{c(year, month)}.}
 
-\item{overwrite}{If \code{TRUE}, re-downloads raw BTS source files already present
-in the local raw-data cache.}
+\item{overwrite}{If \code{TRUE}, re-downloads raw BTS source files already
+present in the local raw-data cache.}
 }
 \value{
-Invisibly, a list describing the active local cache. The list has the same
-structure as the value returned by \code{\link[=slcflights_cache_info]{slcflights_cache_info()}}.
+Invisibly, a list describing the active local database.
 }
 \description{
-Downloads newly available BTS flight data and builds a validated local cache.
-}
-\details{
-The package ships data through June 2024. Local updates always begin with
-July 2024 and must form a consecutive extension of the packaged data.
-
-By default, \code{update_slcflights_data()} checks BTS for the latest available
-monthly file and updates through that month. You may also specify an explicit
-endpoint, for example \code{until = "2024-07"}, to perform a smaller update.
-
-Updated data are stored in the user cache returned by
-\code{tools::R_user_dir("slcflights", "cache")}. The installed package files are
-never modified.
-
-After a compatible cache is active, the ordinary reader functions use it
-automatically. For example, \code{\link[=read_year_main]{read_year_main()}} combines installed and cached
-data for a year that spans both sources.
+Builds or extends the local slcflights database.
 }
 \examples{
 \dontrun{
 update_slcflights_data()
-update_slcflights_data(until = "2024-07")
+update_slcflights_data(until = "2024-12")
 }
 
 }
 \seealso{
-\code{\link[=slcflights_cache_info]{slcflights_cache_info()}}, \code{\link[=clear_slcflights_cache]{clear_slcflights_cache()}}
+\code{\link[=build_slcflights_db]{build_slcflights_db()}}, \code{\link[=slcflights_cache_info]{slcflights_cache_info()}},
+\code{\link[=clear_slcflights_cache]{clear_slcflights_cache()}}
 }

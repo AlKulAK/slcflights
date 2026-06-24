@@ -634,3 +634,105 @@ test_that("download month validation rejects duplicates", {
     "duplicate"
   )
 })
+
+test_that("update_slcflights_data delegates to database build", {
+  called <- FALSE
+  got_until <- NULL
+  got_overwrite <- NULL
+  got_confirm <- NULL
+
+  testthat::local_mocked_bindings(
+    build_slcflights_db = function(until,
+                                   overwrite = FALSE,
+                                   confirm = FALSE) {
+      called <<- TRUE
+      got_until <<- until
+      got_overwrite <<- overwrite
+      got_confirm <<- confirm
+
+      invisible(list(ok = TRUE))
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::update_slcflights_data(
+    until = "2024-12",
+    overwrite = TRUE
+  )
+
+  expect_true(called)
+  expect_equal(got_until, "2024-12")
+  expect_true(got_overwrite)
+  expect_true(got_confirm)
+  expect_equal(out, list(ok = TRUE))
+})
+
+test_that("slcflights_cache_info reports database info", {
+  info <- list(
+    root = "db-root",
+    exists = TRUE,
+    complete = TRUE,
+    months = data.frame(year = 1987L, month = 10L),
+    endpoint = slcflights:::as_year_month(1987L, 10L),
+    manifest = list(db_start = "1987-10", db_end = "1987-10")
+  )
+
+  testthat::local_mocked_bindings(
+    slc_db_info = function(root = NULL) {
+      info
+    },
+    print_db_info = function(info) {
+      invisible(info)
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::slcflights_cache_info()
+
+  expect_equal(out, info)
+})
+
+test_that("clear_slcflights_cache clears database root", {
+  got_root <- NULL
+  got_confirm <- NULL
+
+  testthat::local_mocked_bindings(
+    slc_db_root = function(create = TRUE) {
+      "db-root"
+    },
+    clear_cache_root = function(root, confirm = interactive()) {
+      got_root <<- root
+      got_confirm <<- confirm
+
+      invisible(TRUE)
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::clear_slcflights_cache(confirm = FALSE)
+
+  expect_true(out)
+  expect_equal(got_root, "db-root")
+  expect_false(got_confirm)
+})
+
+test_that("database info ignores old cache manifests", {
+  root <- tempfile("slc-db-info-")
+
+  slcflights:::write_cache_manifest(
+    months = data.frame(year = 2024L, month = 7L),
+    root = root,
+    package_version = "0.0.0.9000",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  info <- slcflights:::slc_db_info(root = root)
+
+  expect_false(info$exists)
+  expect_false(info$complete)
+  expect_equal(info$months, data.frame(year = integer(), month = integer()))
+  expect_null(info$endpoint)
+  expect_null(info$manifest)
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})

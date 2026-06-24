@@ -2,32 +2,36 @@
 % Please edit documentation in R/update.R
 \name{slcflights_cache_info}
 \alias{slcflights_cache_info}
-\title{Show slcflights Cache Information}
+\title{Show slcflights Local Database Information}
 \usage{
 slcflights_cache_info()
 }
 \value{
-Invisibly, a list describing the active local cache. The list contains:
+Invisibly, a list describing the active local database. The list contains:
 \itemize{
-\item \code{root}: normalized path to the active cache directory.
-\item \code{exists}: \code{TRUE} if an active cache manifest exists.
-\item \code{complete}: \code{TRUE} if the active cache has the expected cached files.
-\item \code{months}: data frame of cached year-month pairs.
-\item \code{endpoint}: final cached year-month, or \code{NULL} when no cache is active.
-\item \code{manifest}: parsed cache manifest, or \code{NULL} when no cache is active.
+\item \code{root}: normalized path to the active local database directory.
+\item \code{exists}: \code{TRUE} if an active database manifest exists.
+\item \code{complete}: \code{TRUE} if the active database has the expected files.
+\item \code{months}: data frame of available year-month pairs.
+\item \code{endpoint}: final available year-month, or \code{NULL} when no database is
+active.
+\item \code{manifest}: parsed database manifest, or \code{NULL} when no database is active.
 }
 }
 \description{
-Reports whether a local slcflights data cache is active and complete.
+Reports whether a local slcflights database is active and complete.
 }
 \details{
-This function only reports cache state. It does not download or
-build data, modify the cache, or modify the installed package files.
+This function only reports local database state. It does not download, build,
+or delete data.
 }
 \examples{
+\dontrun{
 slcflights_cache_info()
+}
 
 }
 \seealso{
-\code{\link[=update_slcflights_data]{update_slcflights_data()}}, \code{\link[=clear_slcflights_cache]{clear_slcflights_cache()}}
+\code{\link[=build_slcflights_db]{build_slcflights_db()}}, \code{\link[=update_slcflights_data]{update_slcflights_data()}},
+\code{\link[=clear_slcflights_cache]{clear_slcflights_cache()}}
 }

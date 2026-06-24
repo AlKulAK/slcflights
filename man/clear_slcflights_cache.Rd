@@ -2,27 +2,24 @@
 % Please edit documentation in R/update.R
 \name{clear_slcflights_cache}
 \alias{clear_slcflights_cache}
-\title{Clear the slcflights Local Cache}
+\title{Clear the slcflights Local Database}
 \usage{
 clear_slcflights_cache(confirm = interactive())
 }
 \arguments{
-\item{confirm}{If \code{TRUE}, asks for confirmation before deleting the cache.}
+\item{confirm}{If \code{TRUE}, asks for confirmation before deleting the local
+database.}
 }
 \value{
-Invisibly, \code{TRUE} if the cache was deleted or did not exist, and \code{FALSE} if
-deletion was cancelled.
+Invisibly, \code{TRUE} if the local database was deleted or did not exist, and
+\code{FALSE} if deletion was cancelled.
 }
 \description{
-Removes locally downloaded and locally built slcflights update data.
+Removes the active local slcflights database.
 }
 \details{
-This removes the slcflights user cache returned by
-\code{tools::R_user_dir("slcflights", "cache")}. It does not modify the installed
-package files.
-
-After the cache is cleared, the ordinary reader functions use only the
-installed package data.
+This removes the active local slcflights database stored under the user
+cache directory returned by \code{tools::R_user_dir("slcflights", "cache")}.
 }
 \examples{
 \dontrun{
@@ -31,5 +28,6 @@ clear_slcflights_cache()
 
 }
 \seealso{
-\code{\link[=update_slcflights_data]{update_slcflights_data()}}, \code{\link[=slcflights_cache_info]{slcflights_cache_info()}}
+\code{\link[=build_slcflights_db]{build_slcflights_db()}}, \code{\link[=update_slcflights_data]{update_slcflights_data()}},
+\code{\link[=slcflights_cache_info]{slcflights_cache_info()}}
 }

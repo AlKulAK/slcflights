@@ -278,27 +278,28 @@ slc_db_info <- function(root = NULL) {
 
   root <- normalizePath(root, winslash = "/", mustWork = FALSE)
 
-  manifest <- read_db_manifest(root = root)
+  manifest <- read_db_manifest_if_active(root = root)
+
+  if (is.null(manifest)) {
+    return(list(
+      root = root,
+      exists = FALSE,
+      complete = FALSE,
+      months = data.frame(year = integer(), month = integer()),
+      endpoint = NULL,
+      manifest = NULL
+    ))
+  }
+
   complete <- db_months_are_complete(root = root)
-
-  months <- if (is.null(manifest)) {
-    data.frame(year = integer(), month = integer())
-  } else {
-    db_months_from_manifest(manifest)
-  }
-
-  endpoint <- if (is.null(manifest)) {
-    NULL
-  } else {
-    db_endpoint_from_manifest(manifest)
-  }
+  months <- db_months_from_manifest(manifest)
 
   list(
     root = root,
-    exists = !is.null(manifest),
+    exists = TRUE,
     complete = complete,
     months = months,
-    endpoint = endpoint,
+    endpoint = db_endpoint_from_manifest(manifest),
     manifest = manifest
   )
 }
@@ -400,24 +401,43 @@ clear_cache_root <- function(root, confirm = interactive()) {
   invisible(TRUE)
 }
 
-#' Build a Local slcflights Database
+#' Build or Extend the Local slcflights Database
 #'
-#' Builds a local slcflights database from BTS monthly source files.
+#' Downloads BTS monthly on-time performance files and builds a local
+#' Salt Lake City-focused database.
 #'
-#' @param until Endpoint through which to build. Use `"latest"`, a four-digit
-#'   year, a string of the form `"YYYY-MM"`, or `c(year, month)`.
-#' @param overwrite If `TRUE`, re-downloads raw BTS source files already present
-#'   in the local raw-data cache.
-#' @param confirm If `TRUE`, confirms large initial database builds.
+#' @param until Database endpoint. Use `"latest"`, a four-digit year, a string
+#'   of the form `"YYYY-MM"`, or `c(year, month)`.
+#' @param overwrite If `TRUE`, re-downloads raw BTS source files already
+#'   present in the local raw-data cache.
+#' @param confirm If `TRUE`, allows operations that download and process more
+#'   than 24 monthly BTS files.
 #'
 #' @returns
 #' Invisibly, a list describing the active local database.
 #'
 #' @details
-#' Builds an initial local database beginning with October 1987, or extends an
-#' existing local database forward from its current endpoint.
+#' The local database always begins with October 1987. If no local database is
+#' active, `build_slcflights_db()` builds one from October 1987 through the
+#' requested endpoint. If a compatible local database already exists, the
+#' function extends it forward to the requested endpoint.
 #'
-#' @noRd
+#' Extensions are contiguous. For example, if the active database ends with
+#' June 2024, a request through December 2024 downloads and processes July
+#' through December 2024.
+#'
+#' For large initial builds, use `confirm = TRUE`.
+#'
+#' @seealso [update_slcflights_data()], [slcflights_cache_info()],
+#'   [clear_slcflights_cache()]
+#'
+#' @examples
+#' \dontrun{
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#' build_slcflights_db(until = "latest", confirm = TRUE)
+#' }
+#'
+#' @export
 build_slcflights_db <- function(
   until,
   overwrite = FALSE,
@@ -495,124 +515,84 @@ build_slcflights_db <- function(
 
 #' Update Locally Available slcflights Data
 #'
-#' Downloads newly available BTS flight data and builds a validated local cache.
+#' Builds or extends the local slcflights database.
 #'
-#' @param until Endpoint through which to update. Use `"latest"` to download
-#'   all currently available new data, a string of the form `"YYYY-MM"`, or
-#'   `c(year, month)`.
-#' @param overwrite If `TRUE`, re-downloads raw BTS source files already present
-#'   in the local raw-data cache.
+#' @param until Database endpoint. Use `"latest"`, a four-digit year, a string
+#'   of the form `"YYYY-MM"`, or `c(year, month)`.
+#' @param overwrite If `TRUE`, re-downloads raw BTS source files already
+#'   present in the local raw-data cache.
 #'
 #' @returns
-#' Invisibly, a list describing the active local cache. The list has the same
-#' structure as the value returned by [slcflights_cache_info()].
+#' Invisibly, a list describing the active local database.
 #'
-#' @details
-#' The package ships data through June 2024. Local updates always begin with
-#' July 2024 and must form a consecutive extension of the packaged data.
-#'
-#' By default, `update_slcflights_data()` checks BTS for the latest available
-#' monthly file and updates through that month. You may also specify an explicit
-#' endpoint, for example `until = "2024-07"`, to perform a smaller update.
-#'
-#' Updated data are stored in the user cache returned by
-#' `tools::R_user_dir("slcflights", "cache")`. The installed package files are
-#' never modified.
-#'
-#' After a compatible cache is active, the ordinary reader functions use it
-#' automatically. For example, [read_year_main()] combines installed and cached
-#' data for a year that spans both sources.
-#'
-#' @seealso [slcflights_cache_info()], [clear_slcflights_cache()]
+#' @seealso [build_slcflights_db()], [slcflights_cache_info()],
+#'   [clear_slcflights_cache()]
 #'
 #' @examples
 #' \dontrun{
 #' update_slcflights_data()
-#' update_slcflights_data(until = "2024-07")
+#' update_slcflights_data(until = "2024-12")
 #' }
 #'
 #' @export
 update_slcflights_data <- function(until = "latest", overwrite = FALSE) {
-  message("Resolving requested slcflights update endpoint...")
-
-  months <- update_months_for_until(until)
-  endpoint <- as_year_month(
-    months$year[[nrow(months)]],
-    months$month[[nrow(months)]]
+  build_slcflights_db(
+    until = until,
+    overwrite = overwrite,
+    confirm = TRUE
   )
-
-  message("Updating slcflights through ", format_year_month(endpoint), ".")
-
-  download_update_months(
-    months = months,
-    overwrite = overwrite
-  )
-
-  message("Downloading airport coordinate data...")
-
-  download_update_coords(overwrite = overwrite)
-
-  message("Downloading airline lookup data...")
-
-  download_update_airlines(overwrite = overwrite)
-
-  build_update_cache(months)
-
-  info <- slc_cache_info()
-
-  message("slcflights update complete.")
-
-  invisible(info)
 }
 
-#' Show slcflights Cache Information
+#' Show slcflights Local Database Information
 #'
-#' Reports whether a local slcflights data cache is active and complete.
+#' Reports whether a local slcflights database is active and complete.
 #'
 #' @returns
-#' Invisibly, a list describing the active local cache. The list contains:
+#' Invisibly, a list describing the active local database. The list contains:
 #'
-#' - `root`: normalized path to the active cache directory.
-#' - `exists`: `TRUE` if an active cache manifest exists.
-#' - `complete`: `TRUE` if the active cache has the expected cached files.
-#' - `months`: data frame of cached year-month pairs.
-#' - `endpoint`: final cached year-month, or `NULL` when no cache is active.
-#' - `manifest`: parsed cache manifest, or `NULL` when no cache is active.
+#' - `root`: normalized path to the active local database directory.
+#' - `exists`: `TRUE` if an active database manifest exists.
+#' - `complete`: `TRUE` if the active database has the expected files.
+#' - `months`: data frame of available year-month pairs.
+#' - `endpoint`: final available year-month, or `NULL` when no database is
+#'   active.
+#' - `manifest`: parsed database manifest, or `NULL` when no database is active.
 #'
 #' @details
-#' This function only reports cache state. It does not download or
-#' build data, modify the cache, or modify the installed package files.
+#' This function only reports local database state. It does not download, build,
+#' or delete data.
 #'
-#' @seealso [update_slcflights_data()], [clear_slcflights_cache()]
+#' @seealso [build_slcflights_db()], [update_slcflights_data()],
+#'   [clear_slcflights_cache()]
 #'
 #' @examples
+#' \dontrun{
 #' slcflights_cache_info()
+#' }
 #'
 #' @export
 slcflights_cache_info <- function() {
-  info <- slc_cache_info()
-  print_cache_info(info)
+  info <- slc_db_info()
+  print_db_info(info)
 }
 
-#' Clear the slcflights Local Cache
+#' Clear the slcflights Local Database
 #'
-#' Removes locally downloaded and locally built slcflights update data.
+#' Removes the active local slcflights database.
 #'
-#' @param confirm If `TRUE`, asks for confirmation before deleting the cache.
+#' @param confirm If `TRUE`, asks for confirmation before deleting the local
+#'   database.
 #'
 #' @returns
-#' Invisibly, `TRUE` if the cache was deleted or did not exist, and `FALSE` if
-#' deletion was cancelled.
+#' Invisibly, `TRUE` if the local database was deleted or did not exist, and
+#' `FALSE` if deletion was cancelled.
 #'
 #' @details
-#' This removes the slcflights user cache returned by
-#' `tools::R_user_dir("slcflights", "cache")`. It does not modify the installed
-#' package files.
+#' This removes the active local slcflights database stored under the user
+#' cache directory returned by `tools::R_user_dir("slcflights", "cache")`.
 #'
-#' After the cache is cleared, the ordinary reader functions use only the
-#' installed package data.
-#'
-#' @seealso [update_slcflights_data()], [slcflights_cache_info()]
+#' @seealso [build_slcflights_db()], [update_slcflights_data()],
+#'   [slcflights_cache_info()]
 #'
 #' @examples
 #' \dontrun{
@@ -622,7 +602,7 @@ slcflights_cache_info <- function() {
 #' @export
 clear_slcflights_cache <- function(confirm = interactive()) {
   clear_cache_root(
-    root = slc_cache_root(create = FALSE),
+    root = slc_db_root(create = FALSE),
     confirm = confirm
   )
 }
