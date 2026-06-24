@@ -95,22 +95,25 @@ slcflights::build_slcflights_db(until = 2024, confirm = TRUE)
 slcflights::build_slcflights_db(until = c(2024, 12), confirm = TRUE)
 ```
 
-`update_slcflights_data()` also builds or extends the local database.
+Use `update_slcflights_db()` to extend an existing local database.
 
 ```{r, eval = FALSE}
-slcflights::update_slcflights_data(until = "2024-12")
+slcflights::update_slcflights_db(
+  until = "2024-12",
+  confirm = TRUE
+)
 ```
 
 Inspect the active local database with:
 
 ```{r, eval = FALSE}
-slcflights::slcflights_cache_info()
+slcflights::status_slcflights_db()
 ```
 
 Remove the active local database with:
 
 ```{r, eval = FALSE}
-slcflights::clear_slcflights_cache()
+slcflights::delete_slcflights_db()
 ```
 
 The database is stored under the user cache directory returned by
@@ -195,8 +198,8 @@ you do not need separate coordinate or Airline ID joins.
 
 ## Rebuilding data
 
-The standard workflow is to build or extend the local database with
-`build_slcflights_db()` or `update_slcflights_data()`.
+The standard workflow is to build the local database with
+`build_slcflights_db()` or extend it with `update_slcflights_db()`.
 
 The maintainer build scripts under `data-raw/` are source-package development
 artifacts. They are not needed for normal package use.
