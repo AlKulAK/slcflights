@@ -401,6 +401,46 @@ clear_cache_root <- function(root, confirm = interactive()) {
   invisible(TRUE)
 }
 
+#' Update the Local slcflights Database
+#'
+#' Extends the local slcflights database to a requested endpoint.
+#'
+#' @param until Database endpoint. Use `"latest"`, a four-digit year, a string
+#'   of the form `"YYYY-MM"`, or `c(year, month)`.
+#' @param overwrite If `TRUE`, re-downloads raw BTS source files already
+#'   present in the local raw-data cache.
+#' @param confirm If `TRUE`, allows operations that download and process more
+#'   than 24 monthly BTS files.
+#'
+#' @returns
+#' Invisibly, a list describing the active local database.
+#'
+#' @details
+#' Use `update_slcflights_db()` after a local database has been built. The
+#' update extends the database forward to the requested endpoint.
+#'
+#' @seealso [build_slcflights_db()], [status_slcflights_db()],
+#'   [delete_slcflights_db()]
+#'
+#' @examples
+#' \dontrun{
+#' update_slcflights_db(until = "2025-06", confirm = TRUE)
+#' update_slcflights_db(until = "latest", confirm = TRUE)
+#' }
+#'
+#' @export
+update_slcflights_db <- function(
+  until = "latest",
+  overwrite = FALSE,
+  confirm = FALSE
+) {
+  build_slcflights_db(
+    until = until,
+    overwrite = overwrite,
+    confirm = confirm
+  )
+}
+
 #' Build or Extend the Local slcflights Database
 #'
 #' Downloads BTS monthly on-time performance files and builds a local
@@ -543,6 +583,39 @@ update_slcflights_data <- function(until = "latest", overwrite = FALSE) {
   )
 }
 
+#' Show slcflights Database Status
+#'
+#' Reports whether a local slcflights database is active and complete.
+#'
+#' @returns
+#' Invisibly, a list describing the active local database. The list contains:
+#'
+#' - `root`: normalized path to the active local database directory.
+#' - `exists`: `TRUE` if an active database manifest exists.
+#' - `complete`: `TRUE` if the active database has the expected files.
+#' - `months`: data frame of available year-month pairs.
+#' - `endpoint`: final available year-month, or `NULL` when no database is
+#'   active.
+#' - `manifest`: parsed database manifest, or `NULL` when no database is active.
+#'
+#' @details
+#' This function only reports local database state. It does not download, build,
+#' update, or delete data.
+#'
+#' @seealso [build_slcflights_db()], [update_slcflights_db()],
+#'   [delete_slcflights_db()]
+#'
+#' @examples
+#' \dontrun{
+#' status_slcflights_db()
+#' }
+#'
+#' @export
+status_slcflights_db <- function() {
+  info <- slc_db_info()
+  print_db_info(info)
+}
+
 #' Show slcflights Local Database Information
 #'
 #' Reports whether a local slcflights database is active and complete.
@@ -574,6 +647,37 @@ update_slcflights_data <- function(until = "latest", overwrite = FALSE) {
 slcflights_cache_info <- function() {
   info <- slc_db_info()
   print_db_info(info)
+}
+
+#' Delete the Local slcflights Database
+#'
+#' Removes the active local slcflights database.
+#'
+#' @param confirm If `TRUE`, asks for confirmation before deleting the local
+#'   database.
+#'
+#' @returns
+#' Invisibly, `TRUE` if the local database was deleted or did not exist, and
+#' `FALSE` if deletion was cancelled.
+#'
+#' @details
+#' This removes the local slcflights database stored under the user cache
+#' directory returned by `tools::R_user_dir("slcflights", "cache")`.
+#'
+#' @seealso [build_slcflights_db()], [update_slcflights_db()],
+#'   [status_slcflights_db()]
+#'
+#' @examples
+#' \dontrun{
+#' delete_slcflights_db()
+#' }
+#'
+#' @export
+delete_slcflights_db <- function(confirm = interactive()) {
+  clear_cache_root(
+    root = slc_db_root(create = FALSE),
+    confirm = confirm
+  )
 }
 
 #' Clear the slcflights Local Database

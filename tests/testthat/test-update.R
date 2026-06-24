@@ -736,3 +736,85 @@ test_that("database info ignores old cache manifests", {
 
   unlink(root, recursive = TRUE, force = TRUE)
 })
+
+test_that("update_slcflights_db delegates to database build", {
+  called <- FALSE
+  got_until <- NULL
+  got_overwrite <- NULL
+  got_confirm <- NULL
+
+  testthat::local_mocked_bindings(
+    build_slcflights_db = function(until,
+                                   overwrite = FALSE,
+                                   confirm = FALSE) {
+      called <<- TRUE
+      got_until <<- until
+      got_overwrite <<- overwrite
+      got_confirm <<- confirm
+
+      invisible(list(ok = TRUE))
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::update_slcflights_db(
+    until = "2025-06",
+    overwrite = TRUE,
+    confirm = TRUE
+  )
+
+  expect_true(called)
+  expect_equal(got_until, "2025-06")
+  expect_true(got_overwrite)
+  expect_true(got_confirm)
+  expect_equal(out, list(ok = TRUE))
+})
+
+test_that("status_slcflights_db reports database info", {
+  info <- list(
+    root = "db-root",
+    exists = TRUE,
+    complete = TRUE,
+    months = data.frame(year = 1987L, month = 10L),
+    endpoint = slcflights:::as_year_month(1987L, 10L),
+    manifest = list(db_start = "1987-10", db_end = "1987-10")
+  )
+
+  testthat::local_mocked_bindings(
+    slc_db_info = function(root = NULL) {
+      info
+    },
+    print_db_info = function(info) {
+      invisible(info)
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::status_slcflights_db()
+
+  expect_equal(out, info)
+})
+
+test_that("delete_slcflights_db clears database root", {
+  got_root <- NULL
+  got_confirm <- NULL
+
+  testthat::local_mocked_bindings(
+    slc_db_root = function(create = TRUE) {
+      "db-root"
+    },
+    clear_cache_root = function(root, confirm = interactive()) {
+      got_root <<- root
+      got_confirm <<- confirm
+
+      invisible(TRUE)
+    },
+    .package = "slcflights"
+  )
+
+  out <- slcflights::delete_slcflights_db(confirm = FALSE)
+
+  expect_true(out)
+  expect_equal(got_root, "db-root")
+  expect_false(got_confirm)
+})
