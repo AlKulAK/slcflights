@@ -315,7 +315,7 @@ validate_cache_manifest <- function(manifest, arg = "manifest") {
     stop(
       paste(
         "The slcflights cache was built with an incompatible schema version.",
-        "Run clear_slcflights_cache() and update_slcflights_data()."
+        "Run delete_slcflights_db() and build_slcflights_db()."
       ),
       call. = FALSE
     )
@@ -778,7 +778,7 @@ validate_cache_files <- function(root = NULL) {
     stop(
       paste(
         "The slcflights cache appears incomplete.",
-        "Run repair_slcflights_cache() or clear_slcflights_cache().",
+        "Run delete_slcflights_db() and rebuild the local database.",
         "Missing file:",
         missing[[1]]
       ),
