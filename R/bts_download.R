@@ -222,11 +222,18 @@ bts_download_file <- function(url, destfile, label = "BTS file") {
 
   options(timeout = bts_download_timeout())
 
-  status <- utils::download.file(
-    url = url,
-    destfile = destfile,
-    mode = "wb",
-    quiet = TRUE
+  status <- tryCatch(
+    utils::download.file(
+      url = url,
+      destfile = destfile,
+      mode = "wb",
+      quiet = TRUE
+    ),
+    error = function(e) {
+      attr(e, "bts_url") <- url
+      attr(e, "bts_label") <- label
+      stop(e)
+    }
   )
 
   if (!identical(status, 0L)) {
@@ -237,6 +244,27 @@ bts_download_file <- function(url, destfile, label = "BTS file") {
   }
 
   invisible(normalizePath(destfile, mustWork = TRUE))
+}
+
+bts_download_zip_file <- function(url, destfile, label = "BTS ZIP") {
+  tryCatch(
+    bts_download_file(
+      url = url,
+      destfile = destfile,
+      label = label
+    ),
+    error = function(e) {
+      stop(
+        paste(
+          sprintf("%s was not available at the static BTS PREZIP URL.", label),
+          "The requested month may require the TranStats selected-fields",
+          "download workflow instead.",
+          sprintf("URL: %s", url)
+        ),
+        call. = FALSE
+      )
+    }
+  )
 }
 
 #' Validate a downloaded BTS CSV file
@@ -319,7 +347,7 @@ download_bts_ontime_month <- function(
 
   message("Downloading flight data for ", format_year_month(ym), "...")
 
-  bts_download_file(
+  bts_download_zip_file(
     url = url,
     destfile = zip_path,
     label = "BTS on-time ZIP"
