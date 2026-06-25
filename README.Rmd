@@ -17,6 +17,7 @@ knitr::opts_chunk$set(
 
 <!-- badges: start -->
 
+[![R-CMD-check](https://github.com/AlKulAK/slcflights/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/AlKulAK/slcflights/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 `slcflights` provides tools for building and reading Salt Lake City-focused

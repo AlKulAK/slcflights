@@ -6,3 +6,4 @@
 ^data-raw/cache$
 ^doc$
 ^Meta$
+^\.github$
