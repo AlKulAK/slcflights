@@ -11,23 +11,20 @@ A data frame containing airport sequence identifiers and associated airport
 metadata for airports referenced by the available flight data.
 }
 \description{
-Reads the airport coordinate table supporting the currently available
-slcflights data.
+Reads the airport coordinate table for the active local database.
 }
 \details{
-Before any local data update, this function reads the coordinate table
-installed with the package. After a successful local data update, it reads
-the validated cached coordinate table.
-
 The coordinate table is derived from the BTS TranStats Master Coordinate
-support table.
+support table and is reduced to airports referenced by retained flight
+records.
 
-It is intended for joins against airport sequence identifier fields in the
-flight data, including fields such as \code{OriginAirportSeqID},
-\code{DestAirportSeqID}, and diversion airport sequence identifier fields.
+Most analyses do not require manual joins to this table. During the database
+build, \code{slcflights} writes main and diversion Parquet files already enriched
+with latitude, longitude, and other airport metadata.
 
-The table contains the airport-level metadata used to enrich the flight
-records with latitude, longitude, and date-bounded airport information.
+The standalone coordinate table is mainly useful when you want to inspect
+the reduced lookup table directly, check airport identifiers, or support
+specialized analysis.
 }
 \examples{
 \dontrun{

@@ -12,19 +12,20 @@ and airline lookup codes for airlines referenced by the available flight
 data.
 }
 \description{
-Reads the Airline ID lookup table supporting the currently available
-slcflights data.
+Reads the Airline ID lookup table for the active local database.
 }
 \details{
-Before any local data update, this function reads the Airline ID lookup
-table installed with the package. After a successful local data update, it
-reads the validated cached Airline ID lookup table.
+The Airline ID lookup table is derived from the BTS TranStats
+\code{DOT_ID_Reporting_Airline} lookup table and is reduced to airlines
+referenced by retained flight records.
 
-The Airline ID lookup table is derived from the BTS TranStats Airline ID
-support table.
+Most analyses do not require manual joins to this table. During the database
+build, \code{slcflights} writes main and diversion Parquet files already enriched
+with airline names.
 
-It is intended for joins against \code{DOT_ID_Reporting_Airline} in the flight
-data.
+The standalone Airline ID lookup table is mainly useful when you want to
+inspect the reduced lookup table directly, check airline identifiers, or
+support specialized analysis.
 }
 \examples{
 \dontrun{

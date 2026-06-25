@@ -22,10 +22,11 @@ Diversion-only records are flights where Salt Lake City's BTS airport ID
 appears in one of \code{Div1AirportID} through \code{Div5AirportID}, but not in
 \code{OriginAirportID} or \code{DestAirportID}.
 
-This function does not read all rows into memory immediately.
+This function does not read all rows into memory immediately. The files are
+opened from the active local database.
 
-Selected files may come from the packaged data installed with the package,
-from a validated local user cache, or both.
+Calling \code{open_div()} without a year argument opens all available
+diversion-only years.
 
 It is intended for workflows where you want to filter rows, select columns,
 or otherwise work lazily before collecting results into memory. Use
@@ -33,6 +34,8 @@ or otherwise work lazily before collecting results into memory. Use
 
 It errors if any requested year does not have an available diversion-only
 Parquet file.
+
+Diversion-only records begin in October 2008.
 }
 \examples{
 \dontrun{

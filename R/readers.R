@@ -39,8 +39,9 @@ available_years <- function(type = c("main", "div")) {
 #'
 #' @details
 #' This function reads the selected year's main Parquet file eagerly into
-#' memory. The file may come from the packaged data installed with the package
-#' or from a validated local user cache.
+#' memory. The file is read from the active local database.
+#'
+#' It errors if the requested year does not have an available main Parquet file.
 #'
 #' Use [read_main()] to read multiple years at once. Use [open_main()] to work
 #' lazily with one or more years as an Arrow dataset.
@@ -77,11 +78,12 @@ read_year_main <- function(year) {
 #'
 #' @details
 #' This function reads the selected year's diversion-only Parquet file eagerly
-#' into memory. The file may come from the packaged data installed with the
-#' package or from a validated local user cache.
+#' into memory. The file is read from the active local database.
 #'
 #' It errors if the requested year does not have an available diversion-only
 #' Parquet file.
+#'
+#' Diversion-only records begin in October 2008.
 #'
 #' Use [read_div()] to read multiple years at once. Use [open_div()] to work
 #' lazily with one or more years as an Arrow dataset.
@@ -91,7 +93,7 @@ read_year_main <- function(year) {
 #'
 #' @examples
 #' \dontrun{
-#' #' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
 #'
 #' x <- read_year_div(2015)
 #' head(x)
@@ -118,9 +120,11 @@ read_year_div <- function(year) {
 #' records.
 #'
 #' @details
-#' This function reads all selected files eagerly into memory. Selected files
-#' may come from the packaged data installed with the package, from a validated
-#' local user cache, or both.
+#' This function reads all selected files eagerly into memory. The files are
+#' read from the active local database.
+#'
+#' Calling `read_main()` without a year argument reads all available main years
+#' into memory.
 #'
 #' For larger workflows, [open_main()] may be more appropriate because it opens
 #' the same files lazily as an Arrow dataset, allowing filtering or column
@@ -169,12 +173,16 @@ read_main <- function(years = NULL) {
 #' diversion-only flight records.
 #'
 #' @details
-#' This function reads all selected files eagerly into memory. Selected files
-#' may come from the packaged data installed with the package, from a validated
-#' local user cache, or both.
+#' This function reads all selected files eagerly into memory. The files are
+#' read from the active local database.
+#'
+#' Calling `read_div()` without a year argument reads all available
+#' diversion-only years into memory.
 #'
 #' It errors if any requested year does not have an available diversion-only
 #' Parquet file.
+#'
+#' Diversion-only records begin in October 2008.
 #'
 #' For larger workflows, [open_div()] may be more appropriate because it opens
 #' the same files lazily as an Arrow dataset, allowing filtering or column
@@ -185,7 +193,7 @@ read_main <- function(years = NULL) {
 #'
 #' @examples
 #' \dontrun{
-#' #' build_slcflights_db(until = "2024-12", confirm = TRUE)
+#' build_slcflights_db(until = "2024-12", confirm = TRUE)
 #'
 #' x1 <- read_div(2015)
 #' head(x1)
@@ -224,10 +232,10 @@ read_div <- function(years = NULL) {
 #' An Arrow dataset over the selected main Parquet files.
 #'
 #' @details
-#' This function does not read all rows into memory immediately.
+#' This function does not read all rows into memory immediately. The files are
+#' opened from the active local database.
 #'
-#' Selected files may come from the packaged data installed with the package,
-#' from a validated local user cache, or both.
+#' Calling `open_main()` without a year argument opens all available main years.
 #'
 #' It is intended for workflows where you want to filter rows, select columns,
 #' or otherwise work lazily before collecting results into memory. Use
@@ -265,10 +273,11 @@ open_main <- function(years = NULL) {
 #' An Arrow dataset over the selected diversion-only Parquet files.
 #'
 #' @details
-#' This function does not read all rows into memory immediately.
+#' This function does not read all rows into memory immediately. The files are
+#' opened from the active local database.
 #'
-#' Selected files may come from the packaged data installed with the package,
-#' from a validated local user cache, or both.
+#' Calling `open_div()` without a year argument opens all available
+#' diversion-only years.
 #'
 #' It is intended for workflows where you want to filter rows, select columns,
 #' or otherwise work lazily before collecting results into memory. Use
@@ -276,6 +285,8 @@ open_main <- function(years = NULL) {
 #'
 #' It errors if any requested year does not have an available diversion-only
 #' Parquet file.
+#'
+#' Diversion-only records begin in October 2008.
 #'
 #' @seealso [read_div()], [read_year_div()], [open_main()],
 #'   [read_field_dictionary()]
@@ -295,27 +306,24 @@ open_div <- function(years = NULL) {
 
 #' Read the Airport Coordinate Table
 #'
-#' Reads the airport coordinate table supporting the currently available
-#' slcflights data.
+#' Reads the airport coordinate table for the active local database.
 #'
 #' @returns
 #' A data frame containing airport sequence identifiers and associated airport
 #' metadata for airports referenced by the available flight data.
 #'
 #' @details
-#' Before any local data update, this function reads the coordinate table
-#' installed with the package. After a successful local data update, it reads
-#' the validated cached coordinate table.
-#'
 #' The coordinate table is derived from the BTS TranStats Master Coordinate
-#' support table.
+#' support table and is reduced to airports referenced by retained flight
+#' records.
 #'
-#' It is intended for joins against airport sequence identifier fields in the
-#' flight data, including fields such as `OriginAirportSeqID`,
-#' `DestAirportSeqID`, and diversion airport sequence identifier fields.
+#' Most analyses do not require manual joins to this table. During the database
+#' build, `slcflights` writes main and diversion Parquet files already enriched
+#' with latitude, longitude, and other airport metadata.
 #'
-#' The table contains the airport-level metadata used to enrich the flight
-#' records with latitude, longitude, and date-bounded airport information.
+#' The standalone coordinate table is mainly useful when you want to inspect
+#' the reduced lookup table directly, check airport identifiers, or support
+#' specialized analysis.
 #'
 #' @seealso [read_main()], [read_div()], [open_main()], [open_div()],
 #'   [read_airlines()], [read_field_dictionary()]
@@ -335,8 +343,7 @@ read_coords <- function() {
 
 #' Read the Airline ID Lookup Table
 #'
-#' Reads the Airline ID lookup table supporting the currently available
-#' slcflights data.
+#' Reads the Airline ID lookup table for the active local database.
 #'
 #' @returns
 #' A data frame containing DOT reporting airline identifiers, airline names,
@@ -344,15 +351,17 @@ read_coords <- function() {
 #' data.
 #'
 #' @details
-#' Before any local data update, this function reads the Airline ID lookup
-#' table installed with the package. After a successful local data update, it
-#' reads the validated cached Airline ID lookup table.
+#' The Airline ID lookup table is derived from the BTS TranStats
+#' `DOT_ID_Reporting_Airline` lookup table and is reduced to airlines
+#' referenced by retained flight records.
 #'
-#' The Airline ID lookup table is derived from the BTS TranStats Airline ID
-#' support table.
+#' Most analyses do not require manual joins to this table. During the database
+#' build, `slcflights` writes main and diversion Parquet files already enriched
+#' with airline names.
 #'
-#' It is intended for joins against `DOT_ID_Reporting_Airline` in the flight
-#' data.
+#' The standalone Airline ID lookup table is mainly useful when you want to
+#' inspect the reduced lookup table directly, check airline identifiers, or
+#' support specialized analysis.
 #'
 #' @seealso [read_main()], [read_div()], [open_main()], [open_div()],
 #'   [read_coords()], [read_field_dictionary()]
@@ -372,11 +381,11 @@ read_airlines <- function() {
 
 #' Read the Field Dictionary
 #'
-#' Reads the field dictionary for the installed slcflights data.
+#' Reads the field dictionary installed with the package.
 #'
 #' @returns
-#' A data frame describing fields that appear in the flight-record Parquet
-#' files and the airport coordinate table.
+#' A data frame describing retained fields in the flight-record Parquet files
+#' and the airport coordinate table.
 #'
 #' @details
 #' The field dictionary includes the field name, field group, source table,
@@ -386,6 +395,9 @@ read_airlines <- function() {
 #' Values of `main_presence`, `div_presence`, and `coords_presence` use
 #' `"always"`, `"sometimes"`, or `"never"` to describe whether a field appears
 #' in that data grouping.
+#'
+#' Unlike the flight-record readers, the field dictionary is available without
+#' building a local database.
 #'
 #' @seealso [read_main()], [read_div()], [open_main()], [open_div()],
 #'   [read_coords()], [read_airlines()]

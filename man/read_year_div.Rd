@@ -22,18 +22,19 @@ appears in one of \code{Div1AirportID} through \code{Div5AirportID}, but not in
 \code{OriginAirportID} or \code{DestAirportID}.
 
 This function reads the selected year's diversion-only Parquet file eagerly
-into memory. The file may come from the packaged data installed with the
-package or from a validated local user cache.
+into memory. The file is read from the active local database.
 
 It errors if the requested year does not have an available diversion-only
 Parquet file.
+
+Diversion-only records begin in October 2008.
 
 Use \code{\link[=read_div]{read_div()}} to read multiple years at once. Use \code{\link[=open_div]{open_div()}} to work
 lazily with one or more years as an Arrow dataset.
 }
 \examples{
 \dontrun{
-#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+build_slcflights_db(until = "2024-12", confirm = TRUE)
 
 x <- read_year_div(2015)
 head(x)

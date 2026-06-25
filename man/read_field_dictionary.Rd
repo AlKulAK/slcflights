@@ -7,11 +7,11 @@
 read_field_dictionary()
 }
 \value{
-A data frame describing fields that appear in the flight-record Parquet
-files and the airport coordinate table.
+A data frame describing retained fields in the flight-record Parquet files
+and the airport coordinate table.
 }
 \description{
-Reads the field dictionary for the installed slcflights data.
+Reads the field dictionary installed with the package.
 }
 \details{
 The field dictionary includes the field name, field group, source table,
@@ -21,6 +21,9 @@ presence in the coordinate table, and additional notes.
 Values of \code{main_presence}, \code{div_presence}, and \code{coords_presence} use
 \code{"always"}, \code{"sometimes"}, or \code{"never"} to describe whether a field appears
 in that data grouping.
+
+Unlike the flight-record readers, the field dictionary is available without
+building a local database.
 }
 \examples{
 fields <- read_field_dictionary()

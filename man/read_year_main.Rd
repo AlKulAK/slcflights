@@ -21,8 +21,9 @@ Main records are flights where Salt Lake City's BTS airport ID appears in
 \code{OriginAirportID} or \code{DestAirportID}.
 
 This function reads the selected year's main Parquet file eagerly into
-memory. The file may come from the packaged data installed with the package
-or from a validated local user cache.
+memory. The file is read from the active local database.
+
+It errors if the requested year does not have an available main Parquet file.
 
 Use \code{\link[=read_main]{read_main()}} to read multiple years at once. Use \code{\link[=open_main]{open_main()}} to work
 lazily with one or more years as an Arrow dataset.

@@ -23,12 +23,16 @@ Diversion-only records are flights where Salt Lake City's BTS airport ID
 appears in one of \code{Div1AirportID} through \code{Div5AirportID}, but not in
 \code{OriginAirportID} or \code{DestAirportID}.
 
-This function reads all selected files eagerly into memory. Selected files
-may come from the packaged data installed with the package, from a validated
-local user cache, or both.
+This function reads all selected files eagerly into memory. The files are
+read from the active local database.
+
+Calling \code{read_div()} without a year argument reads all available
+diversion-only years into memory.
 
 It errors if any requested year does not have an available diversion-only
 Parquet file.
+
+Diversion-only records begin in October 2008.
 
 For larger workflows, \code{\link[=open_div]{open_div()}} may be more appropriate because it opens
 the same files lazily as an Arrow dataset, allowing filtering or column
@@ -36,7 +40,7 @@ selection before materializing results in memory.
 }
 \examples{
 \dontrun{
-#' build_slcflights_db(until = "2024-12", confirm = TRUE)
+build_slcflights_db(until = "2024-12", confirm = TRUE)
 
 x1 <- read_div(2015)
 head(x1)

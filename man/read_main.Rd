@@ -22,9 +22,11 @@ them row-wise into a single data frame.
 Main records are flights where Salt Lake City's BTS airport ID appears in
 \code{OriginAirportID} or \code{DestAirportID}.
 
-This function reads all selected files eagerly into memory. Selected files
-may come from the packaged data installed with the package, from a validated
-local user cache, or both.
+This function reads all selected files eagerly into memory. The files are
+read from the active local database.
+
+Calling \code{read_main()} without a year argument reads all available main years
+into memory.
 
 For larger workflows, \code{\link[=open_main]{open_main()}} may be more appropriate because it opens
 the same files lazily as an Arrow dataset, allowing filtering or column
