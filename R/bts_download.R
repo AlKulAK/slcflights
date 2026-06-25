@@ -585,17 +585,26 @@ download_bts_ontime_month <- function(
 
   zip_source <- "prezip"
 
-  prezip_ok <- tryCatch(
-    {
-      bts_download_zip_file(
-        url = url,
-        destfile = zip_path,
-        label = "BTS on-time ZIP"
-      )
+  prezip_ok <- withCallingHandlers(
+    tryCatch(
+      {
+        bts_download_zip_file(
+          url = url,
+          destfile = zip_path,
+          label = "BTS on-time ZIP"
+        )
 
-      TRUE
-    },
-    error = function(e) FALSE
+        TRUE
+      },
+      error = function(e) FALSE
+    ),
+    warning = function(w) {
+      msg <- conditionMessage(w)
+
+      if (grepl("404 Not Found", msg, fixed = TRUE)) {
+        invokeRestart("muffleWarning")
+      }
+    }
   )
 
   if (!prezip_ok) {
@@ -604,7 +613,7 @@ download_bts_ontime_month <- function(
     message(
       "Static BTS PREZIP file was not available for ",
       format_year_month(ym),
-      "; requesting TranStats selected-fields export..."
+      "; requesting TranStats all-fields export..."
     )
 
     bts_download_selected_zip(

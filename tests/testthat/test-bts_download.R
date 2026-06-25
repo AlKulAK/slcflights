@@ -297,6 +297,11 @@ test_that("coordinate ZIP extraction writes the expected CSV", {
 
 test_that("selected field names normalize to PREZIP names", {
   cols <- c(
+    "OP_UNIQUE_CARRIER",
+    "OP_CARRIER_AIRLINE_ID",
+    "OP_CARRIER",
+    "TAIL_NUM",
+    "OP_CARRIER_FL_NUM",
     "ORIGIN_AIRPORT_ID",
     "ORIGIN_AIRPORT_SEQ_ID",
     "DEST_AIRPORT_ID",
@@ -308,6 +313,11 @@ test_that("selected field names normalize to PREZIP names", {
   expect_equal(
     slcflights:::bts_normalize_selected_names(cols),
     c(
+      "Reporting_Airline",
+      "DOT_ID_Reporting_Airline",
+      "IATA_CODE_Reporting_Airline",
+      "Tail_Number",
+      "Flight_Number_Reporting_Airline",
       "OriginAirportID",
       "OriginAirportSeqID",
       "DestAirportID",
