@@ -133,10 +133,10 @@ test_that("cache build passes raw metadata paths to staging", {
 
   expect_equal(out, slcflights:::slc_cache_active_root(create = FALSE))
 
-  out_norm <- normalizePath(out, winslash = "/", mustWork = FALSE)
-  root_norm <- normalizePath(root, winslash = "/", mustWork = FALSE)
+  out_dir <- normalizePath(dirname(out), winslash = "/", mustWork = TRUE)
+  root_dir <- normalizePath(root, winslash = "/", mustWork = TRUE)
 
-  expect_true(startsWith(out_norm, root_norm))
+  expect_equal(out_dir, root_dir)
 })
 
 test_that("cache info reports absent cache", {
