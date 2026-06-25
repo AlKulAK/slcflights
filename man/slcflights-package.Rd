@@ -79,7 +79,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Aleksey Kulyukin \email{aleksey.kulyukin.2022@gmail.com} (\href{https://orcid.org/0009-0009-4396-9878}{ORCID})
+\strong{Maintainer}: Aleksey Kulyukin \email{A02291810@usu.edu} (\href{https://orcid.org/0009-0009-4396-9878}{ORCID})
 
 }
 \keyword{internal}

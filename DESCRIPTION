@@ -1,8 +1,8 @@
 Package: slcflights
 Title: Salt Lake City Flight Records and Supporting Metadata
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: 
-    person("Aleksey", "Kulyukin", , "aleksey.kulyukin.2022@gmail.com", 
+    person("Aleksey", "Kulyukin", , "A02291810@usu.edu", 
     role = c("aut", "cre"),
     comment = c(ORCID = "0009-0009-4396-9878"))
 Description: Provides tools for building and reading Salt Lake City-focused
@@ -12,8 +12,8 @@ Description: Provides tools for building and reading Salt Lake City-focused
     and extending through a user-selected endpoint. It includes reader
     functions for scheduled origin/destination records, diversion-only records,
     reduced airport coordinate metadata, airline lookup metadata, and a field
-    dictionary describing selected data columns. It also includes functions for
-    updating, inspecting, and clearing the local database.
+    dictionary describing retained data columns. It also includes functions for
+    updating, inspecting, and deleting the local database.
 URL: https://github.com/AlKulAK/slcflights
 BugReports: https://github.com/AlKulAK/slcflights/issues
 License: GPL (>= 3)
