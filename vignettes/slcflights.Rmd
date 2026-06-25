@@ -1,8 +1,6 @@
 ---
 title: "Getting started with slcflights"
 output: rmarkdown::html_vignette
-bibliography: references.bib
-link-citations: true
 vignette: >
   %\VignetteIndexEntry{Getting started with slcflights}
   %\VignetteEngine{knitr::rmarkdown}
@@ -20,42 +18,60 @@ knitr::opts_chunk$set(
 
 ## Overview
 
-`slcflights` provides Salt Lake City-focused subsets of the Bureau of
+`slcflights` builds a local Salt Lake City-focused database from the Bureau of
 Transportation Statistics (BTS) TranStats **On-Time: Reporting Carrier
 On-Time Performance** data.
 
-The package does not install the flight-record database itself. Instead, users
-build a local BTS-sourced database with `build_slcflights_db()`. The local
-database begins with October 1987 and extends through the endpoint chosen by the
-user.
+The package does not install flight records. Instead, users build a local
+database with `build_slcflights_db()`. The local database begins with October
+1987 and extends through the endpoint chosen by the user. The endpoint is the
+last year or month included in the local database.
 
-The first calendar year is therefore partial. The final calendar year may also
-be partial, depending on the endpoint used when building the local database.
-Analyses that require complete calendar years should treat endpoint years with
-care.
+Because the database begins with October 1987, the first calendar year is
+partial. The endpoint year may also be partial.
 
-This vignette uses the package for a Salt Lake City-centered adaptation of an
-idea from Wickham's ASA 2009 Data Expo paper [@wickham2011asa]. Wickham used
-the national on-time flight data to compare flight volumes on weekdays and
-selected holidays after normalizing by each year's average day. Here we apply
-the same normalization idea to `slcflights`, first for flights where Salt Lake
-City was the scheduled origin or destination, and then for diversion-only
-records where Salt Lake City appears only as a diversion airport.
+`slcflights` keeps two flight-record groupings:
 
-The goal is not to reproduce Wickham's national figure. The goal is to use the
-same analytical idea in a different setting: a Salt Lake City-centered package
-with two distinct flight-data groupings.
+- **main records**, where Salt Lake City's BTS airport ID appears as the
+  scheduled origin or destination; and
+- **diversion-only records**, where Salt Lake City's BTS airport ID appears only
+  as a diversion airport.
 
-## Loading the package
+This vignette shows the basic workflow: build a local database, check its
+status, inspect available years, read records, use metadata tables, and manage
+the local database.
 
-We begin by loading `slcflights` and all the other packages used in this vignette.
+## Before building the database
+
+Building or updating the local database can take substantial time and disk
+space. This is true even for relatively small date ranges because `slcflights`
+downloads and processes monthly national BTS source files before writing the
+local Salt Lake City-focused database.
+
+When a monthly BTS PREZIP file is available, `slcflights` downloads that static
+ZIP file directly. When a PREZIP file is not available, the package
+automatically uses the TranStats all-fields export for the same BTS table. That
+fallback can be slower and can require more temporary storage because the
+package has to request and process a generated export.
+
+For a first build, start with a small endpoint if you want to check your setup
+before committing to a larger database.
+
+```{r small-build-example, eval = FALSE}
+build_slcflights_db(until = "1989-12", confirm = TRUE)
+```
+
+The database is stored in the user cache directory returned by
+`tools::R_user_dir("slcflights", "cache")`. Building or updating the database
+does not modify installed package files.
+
+## Loading packages
+
+This vignette uses `slcflights` for data access and `dplyr` for small examples.
 
 ```{r setup}
 library(slcflights)
 library(dplyr)
-library(grid)
-library(ggplot2)
-library(lubridate)
 ```
 
 ## Data provenance
@@ -74,36 +90,39 @@ support table in the Aviation Support Tables family:
 
 [https://transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=N8vn6v10+f722146+gnoyr5&gnoyr_VQ=FLL](https://transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=N8vn6v10+f722146+gnoyr5&gnoyr_VQ=FLL)
 
-Airline ID metadata come from the BTS TranStats DOT_ID_Reporting_Airline lookup table:
+Airline ID metadata come from the BTS TranStats DOT_ID_Reporting_Airline lookup
+table:
 
 [https://www.transtats.bts.gov/Download_Lookup.asp?Y11x72=Y_NVeYVaR_VQ](https://www.transtats.bts.gov/Download_Lookup.asp?Y11x72=Y_NVeYVaR_VQ)
 
-The local database build workflow downloads monthly BTS source files directly,
-filters the national records to flights involving Salt Lake City's BTS airport
-ID, splits scheduled origin/destination records from diversion-only records,
-sorts records, reduces the coordinate and Airline ID lookup tables to metadata
-rows referenced by retained records, and enriches the Parquet files with
+The local database build workflow downloads monthly BTS source files, filters
+the national records to flights involving Salt Lake City's BTS airport ID,
+splits scheduled origin/destination records from diversion-only records, sorts
+records, reduces the coordinate and Airline ID lookup tables to metadata rows
+referenced by retained records, and writes Parquet files already enriched with
 coordinate metadata and airline names.
 
-## Building a local database
+## Building and checking a local database
 
-Before reading flight records, build a local slcflights database. The database
-always begins with October 1987. The endpoint can be a year, a year-month string,
-or `"latest"`.
+Use `build_slcflights_db()` to create a local database. The endpoint can be a
+year, a year-month string, `c(year, month)`, or `"latest"`. The `"latest"`
+endpoint means the latest month the package can resolve from BTS at build or
+update time.
 
 ```{r build-database, eval = FALSE}
 build_slcflights_db(until = "2024-12", confirm = TRUE)
 ```
 
-After a database exists, the ordinary reader functions use it automatically.
-Use `update_slcflights_db()` to extend an existing database forward to a later
-endpoint.
+Use `status_slcflights_db()` to check whether a local database is active and
+which endpoint it contains.
 
-```{r extend-database, eval = FALSE}
-update_slcflights_db(until = "2025-06", confirm = TRUE)
+```{r database-status, eval = FALSE}
+status_slcflights_db()
 ```
 
-## What data are available?
+After a database exists, reader functions use it automatically.
+
+## Inspecting available data
 
 The package has two flight-data groupings.
 
@@ -114,44 +133,98 @@ The **diversion-only** records are flights where Salt Lake City's BTS airport
 ID appears in one of `Div1AirportID` through `Div5AirportID`, but not in
 `OriginAirportID` or `DestAirportID`.
 
+Use `available_years()` to inspect the active local database. By default,
+`available_years()` returns years for main records. Use `type = "div"` to
+inspect diversion-only years.
+
 ```{r available-years, eval = FALSE}
-available_years("main")
-available_years("div")
+available_years()
+available_years(type = "div")
 ```
 
-The main records are available for the months present in the active local
-database. Diversion-only records begin in October 2008.
+Main-record years reflect the years covered by the active local database.
+Diversion-only records begin in October 2008, so their available years will always be a
+smaller set.
 
-## Looking up fields
+## Reading records
 
-Before building an analysis, it is useful to inspect the field dictionary. The
-dictionary describes selected fields and records whether each field appears in
-main records, diversion-only records, or the coordinate table.
+Use `open_main()` and `open_div()` when you want to work lazily with Arrow
+datasets. This is useful when you want to filter, select, or aggregate before
+collecting data into memory.
 
-```{r field-dictionary}
-fields <- read_field_dictionary()
-
-fields |>
-  filter(
-    field %in% c(
-      "Year",
-      "FlightDate",
-      "Flights",
-      "DOT_ID_Reporting_Airline",
-      "Reporting_Airline_Name"
-    )
-  ) |>
-  select(field, group, source, description, main_presence, div_presence)
+```{r lazy-readers, eval = FALSE}
+main_ds <- open_main(1988:1989)
+div_ds <- open_div(2009:2010)
 ```
 
-For this vignette, the essential fields are `Year`, `FlightDate`, and
-`Flights`. We use `Year` to normalize within each year, `FlightDate` to classify
-days by weekday or holiday, and `Flights` to count flights.
+Use `read_year_main()` and `read_year_div()` to read one year into memory.
 
-Carrier metadata are also available directly in the flight records. The
-`Reporting_Airline_Name` field is joined from the reduced Airline ID lookup
-table by `DOT_ID_Reporting_Airline`. The standalone lookup table is available
-with `read_airlines()`:
+```{r year-readers, eval = FALSE}
+main_1988 <- read_year_main(1988)
+div_2009 <- read_year_div(2009)
+```
+
+Use `read_main()` and `read_div()` to read one year, several years, or all
+available years.
+
+```{r multi-year-readers, eval = FALSE}
+main_early <- read_main(1988:1989)
+div_recent <- read_div(2018:2019)
+```
+
+The examples above assume that the active local database covers the requested
+years. Diversion-only examples require a database endpoint of October 2008 or
+later.
+
+Calling `read_main()` or `read_div()` without a year argument reads all
+available years for that grouping into memory. For larger workflows, prefer the
+lazy readers and collect only the summarized result.
+
+Once records are in memory, ordinary data-frame tools can be used. For example,
+the following code counts the most common origin-destination pairs in one year
+of main records.
+
+```{r origin-dest-example, eval = FALSE}
+main_1988 |>
+  count(Origin, Dest, sort = TRUE) |>
+  slice_head(n = 10)
+```
+
+For larger queries, prefer the lazy readers and collect only the summarized
+result.
+
+```{r lazy-summary-example, eval = FALSE}
+open_main(1988:1989) |>
+  select(Year, Origin, Dest, Flights) |>
+  group_by(Year, Origin, Dest) |>
+  summarise(flights = sum(Flights), .groups = "drop") |>
+  arrange(desc(flights)) |>
+  collect()
+```
+
+## Reading metadata tables
+
+The local database includes reduced airport coordinate and airline lookup
+tables. These tables contain metadata rows referenced by retained flight
+records.
+
+Most analyses do not require manual joins to these tables. During the database
+build, `slcflights` writes main and diversion Parquet files already enriched
+with coordinate metadata and airline names. The standalone metadata readers are
+mainly useful when you want to inspect the reduced lookup tables directly,
+check identifiers, or support specialized analysis.
+
+Use `read_coords()` to read airport coordinate metadata.
+
+```{r coordinate-lookup, eval = FALSE}
+coords <- read_coords()
+
+coords |>
+  select(AirportID, Display_Airport_Name, Airport_Lat, Airport_Lon) |>
+  slice_head(n = 10)
+```
+
+Use `read_airlines()` to read airline lookup metadata.
 
 ```{r airline-lookup, eval = FALSE}
 airlines <- read_airlines()
@@ -162,411 +235,70 @@ airlines |>
     Reporting_Airline_Name,
     Reporting_Airline_Lookup_Code
   ) |>
-  head()
+  slice_head(n = 10)
 ```
 
-## Calendar helpers
+## Looking up fields
 
-The following helpers create a lookup table of selected U.S. federal holidays. The
-set of holidays follows the spirit of Wickham's weekday/holiday comparison:
-ordinary weekdays are compared with selected holidays after normalizing by each
-year's average day.
+The field dictionary describes fields retained by `slcflights` and records
+whether each field appears in main records, diversion-only records, or the
+coordinate table.
 
-```{r calendar-helpers}
-nth_weekday_of_month <- function(year, month, weekday, n) {
-  # Return the date of the nth requested weekday in a given month.
-  # weekday uses lubridate's week_start = 1 convention:
-  # Monday = 1, Tuesday = 2, ..., Sunday = 7.
-  first_day <- as.Date(sprintf("%04d-%02d-01", year, month))
-  first_wday <- lubridate::wday(first_day, week_start = 1)
+```{r field-dictionary}
+fields <- read_field_dictionary()
 
-  first_day + ((weekday - first_wday) %% 7) + 7L * (n - 1L)
-}
-
-last_weekday_of_month <- function(year, month, weekday) {
-  # Return the date of the last requested weekday in a given month.
-  # weekday uses lubridate's week_start = 1 convention:
-  # Monday = 1, Tuesday = 2, ..., Sunday = 7.
-  if (month == 12L) {
-    next_month <- as.Date(sprintf("%04d-01-01", year + 1L))
-  } else {
-    next_month <- as.Date(sprintf("%04d-%02d-01", year, month + 1L))
-  }
-
-  last_day <- next_month - 1L
-  last_wday <- lubridate::wday(last_day, week_start = 1)
-
-  last_day - ((last_wday - weekday) %% 7)
-}
-
-make_holiday_table <- function(years) {
-  # Build a Year-Date-category lookup table for the selected holidays included
-  # in the weekday/holiday comparison.
-  years <- sort(unique(as.integer(years)))
-
-  holiday_names <- c(
-    "New Year's Day",
-    "Martin Luther King Jr. Day",
-    "Presidents' Day",
-    "Memorial Day",
-    "Independence Day",
-    "Labor Day",
-    "Veterans Day",
-    "Thanksgiving Day",
-    "Christmas Day"
-  )
-
-  holiday_dates <- c(
-    as.Date(sprintf("%04d-01-01", years)),
-    nth_weekday_of_month(years, 1L, 1L, 3L),
-    nth_weekday_of_month(years, 2L, 1L, 3L),
-    last_weekday_of_month(years, 5L, 1L),
-    as.Date(sprintf("%04d-07-04", years)),
-    nth_weekday_of_month(years, 9L, 1L, 1L),
-    as.Date(sprintf("%04d-11-11", years)),
-    nth_weekday_of_month(years, 11L, 4L, 4L),
-    as.Date(sprintf("%04d-12-25", years))
-  )
-
-  data.frame(
-    Year = rep(years, times = length(holiday_names)),
-    FlightDate = holiday_dates,
-    category = factor(
-      rep(holiday_names, each = length(years)),
-      levels = c(
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday",
-        "Martin Luther King Jr. Day",
-        "Presidents' Day",
-        "Memorial Day",
-        "Independence Day",
-        "Labor Day",
-        "Veterans Day",
-        "Thanksgiving Day",
-        "Christmas Day",
-        "New Year's Day"
-      )
+fields |>
+  filter(
+    field %in% c(
+      "Year",
+      "FlightDate",
+      "Flights",
+      "OriginAirportID",
+      "DestAirportID",
+      "DOT_ID_Reporting_Airline",
+      "Reporting_Airline_Name"
     )
-  )
-}
+  ) |>
+  select(field, group, source, description, main_presence, div_presence)
 ```
 
-## A Salt Lake City adaptation of Wickham's comparison
+Unlike the flight-record readers, the field dictionary is available without
+building a local database. It is a quick way to check field names before writing
+a query.
 
-Wickham's normalization idea is useful because it removes year-to-year traffic
-growth from the comparison. Instead of asking how many flights occurred on a
-particular holiday or weekday, we ask how each category compares with that
-year's average day.
+## Managing the local database
 
-A value of 100 means that the category is equal to that year's average day.
-Values below 100 indicate fewer flights than an average day in that year, and
-values above 100 indicate more flights than an average day in that year.
-
-The same calculation is applied to both `slcflights` data groupings. That makes
-the contrast meaningful: main records describe scheduled SLC service, while
-diversion-only records describe rare operational disruptions.
-
-```{r analysis-functions}
-make_day_type_data <- function(type = c("main", "div"), years = NULL) {
-  type <- match.arg(type)
-
-  # Use all available years for the requested data grouping unless the caller
-  # supplies a smaller set of years.
-  if (is.null(years)) {
-    years <- sort(unique(slcflights::available_years(type)))
-  } else {
-    years <- sort(unique(as.integer(years)))
-  }
-
-  # Choose the lazy reader for the requested data grouping. Main records are
-  # scheduled SLC origin/destination flights; diversion-only records are flights
-  # where SLC appears only as a diversion airport.
-  open_fun <- switch(type,
-    main = slcflights::open_main,
-    div = slcflights::open_div
-  )
-
-  # Open the Parquet files lazily, select only the fields needed for this
-  # analysis, and collapse the records to one total flight count per calendar
-  # day. The collect() call happens after aggregation, so the vignette brings
-  # only the smaller daily summary into memory.
-  daily <- open_fun(years) |>
-    dplyr::select(Year, FlightDate, Flights) |>
-    dplyr::group_by(Year, FlightDate) |>
-    dplyr::summarise(daily_flights = sum(Flights), .groups = "drop") |>
-    dplyr::collect() |>
-    dplyr::mutate(
-      FlightDate = as.Date(FlightDate),
-      weekday = factor(
-        lubridate::wday(FlightDate, week_start = 1),
-        levels = 1:7,
-        labels = c(
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday",
-          "Sunday"
-        )
-      )
-    )
-
-  # Compute each year's average daily flight count. This value is the
-  # denominator for the Wickham-style normalization.
-  year_avg <- daily |>
-    dplyr::group_by(Year) |>
-    dplyr::summarise(avg_daily_year = mean(daily_flights), .groups = "drop")
-
-  # For ordinary weekdays, compute one average daily flight count per weekday
-  # within each year.
-  weekday_stats <- daily |>
-    dplyr::group_by(Year, category = weekday) |>
-    dplyr::summarise(
-      avg_daily_category = mean(daily_flights),
-      .groups = "drop"
-    )
-
-  # For holidays, each year contributes the daily count on that holiday. Holiday
-  # dates outside the installed October 1987-June 2024 data window drop out
-  # naturally in the inner join.
-  holiday_stats <- daily |>
-    dplyr::inner_join(
-      make_holiday_table(years),
-      by = c("Year", "FlightDate")
-    ) |>
-    dplyr::group_by(Year, category) |>
-    dplyr::summarise(
-      avg_daily_category = mean(daily_flights),
-      .groups = "drop"
-    )
-
-  # Combine weekday and holiday summaries. Each output row is one
-  # Year-category summary, expressed as a percentage of that year's average
-  # daily flight count.
-  dplyr::bind_rows(weekday_stats, holiday_stats) |>
-    dplyr::left_join(year_avg, by = "Year") |>
-    dplyr::mutate(
-      pct_of_avg_day = 100 * avg_daily_category / avg_daily_year,
-      category = factor(
-        as.character(category),
-        levels = c(
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday",
-          "Sunday",
-          "Martin Luther King Jr. Day",
-          "Presidents' Day",
-          "Memorial Day",
-          "Independence Day",
-          "Labor Day",
-          "Veterans Day",
-          "Thanksgiving Day",
-          "Christmas Day",
-          "New Year's Day"
-        )
-      )
-    )
-}
-
-plot_day_type <- function(
-  type = c("main", "div"),
-  ordering = c("chronological", "median_desc")
-) {
-  type <- match.arg(type)
-  ordering <- match.arg(ordering)
-
-  plot_df <- make_day_type_data(type = type)
-
-  # Use chronological ordering to preserve the weekday/holiday order, or order
-  # by median percentage to make high- and low-volume categories easier to see.
-  if (ordering == "chronological") {
-    plot_df <- plot_df |>
-      dplyr::mutate(
-        category = factor(
-          as.character(category),
-          levels = rev(levels(category))
-        )
-      )
-  } else if (ordering == "median_desc") {
-    category_order <- plot_df |>
-      dplyr::group_by(category) |>
-      dplyr::summarise(med = median(pct_of_avg_day), .groups = "drop") |>
-      dplyr::arrange(dplyr::desc(med)) |>
-      dplyr::pull(category) |>
-      as.character()
-
-    plot_df <- plot_df |>
-      dplyr::mutate(
-        category = factor(
-          as.character(category),
-          levels = rev(category_order)
-        )
-      )
-  }
-
-  # Add sample sizes to the y-axis labels. n is the number of annual category
-  # summaries in each boxplot. Holiday sample sizes can be smaller because 1987
-  # and 2024 are partial years; diversion-only records also begin later.
-  sample_size_df <- plot_df |>
-    dplyr::count(category, name = "n") |>
-    dplyr::mutate(
-      label = paste0(as.character(category), "\nn = ", n)
-    )
-
-  category_labels <- sample_size_df$label
-  names(category_labels) <- as.character(sample_size_df$category)
-
-  caption_text <- paste(
-    "n is the number of annual category summaries in each boxplot;",
-    "1987 and 2024 are partial years."
-  )
-
-  # Main records have a tighter range; diversion-only records are much more
-  # variable, so they need a wider x-axis.
-  x_breaks <- switch(type,
-    main = seq(40, 140, by = 10),
-    div = seq(20, 200, by = 10)
-  )
-
-  x_limits <- switch(type,
-    main = c(40, 140),
-    div = c(20, 200)
-  )
-
-  ggplot2::ggplot(
-    plot_df,
-    ggplot2::aes(x = pct_of_avg_day, y = category)
-  ) +
-    ggplot2::geom_vline(xintercept = 100, linetype = 2) +
-    ggplot2::geom_boxplot() +
-    ggplot2::scale_y_discrete(labels = category_labels) +
-    ggplot2::scale_x_continuous(breaks = x_breaks) +
-    ggplot2::coord_cartesian(xlim = x_limits) +
-    ggplot2::labs(
-      x = "Percentage of flights relative to average day",
-      y = NULL,
-      caption = caption_text
-    )
-}
-
-draw_plot_pair <- function(ordering = c("chronological", "median_desc")) {
-  ordering <- match.arg(ordering)
-
-  # Build two ggplot objects and draw them on one graphics page. This avoids
-  # relying on HTML layout behavior for two separate images.
-  p_main <- plot_day_type("main", ordering = ordering)
-  p_div <- plot_day_type("div", ordering = ordering)
-
-  grid::grid.newpage()
-  grid::pushViewport(
-    grid::viewport(
-      layout = grid::grid.layout(nrow = 1, ncol = 2)
-    )
-  )
-
-  print(
-    p_main,
-    vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 1)
-  )
-
-  print(
-    p_div,
-    vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 2)
-  )
-}
-```
-
-The following pair of plots shows the same weekday and holiday categories in calendar
-order. The left plot uses main records, where Salt Lake City was the scheduled
-origin or destination. The right plot uses diversion-only records, where Salt
-Lake City appears only because of a diversion. Each boxplot summarizes annual
-category values, expressed as a percentage of that year's average daily flight
-count.
-
-The main and diversion-only plots use different x-axis ranges because the
-diversion-only records are much more variable.
-
-```{r paired-chronological, eval = FALSE, fig.width = 12, fig.height = 6, out.width = "100%", fig.align = "center"}
-draw_plot_pair(ordering = "chronological")
-```
-
-The next pair shows the same summaries ordered by median percentage of an
-average day. This ordering makes the contrast easier to read: the main-record
-plot reflects a regular scheduled-service rhythm, while the diversion-only plot
-is much more variable.
-
-```{r paired-median-desc, eval = FALSE, fig.width = 12, fig.height = 6, out.width = "100%", fig.align = "center"}
-draw_plot_pair(ordering = "median_desc")
-```
-
-For main SLC records, the weekday categories cluster close to the average-day
-baseline. Saturday is lower than the ordinary weekday categories, and several
-major holidays tend to sit below the baseline. This is the expected behavior
-for scheduled passenger service: ordinary weekdays reflect regular airline
-schedules, while some holidays alter demand and schedule patterns.
-
-The diversion-only plots are much less stable. This is not a defect in the
-package or in the method. It reflects the nature of the data grouping.
-Diversion-only records are rare events, and some holidays appear in only a few
-annual summaries. The same normalization remains useful, but it should be read
-as a comparison of operational volatility rather than a regular travel-demand
-pattern.
-
-## Extending the local database
-
-A local database can be extended forward after it has been built. Extensions are
-contiguous: if the active database ends with June 2024, the next extension
-starts with July 2024.
+Use `update_slcflights_db()` to extend an active database forward.
 
 ```{r extend-data, eval = FALSE}
-update_slcflights_db(until = "2024-07", confirm = TRUE)
-```
-
-You can also request a later endpoint:
-
-```{r extend-data-explicit, eval = FALSE}
-update_slcflights_db(until = "2024-12", confirm = TRUE)
-```
-
-For large initial builds or large extensions, use `confirm = TRUE`:
-
-```{r extend-data-confirm, eval = FALSE}
 update_slcflights_db(until = "latest", confirm = TRUE)
 ```
 
-The local database is stored in the user cache directory returned by
-`tools::R_user_dir("slcflights", "cache")`. The installed package files are not
-modified.
+Updates are contiguous. If the active database ends with one month, the next
+extension starts with the following month.
 
-## Rebuilding data
+Use `delete_slcflights_db()` when you want to remove the active local database.
 
-Most users should not run maintainer-side data-building workflows. The public workflow is to build a local BTS-sourced database with
-`build_slcflights_db()` and extend it with `update_slcflights_db()`.
+```{r delete-data, eval = FALSE}
+delete_slcflights_db()
+```
 
-```{r build-local-summary, eval = FALSE}
+To rebuild from scratch, delete the active database and build a new one.
+
+```{r rebuild-data, eval = FALSE}
+delete_slcflights_db()
 build_slcflights_db(until = "latest", confirm = TRUE)
 ```
 
-This downloads BTS monthly source files, filters them to Salt Lake
-City-related records, builds local Parquet files, writes reduced metadata
-tables, and records the completed endpoint in a local database manifest.
+The `data-raw/` scripts are development artifacts. The ordinary workflow is to
+build, update, inspect, read, or delete the local database with the exported
+package functions.
 
 ## Summary
 
-This vignette showed how `slcflights` can be used to adapt Wickham's
-weekday/holiday normalization idea to Salt Lake City-centered flight records
-after a local BTS-sourced database has been built. The main records describe
-scheduled SLC origin/destination service, while the diversion-only records
-describe rarer operational disruptions. The contrast illustrates why
-`slcflights` keeps these two data groupings separate.
-
-## References {#refs}
+This vignette showed the basic `slcflights` workflow: build a local database,
+check its status, inspect available years, read records, use metadata tables,
+look up field definitions, and manage the local database. Main records describe
+scheduled SLC origin/destination service. Diversion-only records describe rarer
+operational disruptions. Keeping these groupings separate makes scheduled SLC
+service and diversion patterns easier to analyze separately.

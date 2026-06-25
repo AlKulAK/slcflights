@@ -1,22 +1,21 @@
 #' List Available Flight-Data Years
 #'
-#' Lists the years for which slcflights Parquet files are available.
-#'
-#' Available years may come from the packaged data installed with the package
-#' or from a validated local user cache.
+#' Lists the years for which slcflights Parquet files are available in the
+#' active local database.
 #'
 #' @param type Which flight-data grouping to inspect: `"main"` for main records
-#'   or `"div"` for diversion-only records.
+#'   or `"div"` for diversion-only records. Defaults to `"main"`.
 #'
 #' @returns
-#' An integer vector of available years, sorted in ascending order.
+#' An integer vector of available years for the requested flight-data grouping,
+#' sorted in ascending order.
 #'
 #' @examples
 #' \dontrun{
 #' build_slcflights_db(until = "2024-12", confirm = TRUE)
 #'
-#' available_years("main")
-#' available_years("div")
+#' available_years()
+#' available_years(type = "div")
 #' }
 #'
 #' @export

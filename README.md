@@ -58,7 +58,7 @@ The package also provides:
   Coordinate support table
 - an Airline ID lookup table derived from the BTS TranStats
   `DOT_ID_Reporting_Airline` lookup table
-- a field dictionary describing selected flight-record and
+- a field dictionary describing retained flight-record and
   coordinate-table columns
 
 Flight-record columns use BTS TranStats field names from the monthly
@@ -70,6 +70,14 @@ valid BTS fields.
 ## Build or update the local database
 
 Build the local database before reading flight records.
+
+Building or updating the local database can take substantial time and
+disk space, even for relatively small date ranges. `slcflights`
+downloads and processes monthly national BTS source files before writing
+the local Salt Lake City-focused database. When a monthly BTS PREZIP
+file is unavailable, the package automatically uses the TranStats
+all-fields export for the same BTS table, which can be slower and can
+require more temporary storage.
 
 ``` r
 slcflights::build_slcflights_db(until = "2024-12", confirm = TRUE)
@@ -107,16 +115,18 @@ slcflights::delete_slcflights_db()
 ```
 
 The database is stored under the user cache directory returned by
-`tools::R_user_dir("slcflights", "cache")`.
+`tools::R_user_dir("slcflights", "cache")`. Building or updating the
+database does not modify installed package files.
 
 ## Discover available data
 
 Use `available_years()` to list years available in the active local
-database for main records or diversion-only records.
+database. By default, `available_years()` returns years for main
+records. Use `type = "div"` to inspect diversion-only years.
 
 ``` r
-slcflights::available_years("main")
-slcflights::available_years("div")
+slcflights::available_years()
+slcflights::available_years(type = "div")
 ```
 
 ## Work lazily with Parquet files
@@ -142,7 +152,10 @@ head(x)[1:10]
 ```
 
 Use `read_main()` and `read_div()` for one, many, or all available
-years.
+years. Calling either function without a year argument reads all
+available years for that grouping into memory. For larger workflows,
+prefer `open_main()` or `open_div()` and collect only the summarized
+result.
 
 ``` r
 x <- slcflights::read_main(1988:1989)
@@ -186,8 +199,8 @@ head(fields)
 ```
 
 The flight Parquet files are already enriched with latitude, longitude,
-other date-bounded airport metadata, and `Reporting_Airline_Name`. In
-most workflows, you do not need separate coordinate or Airline ID joins.
+other airport metadata, and `Reporting_Airline_Name`. In most workflows,
+you do not need separate coordinate or Airline ID joins.
 
 ## Rebuilding data
 
@@ -200,8 +213,9 @@ development artifacts. They are not needed for normal package use.
 ## Learn more
 
 Consult the package vignette for a fuller walkthrough of the package
-workflow, including coverage, lazy inspection, in-memory reads, airport
-metadata, diversion-only records, and local database updates.
+workflow, including database builds, available-year inspection, lazy
+reads, in-memory reads, metadata tables, diversion-only records, and
+local database updates.
 
 ``` r
 vignette("slcflights", package = "slcflights")
