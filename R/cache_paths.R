@@ -1,11 +1,18 @@
 # Internal cache path helpers -------------------------------------------------
 #
-# Runtime user updates must write to tools::R_user_dir("slcflights", "cache").
+# Runtime user updates write to tools::R_user_dir("slcflights", "cache").
+# Tests may set SLCFLIGHTS_TEST_CACHE_ROOT to isolate cache state.
 # These helpers only construct paths. They do not validate cache contents and
 # they do not download, build, or read data.
 
 slc_cache_root <- function(create = TRUE) {
-  path <- tools::R_user_dir("slcflights", which = "cache")
+  test_root <- Sys.getenv("SLCFLIGHTS_TEST_CACHE_ROOT", unset = "")
+
+  if (nzchar(test_root)) {
+    path <- path.expand(test_root)
+  } else {
+    path <- tools::R_user_dir("slcflights", which = "cache")
+  }
 
   if (isTRUE(create)) {
     dir.create(path, recursive = TRUE, showWarnings = FALSE)
