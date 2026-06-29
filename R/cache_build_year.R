@@ -365,6 +365,57 @@ cache_build_write_div_file <- function(
   invisible(out_div)
 }
 
+cache_build_remove_year_files <- function(paths) {
+  out <- unlist(paths, use.names = FALSE)
+
+  if (length(out)) {
+    unlink(out[file.exists(out)], force = TRUE)
+  }
+
+  invisible(paths)
+}
+
+cache_build_write_year_once <- function(
+  con,
+  year,
+  paths,
+  csv_files,
+  slc_id
+) {
+  relation <- cache_build_csv_relation(con, csv_files)
+  cols <- cache_build_bts_cols(
+    cache_build_read_bts_csv_cols(con, csv_files)
+  )
+
+  if (!length(cols)) {
+    stop(
+      sprintf(
+        "No readable columns were found for cached BTS data in %s.", year
+      ),
+      call. = FALSE
+    )
+  }
+
+  cache_build_write_main_file(
+    con = con,
+    relation = relation,
+    cols = cols,
+    slc_id = slc_id,
+    out_main = paths$main
+  )
+
+  div_path <- cache_build_write_div_file(
+    con = con,
+    relation = relation,
+    cols = cols,
+    slc_id = slc_id,
+    out_div = paths$div
+  )
+
+  out <- c(paths$main, div_path)
+  out[file.exists(out)]
+}
+
 #' Build cached annual Parquet files
 #'
 #' Builds the main and diversion-only Parquet files for one cached year from
@@ -412,36 +463,31 @@ cache_build_write_year_files <- function(
     create = TRUE
   )
 
-  relation <- cache_build_csv_relation(con, csv_files)
-  cols <- cache_build_bts_cols(
-    cache_build_read_bts_csv_cols(con, csv_files)
+  tryCatch(
+    cache_build_write_year_once(
+      con = con,
+      year = year,
+      paths = paths,
+      csv_files = csv_files,
+      slc_id = slc_id
+    ),
+    error = function(err) {
+      if (!cache_build_is_utf8_csv_error(err)) {
+        stop(err)
+      }
+
+      cache_build_remove_year_files(paths)
+
+      clean_files <- cache_build_sanitize_utf8_csvs(csv_files)
+      on.exit(unlink(clean_files, force = TRUE), add = TRUE)
+
+      cache_build_write_year_once(
+        con = con,
+        year = year,
+        paths = paths,
+        csv_files = clean_files,
+        slc_id = slc_id
+      )
+    }
   )
-
-  if (!length(cols)) {
-    stop(
-      sprintf(
-        "No readable columns were found for cached BTS data in %s.", year
-      ),
-      call. = FALSE
-    )
-  }
-
-  cache_build_write_main_file(
-    con = con,
-    relation = relation,
-    cols = cols,
-    slc_id = slc_id,
-    out_main = paths$main
-  )
-
-  div_path <- cache_build_write_div_file(
-    con = con,
-    relation = relation,
-    cols = cols,
-    slc_id = slc_id,
-    out_div = paths$div
-  )
-
-  out <- c(paths$main, div_path)
-  out[file.exists(out)]
 }

@@ -185,3 +185,28 @@ test_that("SQL identifier list quotes column names", {
   expect_match(out, "CRSDepTime", fixed = TRUE)
   expect_match(out, ",", fixed = TRUE)
 })
+
+test_that("invalid UTF-8 bytes are replaced in raw BTS CSVs", {
+  csv <- tempfile("slcflights-invalid-utf8-", fileext = ".csv")
+
+  bytes <- as.raw(c(
+    charToRaw("Tail_Number,OriginAirportID,DestAirportID\n"),
+    charToRaw("N3CJA1,14869,12892\n"),
+    as.raw(0xe4),
+    charToRaw("NKNO"),
+    as.raw(0xe6),
+    charToRaw(",12892,14869\n")
+  ))
+
+  writeBin(bytes, csv)
+  on.exit(unlink(csv, force = TRUE), add = TRUE)
+
+  clean_csv <- slcflights:::cache_build_sanitize_utf8_csv(csv)
+  on.exit(unlink(clean_csv, force = TRUE), add = TRUE)
+
+  clean <- readLines(clean_csv, warn = FALSE)
+
+  expect_equal(clean[[1]], "Tail_Number,OriginAirportID,DestAirportID")
+  expect_equal(clean[[2]], "N3CJA1,14869,12892")
+  expect_equal(clean[[3]], "@NKNO@,12892,14869")
+})

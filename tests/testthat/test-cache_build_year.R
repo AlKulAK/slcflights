@@ -342,3 +342,63 @@ test_that("cache_build_bts_cols drops malformed columns", {
     c("FlightDate", "Origin", "Div5TailNum")
   )
 })
+
+test_that("annual builder sanitizes invalid UTF-8 BTS CSVs", {
+  root <- withr::local_tempdir()
+  csv <- tempfile("slcflights-invalid-utf8-", fileext = ".csv")
+
+  bytes <- as.raw(c(
+    charToRaw(paste0(
+      "Year,Quarter,Month,DayofMonth,DayOfWeek,FlightDate,",
+      "Reporting_Airline,DOT_ID_Reporting_Airline,",
+      "IATA_CODE_Reporting_Airline,Tail_Number,",
+      "Flight_Number_Reporting_Airline,OriginAirportID,",
+      "OriginAirportSeqID,OriginCityMarketID,Origin,OriginCityName,",
+      "OriginState,OriginStateFips,OriginStateName,OriginWac,",
+      "DestAirportID,DestAirportSeqID,DestCityMarketID,Dest,",
+      "DestCityName,DestState,DestStateFips,DestStateName,DestWac,",
+      "CRSDepTime\n"
+    )),
+    charToRaw(paste0(
+      "2001,2,5,1,2,2001-05-01,AA,19805,AA,N3CJA1,1,",
+      "14869,1486901,34614,SLC,\"Salt Lake City, UT\",UT,49,",
+      "Utah,87,12892,1289201,32575,LAX,\"Los Angeles, CA\",",
+      "CA,06,California,91,0800\n"
+    )),
+    charToRaw("2001,2,5,2,3,2001-05-02,AA,19805,AA,"),
+    as.raw(0xe4),
+    charToRaw("NKNO"),
+    as.raw(0xe6),
+    charToRaw(paste0(
+      ",2,12892,1289201,32575,LAX,\"Los Angeles, CA\",CA,06,",
+      "California,91,14869,1486901,34614,SLC,",
+      "\"Salt Lake City, UT\",UT,49,Utah,87,0900\n"
+    ))
+  ))
+
+  writeBin(bytes, csv)
+  withr::defer(unlink(csv, force = TRUE))
+
+  con <- slcflights:::cache_build_connect()
+  withr::defer(slcflights:::cache_build_disconnect(con))
+
+  out <- slcflights:::cache_build_write_year_files(
+    year = 2001,
+    months = 5,
+    root = root,
+    csv_files = csv,
+    con = con
+  )
+
+  expect_true(file.exists(out[[1]]))
+
+  got <- DBI::dbGetQuery(
+    con,
+    sprintf(
+      "SELECT Tail_Number FROM read_parquet(%s) ORDER BY FlightDate",
+      DBI::dbQuoteString(con, normalizePath(out[[1]], winslash = "/"))
+    )
+  )
+
+  expect_equal(got$Tail_Number, c("N3CJA1", "@NKNO@"))
+})

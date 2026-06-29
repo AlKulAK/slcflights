@@ -146,7 +146,79 @@ cache_build_read_csv_cols <- function(con, path, all_varchar = TRUE) {
   ))
 }
 
-cache_build_read_bts_csv_cols <- function(con, paths) {
+cache_build_is_utf8_csv_error <- function(err) {
+  msg <- tolower(conditionMessage(err))
+
+  patterns <- c(
+    "invalid unicode",
+    "not utf-8 encoded"
+  )
+
+  has_utf8 <- any(vapply(
+    patterns,
+    function(pattern) {
+      grepl(pattern, msg, fixed = TRUE)
+    },
+    logical(1)
+  ))
+
+  has_csv <- grepl(
+    "invalid input error: csv error",
+    msg,
+    fixed = TRUE
+  )
+
+  has_utf8 && has_csv
+}
+
+cache_build_sanitize_utf8_csv <- function(path, replacement = "@") {
+  size <- file.info(path)$size
+
+  if (is.na(size)) {
+    stop(
+      sprintf("Could not inspect raw BTS CSV file: %s", path),
+      call. = FALSE
+    )
+  }
+
+  bytes <- readBin(path, what = "raw", n = size)
+  text <- rawToChar(bytes)
+
+  clean <- iconv(
+    text,
+    from = "UTF-8",
+    to = "UTF-8",
+    sub = replacement
+  )
+
+  if (is.na(clean)) {
+    stop(
+      sprintf("Could not sanitize raw BTS CSV file: %s", path),
+      call. = FALSE
+    )
+  }
+
+  out <- tempfile(
+    pattern = "slcflights-bts-csv-",
+    fileext = ".csv"
+  )
+
+  writeBin(charToRaw(clean), out)
+
+  out
+}
+
+cache_build_sanitize_utf8_csvs <- function(paths, replacement = "@") {
+  vapply(
+    paths,
+    cache_build_sanitize_utf8_csv,
+    character(1),
+    replacement = replacement,
+    USE.NAMES = FALSE
+  )
+}
+
+cache_build_bts_cols_once <- function(con, paths) {
   qpaths <- cache_build_quote_paths(con, paths)
 
   names(DBI::dbGetQuery(
@@ -156,6 +228,22 @@ cache_build_read_bts_csv_cols <- function(con, paths) {
       qpaths
     )
   ))
+}
+
+cache_build_read_bts_csv_cols <- function(con, paths) {
+  tryCatch(
+    cache_build_bts_cols_once(con, paths),
+    error = function(err) {
+      if (!cache_build_is_utf8_csv_error(err)) {
+        stop(err)
+      }
+
+      clean_paths <- cache_build_sanitize_utf8_csvs(paths)
+      on.exit(unlink(clean_paths, force = TRUE), add = TRUE)
+
+      cache_build_bts_cols_once(con, clean_paths)
+    }
+  )
 }
 
 cache_build_airport_seq_cols <- function(cols) {
