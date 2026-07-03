@@ -59,12 +59,12 @@ slc_cache_raw_root <- function(create = TRUE) {
   path
 }
 
-slc_cache_extdata_root <- function(root = NULL, create = TRUE) {
+slc_cache_data_root <- function(root = NULL, create = TRUE) {
   if (is.null(root)) {
     root <- slc_cache_active_root(create = create)
   }
 
-  path <- file.path(root, "extdata")
+  path <- file.path(root, "data")
 
   if (isTRUE(create)) {
     dir.create(path, recursive = TRUE, showWarnings = FALSE)
@@ -75,7 +75,7 @@ slc_cache_extdata_root <- function(root = NULL, create = TRUE) {
 
 slc_cache_parquet_root <- function(root = NULL, create = TRUE) {
   path <- file.path(
-    slc_cache_extdata_root(root = root, create = create),
+    slc_cache_data_root(root = root, create = create),
     "parquet"
   )
 
@@ -88,7 +88,7 @@ slc_cache_parquet_root <- function(root = NULL, create = TRUE) {
 
 slc_cache_csv_root <- function(root = NULL, create = TRUE) {
   path <- file.path(
-    slc_cache_extdata_root(root = root, create = create),
+    slc_cache_data_root(root = root, create = create),
     "csv"
   )
 
@@ -99,12 +99,12 @@ slc_cache_csv_root <- function(root = NULL, create = TRUE) {
   path
 }
 
-slc_db_extdata_root <- function(root = NULL, create = TRUE) {
+slc_db_data_root <- function(root = NULL, create = TRUE) {
   if (is.null(root)) {
     root <- slc_db_root(create = create)
   }
 
-  slc_cache_extdata_root(root = root, create = create)
+  slc_cache_data_root(root = root, create = create)
 }
 
 slc_db_parquet_root <- function(root = NULL, create = TRUE) {

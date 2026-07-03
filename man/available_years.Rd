@@ -4,15 +4,19 @@
 \alias{available_years}
 \title{List Available Flight-Data Years}
 \usage{
-available_years(type = c("main", "div"))
+available_years(type = NULL)
 }
 \arguments{
 \item{type}{Which flight-data grouping to inspect: \code{"main"} for main records
-or \code{"div"} for diversion-only records. Defaults to \code{"main"}.}
+or \code{"div"} for diversion-only records. Use \code{NULL} to report both
+groupings.}
 }
 \value{
-An integer vector of available years for the requested flight-data grouping,
-sorted in ascending order.
+If \code{type} is \code{"main"} or \code{"div"}, an integer vector of available years for
+that flight-data grouping, sorted in ascending order.
+
+If \code{type} is \code{NULL}, invisibly returns a list with elements \code{main} and
+\code{div}, and prints both year ranges.
 }
 \description{
 Lists the years for which slcflights Parquet files are available in the
@@ -23,6 +27,7 @@ active local database.
 build_slcflights_db(until = "2024-12", confirm = TRUE)
 
 available_years()
+available_years(type = "main")
 available_years(type = "div")
 }
 

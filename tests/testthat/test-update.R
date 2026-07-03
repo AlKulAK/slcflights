@@ -17,16 +17,17 @@ test_that("latest month skips unavailable candidate months", {
   expect_equal(out, available)
 })
 
-test_that("BTS candidate months run backward to first downloadable month", {
+test_that("BTS candidate months use a recent lookback window", {
   out <- slcflights:::bts_candidate_months(
-    today = as.Date("2024-09-15")
+    today = as.Date("2024-09-15"),
+    lookback = 4L
   )
 
   expect_equal(
     out,
     data.frame(
-      year = c(2024L, 2024L, 2024L),
-      month = c(9L, 8L, 7L)
+      year = c(2024L, 2024L, 2024L, 2024L),
+      month = c(9L, 8L, 7L, 6L)
     )
   )
 })
@@ -38,22 +39,22 @@ test_that("explicit update endpoint resolves without network probing", {
   expect_equal(out$month, 7L)
 })
 
-test_that("update months for explicit endpoint are consecutive", {
-  out <- slcflights:::update_months_for_until("2024-09")
+test_that("update months for explicit endpoint use database sequence", {
+  out <- slcflights:::update_months_for_until("1987-12")
 
   expect_equal(
     out,
     data.frame(
-      year = c(2024L, 2024L, 2024L),
-      month = c(7L, 8L, 9L)
+      year = c(1987L, 1987L, 1987L),
+      month = c(10L, 11L, 12L)
     )
   )
 })
 
-test_that("illegal update endpoint fails clearly", {
+test_that("update endpoint before database start fails clearly", {
   expect_error(
-    slcflights:::update_months_for_until("2024-06"),
-    "bundled slcflights data end in June 2024"
+    slcflights:::update_months_for_until("1987-09"),
+    "must begin with October 1987"
   )
 })
 
@@ -95,8 +96,7 @@ test_that("cache build passes raw metadata paths to staging", {
     cache_stage_build = function(months,
                                  root,
                                  coords_in,
-                                 airlines_in,
-                                 include_installed) {
+                                 airlines_in) {
       expect_equal(months, data.frame(year = 2024L, month = 7L))
       expect_equal(
         root,
@@ -110,7 +110,7 @@ test_that("cache build passes raw metadata paths to staging", {
         airlines_in,
         slcflights:::slc_cache_raw_airlines_path(create = FALSE)
       )
-      expect_true(include_installed)
+
       invisible(TRUE)
     },
     cache_stage_promote = function(staging_root, active_root) {
@@ -418,15 +418,25 @@ test_that("database info reports present database", {
   unlink(root, recursive = TRUE, force = TRUE)
 })
 
-test_that("large initial database build requires confirmation", {
+test_that("large database operation accepts programmatic confirmation", {
+  out <- slcflights:::confirm_large_db_operation(
+    n_months = 25L,
+    confirm = TRUE
+  )
+
+  expect_true(out)
+})
+
+test_that("large database operation requires confirmation in tests", {
   testthat::local_mocked_bindings(
-    read_db_manifest = function(root = NULL) NULL,
-    .package = "slcflights"
+    interactive = function() FALSE,
+    .package = "base"
   )
 
   expect_error(
-    suppressMessages(
-      slcflights:::build_slcflights_db(until = "1989-12")
+    slcflights:::confirm_large_db_operation(
+      n_months = 25L,
+      confirm = FALSE
     ),
     "confirm = TRUE"
   )

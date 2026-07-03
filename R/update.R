@@ -1,7 +1,12 @@
 # Update endpoint and cache management helpers --------------------------------
 
-bts_candidate_months <- function(today = Sys.Date()) {
+bts_candidate_months <- function(today = Sys.Date(), lookback = 36L) {
   today <- as.Date(today)
+  lookback <- as.integer(lookback)
+
+  if (length(lookback) != 1L || is.na(lookback) || lookback < 1L) {
+    stop("`lookback` must be a positive integer.", call. = FALSE)
+  }
 
   current <- as_year_month(
     as.integer(format(today, "%Y")),
@@ -11,7 +16,7 @@ bts_candidate_months <- function(today = Sys.Date()) {
 
   indexes <- seq.int(
     year_month_index(current),
-    year_month_index(slc_first_download())
+    year_month_index(current) - lookback + 1L
   )
 
   months <- lapply(indexes, index_to_year_month)
@@ -84,17 +89,17 @@ bts_latest_month <- function(today = Sys.Date()) {
 }
 
 resolve_update_until <- function(until = "latest") {
-  until <- normalize_update_until(until)
+  until <- normalize_db_until(until)
 
   if (identical(until, "latest")) {
     return(bts_latest_month())
   }
 
-  validate_update_until(until)
+  validate_db_until(until)
 }
 
 update_months_for_until <- function(until = "latest") {
-  update_month_sequence(resolve_update_until(until))
+  db_month_sequence(resolve_update_until(until))
 }
 
 download_update_months <- function(months, overwrite = FALSE) {
@@ -135,8 +140,7 @@ build_update_cache <- function(months) {
     months = months,
     root = slc_cache_staging_root(create = TRUE),
     coords_in = slc_cache_raw_coords_path(create = FALSE),
-    airlines_in = slc_cache_raw_airlines_path(create = FALSE),
-    include_installed = TRUE
+    airlines_in = slc_cache_raw_airlines_path(create = FALSE)
   )
 
   message("Activating local slcflights cache...")
@@ -401,6 +405,47 @@ clear_cache_root <- function(root, confirm = interactive()) {
   invisible(TRUE)
 }
 
+confirm_large_db_operation <- function(n_months, confirm = FALSE) {
+  n_months <- as.integer(n_months)
+
+  if (length(n_months) != 1L || is.na(n_months) || n_months < 1L) {
+    stop("`n_months` must be a positive integer.", call. = FALSE)
+  }
+
+  if (isTRUE(confirm)) {
+    return(TRUE)
+  }
+
+  if (!interactive()) {
+    stop(
+      paste(
+        "This operation would download and process",
+        n_months,
+        "monthly BTS files.",
+        "In a non-interactive session, run again with `confirm = TRUE`."
+      ),
+      call. = FALSE
+    )
+  }
+
+  message(
+    paste(
+      "This operation will download and process",
+      n_months,
+      "monthly BTS files."
+    )
+  )
+
+  message(
+    "This may require substantial time, disk space, and network bandwidth."
+  )
+
+  answer <- readline("Type y or yes to continue: ")
+  answer <- tolower(trimws(answer))
+
+  answer %in% c("y", "yes")
+}
+
 run_db_build <- function(
   until,
   overwrite = FALSE,
@@ -436,16 +481,16 @@ run_db_build <- function(
     }
   }
 
-  if (nrow(dl_months) > 24L && !isTRUE(confirm)) {
-    stop(
-      paste(
-        "This operation would download and process",
-        nrow(dl_months),
-        "monthly BTS files.",
-        "Run again with `confirm = TRUE` to proceed."
-      ),
-      call. = FALSE
+  if (nrow(dl_months) > 24L) {
+    proceed <- confirm_large_db_operation(
+      n_months = nrow(dl_months),
+      confirm = confirm
     )
+
+    if (!isTRUE(proceed)) {
+      message("Database build cancelled.")
+      return(invisible(slc_db_info()))
+    }
   }
 
   message("Building slcflights through ", format_year_month(endpoint), ".")
@@ -487,8 +532,9 @@ run_db_build <- function(
 #'   of the form `"YYYY-MM"`, or `c(year, month)`.
 #' @param overwrite If `TRUE`, re-downloads raw BTS source files already
 #'   present in the local raw-data cache.
-#' @param confirm If `TRUE`, allows operations that download and process more
-#'   than 24 monthly BTS files.
+#' @param confirm If `TRUE`, allows non-interactive operations that download
+#'   and process more than 24 monthly BTS files. Interactive users are prompted
+#'   to type `y` or `yes`.
 #'
 #' @returns
 #' Invisibly, a list describing the active local database.
@@ -543,8 +589,9 @@ update_slcflights_db <- function(
 #'   of the form `"YYYY-MM"`, or `c(year, month)`.
 #' @param overwrite If `TRUE`, re-downloads raw BTS source files already
 #'   present in the local raw-data cache.
-#' @param confirm If `TRUE`, allows operations that download and process more
-#'   than 24 monthly BTS files.
+#' @param confirm If `TRUE`, allows non-interactive operations that download
+#'   and process more than 24 monthly BTS files. Interactive users are prompted
+#'   to type `y` or `yes`.
 #'
 #' @returns
 #' Invisibly, a list describing the active local database.
@@ -557,7 +604,9 @@ update_slcflights_db <- function(
 #' If a local database already exists, use [update_slcflights_db()] to extend it
 #' or [delete_slcflights_db()] before rebuilding.
 #'
-#' For large initial builds, use `confirm = TRUE`.
+#' Large builds require explicit confirmation. In interactive sessions, the
+#' function prompts the user to type `y` or `yes`. In non-interactive sessions,
+#' use `confirm = TRUE`.
 #'
 #' @seealso [update_slcflights_db()], [status_slcflights_db()],
 #'   [delete_slcflights_db()]
@@ -638,7 +687,7 @@ status_slcflights_db <- function() {
 #'
 #' @returns
 #' Invisibly, `TRUE` if the local database was deleted or did not exist, and
-#' `FALSE` if deletion was cancelled.
+#'   `FALSE` if deletion was cancelled.
 #'
 #' @details
 #' This removes the local slcflights database stored under the user cache

@@ -2,7 +2,7 @@ test_that("cache root uses R_user_dir", {
   root <- slcflights:::slc_cache_root(create = FALSE)
 
   expect_match(root, "slcflights")
-  expect_false(grepl("inst[/\\\\]extdata", root))
+  expect_false(grepl("inst[/\\\\]data", root))
   expect_false(grepl("data-raw[/\\\\]cache", root))
 })
 
@@ -37,17 +37,22 @@ test_that("database roots use active cache layout", {
   )
 })
 
-test_that("cache extdata structure mirrors package structure", {
+test_that("cache data structure is created", {
   root <- tempfile("slc-cache-test-")
 
   expect_equal(
+    slcflights:::slc_cache_data_root(root = root, create = FALSE),
+    file.path(root, "data")
+  )
+
+  expect_equal(
     slcflights:::slc_cache_parquet_root(root = root, create = FALSE),
-    file.path(root, "extdata", "parquet")
+    file.path(root, "data", "parquet")
   )
 
   expect_equal(
     slcflights:::slc_cache_csv_root(root = root, create = FALSE),
-    file.path(root, "extdata", "csv")
+    file.path(root, "data", "csv")
   )
 
   expect_equal(
@@ -56,22 +61,22 @@ test_that("cache extdata structure mirrors package structure", {
   )
 })
 
-test_that("database extdata structure mirrors cache structure", {
+test_that("database data structure mirrors cache structure", {
   root <- tempfile("slc-db-test-")
 
   expect_equal(
-    slcflights:::slc_db_extdata_root(root = root, create = FALSE),
-    file.path(root, "extdata")
+    slcflights:::slc_db_data_root(root = root, create = FALSE),
+    file.path(root, "data")
   )
 
   expect_equal(
     slcflights:::slc_db_parquet_root(root = root, create = FALSE),
-    file.path(root, "extdata", "parquet")
+    file.path(root, "data", "parquet")
   )
 
   expect_equal(
     slcflights:::slc_db_csv_root(root = root, create = FALSE),
-    file.path(root, "extdata", "csv")
+    file.path(root, "data", "csv")
   )
 
   expect_equal(
@@ -92,7 +97,7 @@ test_that("cache parquet paths preserve annual layout", {
     ),
     file.path(
       root,
-      "extdata",
+      "data",
       "parquet",
       "Year=2025",
       "data_0_main.parquet"
@@ -108,7 +113,7 @@ test_that("cache parquet paths preserve annual layout", {
     ),
     file.path(
       root,
-      "extdata",
+      "data",
       "parquet",
       "Year=2025",
       "data_0_div.parquet"
@@ -128,7 +133,7 @@ test_that("database parquet paths preserve annual layout", {
     ),
     file.path(
       root,
-      "extdata",
+      "data",
       "parquet",
       "Year=2025",
       "data_0_main.parquet"
@@ -144,7 +149,7 @@ test_that("database parquet paths preserve annual layout", {
     ),
     file.path(
       root,
-      "extdata",
+      "data",
       "parquet",
       "Year=2025",
       "data_0_div.parquet"
@@ -152,49 +157,49 @@ test_that("database parquet paths preserve annual layout", {
   )
 })
 
-test_that("cache coordinate path preserves package filename", {
+test_that("cache coordinate path preserves metadata filename", {
   root <- tempfile("slc-cache-test-")
 
   expect_equal(
     slcflights:::slc_cache_coords_path(root = root, create = FALSE),
     file.path(
       root,
-      "extdata",
+      "data",
       "csv",
       "T_MASTER_CORD_reduced.csv"
     )
   )
 })
 
-test_that("cache airline path preserves package filename", {
+test_that("cache airline path preserves metadata filename", {
   root <- tempfile("slc-cache-test-")
 
   expect_equal(
     slcflights:::slc_cache_airlines_path(root = root, create = FALSE),
     file.path(
       root,
-      "extdata",
+      "data",
       "csv",
       "L_AIRLINE_ID_reduced.csv"
     )
   )
 })
 
-test_that("database metadata paths preserve package filenames", {
+test_that("database metadata paths preserve metadata filenames", {
   root <- tempfile("slc-db-test-")
 
   expect_equal(
     slcflights:::slc_db_coords_path(root = root, create = FALSE),
-    file.path(root, "extdata", "csv", "T_MASTER_CORD_reduced.csv")
+    file.path(root, "data", "csv", "T_MASTER_CORD_reduced.csv")
   )
 
   expect_equal(
     slcflights:::slc_db_airlines_path(root = root, create = FALSE),
-    file.path(root, "extdata", "csv", "L_AIRLINE_ID_reduced.csv")
+    file.path(root, "data", "csv", "L_AIRLINE_ID_reduced.csv")
   )
 })
 
-test_that("raw cache paths are separated from active extdata", {
+test_that("raw cache paths are separated from active data", {
   root <- slcflights:::slc_cache_root(create = FALSE)
 
   ontime <- slcflights:::slc_cache_raw_ontime_root(create = FALSE)

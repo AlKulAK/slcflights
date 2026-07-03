@@ -62,30 +62,11 @@ cache_stage_parquet_files <- function(root, years) {
   unname(paths[file.exists(paths)])
 }
 
-cache_stage_installed_files <- function() {
-  paths <- rbind(
-    slc_installed_data_paths("main"),
-    slc_installed_data_paths("div")
-  )
-
-  unname(paths$path[file.exists(paths$path)])
-}
-
-cache_stage_coord_files <- function(
-  root,
-  years,
-  include_installed = TRUE
-) {
-  cache_files <- cache_stage_parquet_files(
+cache_stage_coord_files <- function(root, years) {
+  cache_stage_parquet_files(
     root = root,
     years = years
   )
-
-  if (!isTRUE(include_installed)) {
-    return(cache_files)
-  }
-
-  unname(c(cache_stage_installed_files(), cache_files))
 }
 
 #' Validate a staged cache
@@ -132,22 +113,19 @@ db_stage_validate <- function(root) {
 #' Build a local cache in a staging directory
 #'
 #' Builds annual main and diversion-only Parquet files for the requested cached
-#' months, reduces metadata tables to values used by installed and cached
-#' records, enriches cached files with coordinate and airline metadata,
-#' finalizes cached Parquet files, writes a cache manifest, and validates the
-#' staged cache.
+#' months, reduces metadata tables to values used by staged cache records,
+#' enriches cached files with coordinate and airline metadata, finalizes cached
+#' Parquet files, writes a cache manifest, and validates the staged cache.
 #'
 #' @param months Data frame with `year` and `month` columns. The months must
-#'   begin in July 2024 and form a consecutive sequence.
+#'   form a consecutive sequence.
 #' @param root Staging cache root to create and populate.
 #' @param slc_id BTS airport ID for Salt Lake City.
 #' @param coords_in Path to the raw BTS Master Coordinate CSV.
 #' @param airlines_in Path to the raw BTS Airline ID lookup CSV.
 #' @param csv_files Optional named list of monthly BTS CSV files by year. Used
 #'   by tests and lower-level workflows.
-#' @param include_installed If `TRUE`, include installed package Parquet files
-#'   when reducing metadata tables.
-#' @param finalize_schema If `TRUE`, finalize cached Parquet files after
+#' @param finalize_schema If `TRUE`, finalize staged Parquet files after
 #'   metadata enrichment.
 #'
 #' @returns
@@ -162,7 +140,6 @@ cache_stage_build <- function(
   coords_in = slc_cache_raw_coords_path(create = FALSE),
   airlines_in = slc_cache_raw_airlines_path(create = FALSE),
   csv_files = NULL,
-  include_installed = TRUE,
   finalize_schema = TRUE
 ) {
   months <- validate_cache_months(months)
@@ -206,8 +183,7 @@ cache_stage_build <- function(
 
   coord_files <- cache_stage_coord_files(
     root = root,
-    years = years,
-    include_installed = include_installed
+    years = years
   )
 
   coords_out <- slc_cache_coords_path(

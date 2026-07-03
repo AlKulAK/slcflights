@@ -1,9 +1,9 @@
-#' slcflights: Salt Lake City-Related Flight Data
+#' slcflights: Salt Lake City-Related Flight Data Tools
 #'
-#' `slcflights` provides tools for building and reading Salt Lake City-focused
-#' subsets of the Bureau of Transportation Statistics (BTS) TranStats On-Time:
-#' Reporting Carrier On-Time Performance data, along with airport coordinate
-#' and Airline ID metadata for those records.
+#' `slcflights` provides tools for building and reading a local Salt Lake
+#' City-focused database from Bureau of Transportation Statistics (BTS)
+#' TranStats On-Time: Reporting Carrier On-Time Performance data, along with
+#' airport coordinate and Airline ID metadata for those records.
 #'
 #' The package builds a local BTS-sourced database from monthly BTS source
 #' files. The local database begins with October 1987 and extends through a
@@ -24,8 +24,8 @@
 #' - [update_slcflights_db()] to extend an existing local BTS-sourced database
 #' - [status_slcflights_db()] to inspect the active local database
 #' - [delete_slcflights_db()] to remove the active local database
-#' - [available_years()] to list years available in the active local database
-#'   for main or diversion-only records
+#' - [available_years()] to inspect years available in the active local
+#'   database for main and diversion-only records
 #' - [read_main()] to read one, many, or all years of main records into memory
 #' - [read_div()] to read one, many, or all years of diversion-only records
 #'   into memory
@@ -56,8 +56,8 @@
 #' longitude, and date-bounded airport information.
 #'
 #' The Airline ID lookup table contains DOT reporting airline identifiers,
-#' airline names, and airline lookup codes for airlines referenced by the active
-#' local database.
+#' airline names, and airline lookup codes for airlines referenced by the
+#' active local database.
 #'
 #' @keywords internal
 "_PACKAGE"

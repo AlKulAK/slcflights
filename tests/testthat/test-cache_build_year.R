@@ -105,7 +105,7 @@ test_that("year file paths preserve annual cache layout", {
     out$main,
     file.path(
       root,
-      "extdata",
+      "data",
       "parquet",
       "Year=2025",
       "data_0_main.parquet"
@@ -116,7 +116,7 @@ test_that("year file paths preserve annual cache layout", {
     out$div,
     file.path(
       root,
-      "extdata",
+      "data",
       "parquet",
       "Year=2025",
       "data_0_div.parquet"

@@ -4,23 +4,57 @@
 #' active local database.
 #'
 #' @param type Which flight-data grouping to inspect: `"main"` for main records
-#'   or `"div"` for diversion-only records. Defaults to `"main"`.
+#'   or `"div"` for diversion-only records. Use `NULL` to report both
+#'   groupings.
 #'
 #' @returns
-#' An integer vector of available years for the requested flight-data grouping,
-#' sorted in ascending order.
+#' If `type` is `"main"` or `"div"`, an integer vector of available years for
+#' that flight-data grouping, sorted in ascending order.
+#'
+#' If `type` is `NULL`, invisibly returns a list with elements `main` and
+#' `div`, and prints both year ranges.
 #'
 #' @examples
 #' \dontrun{
 #' build_slcflights_db(until = "2024-12", confirm = TRUE)
 #'
 #' available_years()
+#' available_years(type = "main")
 #' available_years(type = "div")
 #' }
 #'
 #' @export
-available_years <- function(type = c("main", "div")) {
-  type <- match.arg(type)
+available_years <- function(type = NULL) {
+  if (is.null(type)) {
+    info <- slc_db_info()
+
+    if (!isTRUE(info$exists)) {
+      message("No local slcflights database is active.")
+      message("Run `build_slcflights_db()` before reading flight data.")
+
+      return(invisible(list(
+        main = integer(),
+        div = integer()
+      )))
+    }
+
+    years <- list(
+      main = slc_available_data_years("main"),
+      div = slc_available_data_years("div")
+    )
+
+    print_available_years(years)
+    return(invisible(years))
+  }
+
+  type <- match.arg(type, c("main", "div"))
+
+  info <- slc_db_info()
+
+  if (!isTRUE(info$exists)) {
+    stop(slc_no_db_error(), call. = FALSE)
+  }
+
   slc_available_data_years(type)
 }
 
@@ -381,20 +415,24 @@ read_airlines <- function() {
 
 #' Read the Field Dictionary
 #'
-#' Reads the field dictionary installed with the package.
+#' Reads the built-in slcflights field dictionary.
 #'
 #' @returns
-#' A data frame describing retained fields in the flight-record Parquet files
-#' and the airport coordinate table.
+#' A data frame describing fields that slcflights writes to built local
+#' database outputs.
 #'
 #' @details
-#' The field dictionary includes the field name, field group, source table,
-#' description, presence in main records, presence in diversion-only records,
-#' presence in the coordinate table, and additional notes.
+#' The field dictionary is a schema reference for the columns written by
+#' slcflights when it builds a local database from BTS source files.
+#'
+#' The dictionary includes the field name, field group, BTS source table,
+#' description, expected presence in main records, expected presence in
+#' diversion-only records, expected presence in the coordinate table, and
+#' additional notes.
 #'
 #' Values of `main_presence`, `div_presence`, and `coords_presence` use
-#' `"always"`, `"sometimes"`, or `"never"` to describe whether a field appears
-#' in that data grouping.
+#' `"always"`, `"sometimes"`, or `"never"` to describe whether a field is
+#' expected in that built data grouping.
 #'
 #' Unlike the flight-record readers, the field dictionary is available without
 #' building a local database.
@@ -408,19 +446,35 @@ read_airlines <- function() {
 #'
 #' @export
 read_field_dictionary <- function() {
-  readr::read_csv(
-    system.file(
-      "extdata",
-      "csv",
-      "field_dictionary.csv",
-      package = "slcflights",
-      mustWork = TRUE
-    ),
-    show_col_types = FALSE
-  )
+  slc_field_dictionary()
 }
 
 # Internal reader path helpers -----------------------------------------------
+
+print_available_years <- function(years) {
+  print_available_year_line(
+    label = "Main flight years",
+    years = years$main
+  )
+
+  print_available_year_line(
+    label = "Diversion-only years",
+    years = years$div
+  )
+
+  invisible(years)
+}
+
+print_available_year_line <- function(label, years) {
+  if (!length(years)) {
+    message(label, ": none")
+    return(invisible(years))
+  }
+
+  message(label, ": ", paste(years, collapse = ", "))
+
+  invisible(years)
+}
 
 #' Resolve reader Parquet paths
 #'

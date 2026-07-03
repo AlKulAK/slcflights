@@ -4,12 +4,12 @@
 \name{slcflights-package}
 \alias{slcflights}
 \alias{slcflights-package}
-\title{slcflights: Salt Lake City-Related Flight Data}
+\title{slcflights: Salt Lake City-Related Flight Data Tools}
 \description{
-\code{slcflights} provides tools for building and reading Salt Lake City-focused
-subsets of the Bureau of Transportation Statistics (BTS) TranStats On-Time:
-Reporting Carrier On-Time Performance data, along with airport coordinate
-and Airline ID metadata for those records.
+\code{slcflights} provides tools for building and reading a local Salt Lake
+City-focused database from Bureau of Transportation Statistics (BTS)
+TranStats On-Time: Reporting Carrier On-Time Performance data, along with
+airport coordinate and Airline ID metadata for those records.
 }
 \details{
 The package builds a local BTS-sourced database from monthly BTS source
@@ -32,8 +32,8 @@ The main user-facing functions are:
 \item \code{\link[=update_slcflights_db]{update_slcflights_db()}} to extend an existing local BTS-sourced database
 \item \code{\link[=status_slcflights_db]{status_slcflights_db()}} to inspect the active local database
 \item \code{\link[=delete_slcflights_db]{delete_slcflights_db()}} to remove the active local database
-\item \code{\link[=available_years]{available_years()}} to list years available in the active local database
-for main or diversion-only records
+\item \code{\link[=available_years]{available_years()}} to inspect years available in the active local
+database for main and diversion-only records
 \item \code{\link[=read_main]{read_main()}} to read one, many, or all years of main records into memory
 \item \code{\link[=read_div]{read_div()}} to read one, many, or all years of diversion-only records
 into memory
@@ -66,8 +66,8 @@ associated airport metadata used to enrich flight records with latitude,
 longitude, and date-bounded airport information.
 
 The Airline ID lookup table contains DOT reporting airline identifiers,
-airline names, and airline lookup codes for airlines referenced by the active
-local database.
+airline names, and airline lookup codes for airlines referenced by the
+active local database.
 }
 
 \seealso{
@@ -80,6 +80,11 @@ Useful links:
 }
 \author{
 \strong{Maintainer}: Aleksey Kulyukin \email{A02291810@usu.edu} (\href{https://orcid.org/0009-0009-4396-9878}{ORCID})
+
+Authors:
+\itemize{
+  \item Aleksey Kulyukin \email{A02291810@usu.edu} (\href{https://orcid.org/0009-0009-4396-9878}{ORCID})
+}
 
 }
 \keyword{internal}

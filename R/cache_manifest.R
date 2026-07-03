@@ -1,6 +1,6 @@
-# Internal cache manifest helpers --------------------------------------------
+# Internal database manifest helpers -----------------------------------------
 #
-# The active runtime cache uses a JSON manifest. These helpers construct,
+# The active local database uses a JSON manifest. These helpers construct,
 # validate, read, and write that manifest. They do not download data, build
 # Parquet files, or change reader behavior.
 
@@ -20,8 +20,9 @@ slc_manifest_package_version <- function() {
 
 #' Validate cached month metadata
 #'
-#' Validates the year-month table used in cache manifests. Cached months must
-#' start in July 2024 and must form a consecutive monthly sequence.
+#' Validates a year-month table used by legacy cache helpers. Cached months
+#' must form a consecutive monthly sequence, but they are no longer tied to a
+#' hard-coded July 2024 boundary.
 #'
 #' @param months Data frame with `year` and `month` columns.
 #' @param arg Argument name to use in error messages.
@@ -64,24 +65,19 @@ validate_cache_months <- function(months, arg = "months") {
   row.names(months) <- NULL
 
   first <- as_year_month(months$year[[1]], months$month[[1]])
-  expected_first <- slc_first_download()
-
-  if (year_month_index(first) != year_month_index(expected_first)) {
-    stop(
-      paste(
-        "Cached months must begin with July 2024.",
-        "Downloaded data must be consecutive."
-      ),
-      call. = FALSE
-    )
-  }
 
   last <- as_year_month(
     months$year[[nrow(months)]],
     months$month[[nrow(months)]]
   )
 
-  expected <- update_month_sequence(last)
+  indexes <- seq.int(year_month_index(first), year_month_index(last))
+  expected <- lapply(indexes, index_to_year_month)
+
+  expected <- data.frame(
+    year = vapply(expected, `[[`, integer(1), "year"),
+    month = vapply(expected, `[[`, integer(1), "month")
+  )
 
   if (!identical(months, expected)) {
     stop(
@@ -143,7 +139,7 @@ validate_db_months <- function(months, arg = "months") {
   row.names(months) <- NULL
 
   first <- as_year_month(months$year[[1]], months$month[[1]])
-  db_start <- slc_bundled_start()
+  db_start <- slc_db_start()
 
   if (year_month_index(first) != year_month_index(db_start)) {
     stop(
@@ -183,9 +179,10 @@ validate_db_months <- function(months, arg = "months") {
 
 #' Construct a cache manifest
 #'
-#' Builds the JSON-compatible manifest object written into the active local
-#' cache. The manifest records schema compatibility, bundled data boundaries,
-#' cached month boundaries, creation time, and cached month status.
+#' Builds the JSON-compatible manifest object used by legacy cache helpers.
+#' Cached months are recorded as a consecutive monthly sequence with explicit
+#' start and end months. The manifest no longer records bundled-data
+#' boundaries.
 #'
 #' @param months Data frame with `year` and `month` columns.
 #' @param package_version Package version string recorded in the manifest.
@@ -203,6 +200,7 @@ new_cache_manifest <- function(
   months <- validate_cache_months(months)
 
   cached_start <- as_year_month(months$year[[1]], months$month[[1]])
+
   cached_end <- as_year_month(
     months$year[[nrow(months)]],
     months$month[[nrow(months)]]
@@ -211,8 +209,6 @@ new_cache_manifest <- function(
   list(
     schema_version = slc_schema_version,
     package_version = package_version,
-    bundled_start = format_year_month(slc_bundled_start()),
-    bundled_end = format_year_month(slc_bundled_end()),
     cached_start = format_year_month(cached_start),
     cached_end = format_year_month(cached_end),
     created_at = created_at,
@@ -272,8 +268,9 @@ new_db_manifest <- function(
 #' Validate a cache manifest
 #'
 #' Validates that a parsed cache manifest has the expected fields, schema
-#' version, bundled data boundaries, cached month sequence,
-#' and cached endpoint.
+#' version, cached month sequence, and cached endpoint. This helper remains
+#' only for legacy cache workflows and no longer validates bundled-data
+#' boundaries.
 #'
 #' @param manifest Parsed JSON manifest object.
 #' @param arg Argument name to use in error messages.
@@ -290,8 +287,6 @@ validate_cache_manifest <- function(manifest, arg = "manifest") {
   required <- c(
     "schema_version",
     "package_version",
-    "bundled_start",
-    "bundled_end",
     "cached_start",
     "cached_end",
     "created_at",
@@ -319,16 +314,6 @@ validate_cache_manifest <- function(manifest, arg = "manifest") {
       ),
       call. = FALSE
     )
-  }
-
-  if (
-    !identical(manifest$bundled_start, format_year_month(slc_bundled_start()))
-  ) {
-    stop("The cache manifest has an unexpected bundled start.", call. = FALSE)
-  }
-
-  if (!identical(manifest$bundled_end, format_year_month(slc_bundled_end()))) {
-    stop("The cache manifest has an unexpected bundled end.", call. = FALSE)
   }
 
   months <- cache_months_from_manifest(manifest)
@@ -405,7 +390,7 @@ validate_db_manifest <- function(manifest, arg = "manifest") {
     )
   }
 
-  if (!identical(manifest$db_start, format_year_month(slc_bundled_start()))) {
+  if (!identical(manifest$db_start, format_year_month(slc_db_start()))) {
     stop("The database manifest has an unexpected start.", call. = FALSE)
   }
 

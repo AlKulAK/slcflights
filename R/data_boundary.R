@@ -1,22 +1,13 @@
 # Internal data-boundary helpers ---------------------------------------------
 #
-# The package ships data from 1987-10 through 2024-06.
-# Locally downloaded update data must begin with 2024-07.
+# The package builds a local SLC database from BTS monthly files. It does not
+# ship flight data or support-table data. The first supported database month is
+# October 1987, matching the start of BTS On-Time Performance data.
 
 slc_schema_version <- 1L
 
 slc_db_start_year <- 1987L
 slc_db_start_month <- 10L
-
-slc_bundled_start_year <- 1987L
-slc_bundled_start_month <- 10L
-
-slc_bundled_end_year <- 2024L
-slc_bundled_end_month <- 6L
-
-slc_first_download_year <- 2024L
-slc_first_download_month <- 7L
-
 
 # Constructors ---------------------------------------------------------------
 
@@ -270,58 +261,11 @@ index_to_year_month <- function(index) {
   )
 }
 
-
 # Boundary helpers -----------------------------------------------------------
-
-#' Return the first bundled slcflights month
-#'
-#' Returns the first month represented in the installed historical data.
-#'
-#' @returns
-#' A `"slc_year_month"` object for October 1987.
-#'
-#' @noRd
-slc_bundled_start <- function() {
-  new_year_month(
-    slc_bundled_start_year,
-    slc_bundled_start_month
-  )
-}
-
-#' Return the last bundled slcflights month
-#'
-#' Returns the final month represented in the installed historical data.
-#'
-#' @returns
-#' A `"slc_year_month"` object for June 2024.
-#'
-#' @noRd
-slc_bundled_end <- function() {
-  new_year_month(
-    slc_bundled_end_year,
-    slc_bundled_end_month
-  )
-}
-
-#' Return the first downloadable update month
-#'
-#' Returns the first month that local update workflows may download after the
-#' bundled historical data.
-#'
-#' @returns
-#' A `"slc_year_month"` object for July 2024.
-#'
-#' @noRd
-slc_first_download <- function() {
-  new_year_month(
-    slc_first_download_year,
-    slc_first_download_month
-  )
-}
 
 #' Return the first slcflights database month
 #'
-#' Returns the first month represented in the local slcflights database.
+#' Returns the first month supported by the local slcflights database.
 #'
 #' @returns
 #' A `"slc_year_month"` object for October 1987.
@@ -331,96 +275,6 @@ slc_db_start <- function() {
   new_year_month(
     slc_db_start_year,
     slc_db_start_month
-  )
-}
-
-# Update endpoint helpers ----------------------------------------------------
-
-#' Normalize an update endpoint
-#'
-#' Normalizes the user-facing `until` argument used by update workflows.
-#'
-#' @param until Update endpoint: `"latest"`, a `"YYYY-MM"` string, or
-#'   `c(year, month)`.
-#'
-#' @returns
-#' Either the string `"latest"` or a validated `"slc_year_month"` object.
-#'
-#' @noRd
-normalize_update_until <- function(until = "latest") {
-  if (is.character(until) && identical(until, "latest")) {
-    return("latest")
-  }
-
-  if (is.character(until)) {
-    return(as_year_month_string(until, arg = "until"))
-  }
-
-  if (is.numeric(until) && length(until) == 2L) {
-    return(as_year_month(until[[1]], until[[2]], arg = "until"))
-  }
-
-  stop(
-    paste(
-      "`until` must be \"latest\", a string of the form \"YYYY-MM\",",
-      "or c(year, month)."
-    ),
-    call. = FALSE
-  )
-}
-
-#' Validate a concrete update endpoint
-#'
-#' Checks that a concrete update endpoint is not earlier than the first
-#' downloadable update month.
-#'
-#' @param until Internal `"slc_year_month"` object.
-#'
-#' @returns
-#' The validated `"slc_year_month"` object.
-#'
-#' @noRd
-validate_update_until <- function(until) {
-  until <- validate_year_month(until, arg = "until")
-  first_download <- slc_first_download()
-
-  if (year_month_index(until) < year_month_index(first_download)) {
-    stop(
-      paste(
-        "The bundled slcflights data end in June 2024.",
-        "Downloaded data must begin with July 2024."
-      ),
-      call. = FALSE
-    )
-  }
-
-  until
-}
-
-#' Build the consecutive update month table
-#'
-#' Builds the consecutive sequence of update months from July 2024 through the
-#' requested endpoint.
-#'
-#' @param until Internal `"slc_year_month"` update endpoint.
-#'
-#' @returns
-#' A data frame with integer `year` and `month` columns.
-#'
-#' @noRd
-update_month_sequence <- function(until) {
-  until <- validate_update_until(until)
-
-  indexes <- seq.int(
-    year_month_index(slc_first_download()),
-    year_month_index(until)
-  )
-
-  months <- lapply(indexes, index_to_year_month)
-
-  data.frame(
-    year = vapply(months, `[[`, integer(1), "year"),
-    month = vapply(months, `[[`, integer(1), "month")
   )
 }
 

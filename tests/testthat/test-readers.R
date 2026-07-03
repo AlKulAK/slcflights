@@ -78,10 +78,10 @@ test_that("read_airlines requires an active database", {
   )
 })
 
-test_that("packaged field dictionary CSV is readable", {
+test_that("builtin field dictionary is readable", {
   x <- read_field_dictionary()
 
-  expect_s3_class(x, "spec_tbl_df", exact = FALSE)
+  expect_s3_class(x, "data.frame", exact = FALSE)
   expect_true("field" %in% names(x))
   expect_true("description" %in% names(x))
   expect_true("main_presence" %in% names(x))
@@ -406,4 +406,31 @@ test_that("read_airlines uses active database metadata when present", {
   expect_equal(out$Description, "First Airline Inc.: FA")
 
   unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("available years require an active local database", {
+  expect_error(
+    available_years("main"),
+    "No local slcflights database is active"
+  )
+})
+
+test_that("available_years reports both groups without an active database", {
+  out <- NULL
+
+  expect_message(
+    expect_message(
+      out <- available_years(),
+      "No local slcflights database is active"
+    ),
+    "Run `build_slcflights_db\\(\\)` before reading flight data"
+  )
+
+  expect_equal(
+    out,
+    list(
+      main = integer(),
+      div = integer()
+    )
+  )
 })

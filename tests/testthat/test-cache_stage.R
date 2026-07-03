@@ -76,7 +76,7 @@ test_that("staging parquet files returns existing cache files only", {
   unlink(root, recursive = TRUE, force = TRUE)
 })
 
-test_that("staging coord files can exclude installed files", {
+test_that("staging coord files use staged cache files", {
   root <- tempfile("slc-cache-stage-")
 
   main <- slcflights:::slc_cache_parquet_path(
@@ -86,15 +86,25 @@ test_that("staging coord files can exclude installed files", {
     create = TRUE
   )
 
+  div <- slcflights:::slc_cache_parquet_path(
+    "div",
+    2024,
+    root = root,
+    create = TRUE
+  )
+
   writeLines("main", main)
+  writeLines("div", div)
 
   out <- slcflights:::cache_stage_coord_files(
     root = root,
-    years = 2024,
-    include_installed = FALSE
+    years = 2024
   )
 
-  expect_equal(out, main)
+  expect_equal(
+    sort(out),
+    sort(c(main, div))
+  )
 
   unlink(root, recursive = TRUE, force = TRUE)
 })
@@ -115,7 +125,6 @@ test_that("staging build creates annual files, coordinates, and manifest", {
     coords_in = coords,
     airlines_in = airlines,
     csv_files = list("2024" = csv),
-    include_installed = FALSE,
     finalize_schema = FALSE
   )
 
@@ -281,7 +290,6 @@ test_that("staging promotion moves validated staging to active", {
     coords_in = coords,
     airlines_in = airlines,
     csv_files = list("2024" = csv),
-    include_installed = FALSE,
     finalize_schema = FALSE
   )
 

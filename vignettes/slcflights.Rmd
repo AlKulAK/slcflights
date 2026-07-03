@@ -58,21 +58,18 @@ For a first build, start with a small endpoint if you want to check your setup
 before committing to a larger database.
 
 ```{r small-build-example, eval = FALSE}
-build_slcflights_db(until = "1989-12", confirm = TRUE)
+slcflights::build_slcflights_db(until = "1989-12", confirm = TRUE)
 ```
 
 The database is stored in the user cache directory returned by
 `tools::R_user_dir("slcflights", "cache")`. Building or updating the database
 does not modify installed package files.
 
-## Loading packages
+## Package namespaces
 
-This vignette uses `slcflights` for data access and `dplyr` for small examples.
-
-```{r setup}
-library(slcflights)
-library(dplyr)
-```
+The examples use explicit package namespaces, such as
+`slcflights::read_main()` and `dplyr::select()`, so that each function's source
+is clear.
 
 ## Data provenance
 
@@ -110,14 +107,14 @@ endpoint means the latest month the package can resolve from BTS at build or
 update time.
 
 ```{r build-database, eval = FALSE}
-build_slcflights_db(until = "2024-12", confirm = TRUE)
+slcflights::build_slcflights_db(until = "2024-12", confirm = TRUE)
 ```
 
 Use `status_slcflights_db()` to check whether a local database is active and
 which endpoint it contains.
 
 ```{r database-status, eval = FALSE}
-status_slcflights_db()
+slcflights::status_slcflights_db()
 ```
 
 After a database exists, reader functions use it automatically.
@@ -133,18 +130,20 @@ The **diversion-only** records are flights where Salt Lake City's BTS airport
 ID appears in one of `Div1AirportID` through `Div5AirportID`, but not in
 `OriginAirportID` or `DestAirportID`.
 
-Use `available_years()` to inspect the active local database. By default,
-`available_years()` returns years for main records. Use `type = "div"` to
-inspect diversion-only years.
+Use `available_years()` to inspect the active local database. Calling
+`available_years()` without a `type` reports both main and diversion-only year
+coverage. Use `type = "main"` or `type = "div"` when you want the corresponding
+integer vector.
 
 ```{r available-years, eval = FALSE}
-available_years()
-available_years(type = "div")
+slcflights::available_years()
+slcflights::available_years(type = "main")
+slcflights::available_years(type = "div")
 ```
 
 Main-record years reflect the years covered by the active local database.
-Diversion-only records begin in October 2008, so their available years will always be a
-smaller set.
+Diversion-only records begin in October 2008, so their available years will
+always be a smaller set.
 
 ## Reading records
 
@@ -153,23 +152,23 @@ datasets. This is useful when you want to filter, select, or aggregate before
 collecting data into memory.
 
 ```{r lazy-readers, eval = FALSE}
-main_ds <- open_main(1988:1989)
-div_ds <- open_div(2009:2010)
+main_ds <- slcflights::open_main(1988:1989)
+div_ds <- slcflights::open_div(2009:2010)
 ```
 
 Use `read_year_main()` and `read_year_div()` to read one year into memory.
 
 ```{r year-readers, eval = FALSE}
-main_1988 <- read_year_main(1988)
-div_2009 <- read_year_div(2009)
+main_1988 <- slcflights::read_year_main(1988)
+div_2009 <- slcflights::read_year_div(2009)
 ```
 
 Use `read_main()` and `read_div()` to read one year, several years, or all
 available years.
 
 ```{r multi-year-readers, eval = FALSE}
-main_early <- read_main(1988:1989)
-div_recent <- read_div(2018:2019)
+main_early <- slcflights::read_main(1988:1989)
+div_recent <- slcflights::read_div(2018:2019)
 ```
 
 The examples above assume that the active local database covers the requested
@@ -186,20 +185,20 @@ of main records.
 
 ```{r origin-dest-example, eval = FALSE}
 main_1988 |>
-  count(Origin, Dest, sort = TRUE) |>
-  slice_head(n = 10)
+  dplyr::count(Origin, Dest, sort = TRUE) |>
+  dplyr::slice_head(n = 10)
 ```
 
 For larger queries, prefer the lazy readers and collect only the summarized
 result.
 
 ```{r lazy-summary-example, eval = FALSE}
-open_main(1988:1989) |>
-  select(Year, Origin, Dest, Flights) |>
-  group_by(Year, Origin, Dest) |>
-  summarise(flights = sum(Flights), .groups = "drop") |>
-  arrange(desc(flights)) |>
-  collect()
+slcflights::open_main(1988:1989) |>
+  dplyr::select(Year, Origin, Dest, Flights) |>
+  dplyr::group_by(Year, Origin, Dest) |>
+  dplyr::summarise(flights = sum(Flights), .groups = "drop") |>
+  dplyr::arrange(dplyr::desc(flights)) |>
+  dplyr::collect()
 ```
 
 ## Reading metadata tables
@@ -217,25 +216,25 @@ check identifiers, or support specialized analysis.
 Use `read_coords()` to read airport coordinate metadata.
 
 ```{r coordinate-lookup, eval = FALSE}
-coords <- read_coords()
+coords <- slcflights::read_coords()
 
 coords |>
-  select(AirportID, Display_Airport_Name, Airport_Lat, Airport_Lon) |>
-  slice_head(n = 10)
+  dplyr::select(AirportID, Display_Airport_Name, Airport_Lat, Airport_Lon) |>
+  dplyr::slice_head(n = 10)
 ```
 
 Use `read_airlines()` to read airline lookup metadata.
 
 ```{r airline-lookup, eval = FALSE}
-airlines <- read_airlines()
+airlines <- slcflights::read_airlines()
 
 airlines |>
-  select(
+  dplyr::select(
     DOT_ID_Reporting_Airline,
     Reporting_Airline_Name,
     Reporting_Airline_Lookup_Code
   ) |>
-  slice_head(n = 10)
+  dplyr::slice_head(n = 10)
 ```
 
 ## Looking up fields
@@ -245,10 +244,10 @@ whether each field appears in main records, diversion-only records, or the
 coordinate table.
 
 ```{r field-dictionary}
-fields <- read_field_dictionary()
+fields <- slcflights::read_field_dictionary()
 
 fields |>
-  filter(
+  dplyr::filter(
     field %in% c(
       "Year",
       "FlightDate",
@@ -259,7 +258,7 @@ fields |>
       "Reporting_Airline_Name"
     )
   ) |>
-  select(field, group, source, description, main_presence, div_presence)
+  dplyr::select(field, group, source, description, main_presence, div_presence)
 ```
 
 Unlike the flight-record readers, the field dictionary is available without
@@ -271,7 +270,7 @@ a query.
 Use `update_slcflights_db()` to extend an active database forward.
 
 ```{r extend-data, eval = FALSE}
-update_slcflights_db(until = "latest", confirm = TRUE)
+slcflights::update_slcflights_db(until = "latest", confirm = TRUE)
 ```
 
 Updates are contiguous. If the active database ends with one month, the next
@@ -280,19 +279,18 @@ extension starts with the following month.
 Use `delete_slcflights_db()` when you want to remove the active local database.
 
 ```{r delete-data, eval = FALSE}
-delete_slcflights_db()
+slcflights::delete_slcflights_db()
 ```
 
 To rebuild from scratch, delete the active database and build a new one.
 
 ```{r rebuild-data, eval = FALSE}
-delete_slcflights_db()
-build_slcflights_db(until = "latest", confirm = TRUE)
+slcflights::delete_slcflights_db()
+slcflights::build_slcflights_db(until = "latest", confirm = TRUE)
 ```
 
-The `data-raw/` scripts are development artifacts. The ordinary workflow is to
-build, update, inspect, read, or delete the local database with the exported
-package functions.
+The ordinary workflow is to build, update, inspect, read, or delete the local
+database with the exported package functions.
 
 ## Summary
 

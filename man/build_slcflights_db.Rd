@@ -13,8 +13,9 @@ of the form \code{"YYYY-MM"}, or \code{c(year, month)}.}
 \item{overwrite}{If \code{TRUE}, re-downloads raw BTS source files already
 present in the local raw-data cache.}
 
-\item{confirm}{If \code{TRUE}, allows operations that download and process more
-than 24 monthly BTS files.}
+\item{confirm}{If \code{TRUE}, allows non-interactive operations that download
+and process more than 24 monthly BTS files. Interactive users are prompted
+to type \code{y} or \code{yes}.}
 }
 \value{
 Invisibly, a list describing the active local database.
@@ -31,7 +32,9 @@ through the requested endpoint.
 If a local database already exists, use \code{\link[=update_slcflights_db]{update_slcflights_db()}} to extend it
 or \code{\link[=delete_slcflights_db]{delete_slcflights_db()}} before rebuilding.
 
-For large initial builds, use \code{confirm = TRUE}.
+Large builds require explicit confirmation. In interactive sessions, the
+function prompts the user to type \code{y} or \code{yes}. In non-interactive sessions,
+use \code{confirm = TRUE}.
 }
 \examples{
 \dontrun{

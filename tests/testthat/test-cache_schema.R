@@ -22,7 +22,7 @@ test_that("schema type is inferred from cache file name", {
 test_that("schema year is inferred from cache path", {
   expect_equal(
     slcflights:::cache_schema_year_for_file(
-      file.path("extdata", "parquet", "Year=2024", "data_0_main.parquet")
+      file.path("data", "parquet", "Year=2024", "data_0_main.parquet")
     ),
     2024L
   )

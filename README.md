@@ -6,6 +6,7 @@
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/AlKulAK/slcflights/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/AlKulAK/slcflights/actions/workflows/R-CMD-check.yaml)
+
 <!-- badges: end -->
 
 `slcflights` provides tools for building and reading Salt Lake
@@ -121,12 +122,14 @@ database does not modify installed package files.
 
 ## Discover available data
 
-Use `available_years()` to list years available in the active local
-database. By default, `available_years()` returns years for main
-records. Use `type = "div"` to inspect diversion-only years.
+Use `available_years()` to inspect years available in the active local
+database. Calling `available_years()` without a `type` reports both main
+and diversion-only year coverage. Use `type = "main"` or `type = "div"`
+when you want the corresponding integer vector.
 
 ``` r
 slcflights::available_years()
+slcflights::available_years(type = "main")
 slcflights::available_years(type = "div")
 ```
 
@@ -208,8 +211,10 @@ you do not need separate coordinate or Airline ID joins.
 The standard workflow is to build the local database with
 `build_slcflights_db()` or extend it with `update_slcflights_db()`.
 
-The maintainer build scripts under `data-raw/` are source-package
-development artifacts. They are not needed for normal package use.
+Earlier development versions used maintainer scripts to rebuild package
+artifacts. The current package workflow does not require those scripts.
+Local database creation and updates are handled through the exported
+database functions.
 
 ## Learn more
 

@@ -1,19 +1,4 @@
-test_that("packaged and downloadable data boundaries are explicit", {
-  expect_equal(
-    format_year_month(slcflights:::slc_bundled_start()),
-    "1987-10"
-  )
-
-  expect_equal(
-    format_year_month(slcflights:::slc_bundled_end()),
-    "2024-06"
-  )
-
-  expect_equal(
-    format_year_month(slcflights:::slc_first_download()),
-    "2024-07"
-  )
-
+test_that("database data boundary is explicit", {
   expect_equal(
     format_year_month(slcflights:::slc_db_start()),
     "1987-10"
@@ -108,83 +93,6 @@ test_that("year-month formatting and indexing are inverse operations", {
   expect_equal(
     slcflights:::format_year_month(y),
     "2025-03"
-  )
-})
-
-test_that("update endpoint normalization supports intended inputs", {
-  expect_identical(
-    slcflights:::normalize_update_until(),
-    "latest"
-  )
-
-  x <- slcflights:::normalize_update_until("2025-03")
-  expect_equal(x$year, 2025L)
-  expect_equal(x$month, 3L)
-
-  y <- slcflights:::normalize_update_until(c(2025, 3))
-  expect_equal(y$year, 2025L)
-  expect_equal(y$month, 3L)
-})
-
-test_that("update endpoint normalization rejects invalid inputs", {
-  expect_error(
-    slcflights:::normalize_update_until("2025"),
-    "YYYY-MM"
-  )
-
-  expect_error(
-    slcflights:::normalize_update_until(c(2025, 3, 1)),
-    "latest"
-  )
-
-  expect_error(
-    slcflights:::normalize_update_until(TRUE),
-    "latest"
-  )
-})
-
-test_that("update endpoints before July 2024 are illegal", {
-  expect_error(
-    slcflights:::validate_update_until(
-      slcflights:::as_year_month_string("2024-06")
-    ),
-    "bundled slcflights data end in June 2024"
-  )
-
-  expect_error(
-    slcflights:::validate_update_until(
-      slcflights:::as_year_month_string("2023-12")
-    ),
-    "bundled slcflights data end in June 2024"
-  )
-})
-
-test_that("update month sequence is consecutive from July 2024", {
-  x <- slcflights:::update_month_sequence(
-    slcflights:::as_year_month_string("2024-07")
-  )
-
-  expect_equal(nrow(x), 1L)
-  expect_equal(x$year, 2024L)
-  expect_equal(x$month, 7L)
-
-  y <- slcflights:::update_month_sequence(
-    slcflights:::as_year_month_string("2024-12")
-  )
-
-  expect_equal(y$year, rep(2024L, 6L))
-  expect_equal(y$month, 7:12)
-
-  z <- slcflights:::update_month_sequence(
-    slcflights:::as_year_month_string("2025-03")
-  )
-
-  expect_equal(
-    z,
-    data.frame(
-      year = c(rep(2024L, 6L), rep(2025L, 3L)),
-      month = c(7:12, 1:3)
-    )
   )
 })
 

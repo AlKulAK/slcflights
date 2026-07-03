@@ -17,19 +17,28 @@ test_that("cache months must be a data frame with year and month", {
   )
 })
 
-test_that("cache months must begin with July 2024", {
+test_that("cache months must be non-empty and valid", {
   expect_error(
     slcflights:::validate_cache_months(
-      data.frame(year = 2024L, month = 8L)
+      data.frame(year = integer(), month = integer())
     ),
-    "begin with July 2024"
+    "at least one month"
   )
 
   expect_error(
     slcflights:::validate_cache_months(
-      data.frame(year = 2025L, month = 1L)
+      data.frame(year = 2024L, month = 13L)
     ),
-    "begin with July 2024"
+    "integer from 1 to 12"
+  )
+
+  out <- slcflights:::validate_cache_months(
+    data.frame(year = 2024L, month = 8L)
+  )
+
+  expect_equal(
+    out,
+    data.frame(year = 2024L, month = 8L)
   )
 })
 
@@ -133,12 +142,12 @@ test_that("new database manifest records expected boundaries", {
       year = c(1987L, 1987L, 1987L),
       month = c(10L, 11L, 12L)
     ),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
   expect_equal(manifest$schema_version, slcflights:::slc_schema_version)
-  expect_equal(manifest$package_version, "0.0.0.9000")
+  expect_equal(manifest$package_version, "0.1.2")
   expect_equal(manifest$db_start, "1987-10")
   expect_equal(manifest$db_end, "1987-12")
   expect_equal(manifest$created_at, "2026-05-01T00:00:00Z")
@@ -149,7 +158,7 @@ test_that("new database manifest records expected boundaries", {
 test_that("database manifest validation rejects missing fields", {
   manifest <- slcflights:::new_db_manifest(
     months = data.frame(year = 1987L, month = 10L),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -164,7 +173,7 @@ test_that("database manifest validation rejects missing fields", {
 test_that("database manifest validation rejects schema mismatch", {
   manifest <- slcflights:::new_db_manifest(
     months = data.frame(year = 1987L, month = 10L),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -179,7 +188,7 @@ test_that("database manifest validation rejects schema mismatch", {
 test_that("database manifest rejects inconsistent endpoint", {
   manifest <- slcflights:::new_db_manifest(
     months = data.frame(year = 1987L, month = 10L),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -197,7 +206,7 @@ test_that("database months can be extracted from manifest", {
       year = c(1987L, 1987L, 1987L),
       month = c(10L, 11L, 12L)
     ),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -216,7 +225,7 @@ test_that("database endpoint can be extracted from manifest", {
       year = c(1987L, 1987L, 1987L),
       month = c(10L, 11L, 12L)
     ),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -226,28 +235,28 @@ test_that("database endpoint can be extracted from manifest", {
   expect_equal(endpoint$month, 12L)
 })
 
-test_that("new cache manifest records expected boundaries", {
+test_that("new cache manifest records cached boundaries", {
   manifest <- slcflights:::new_cache_manifest(
-    months = data.frame(year = 2024L, month = 7L),
-    package_version = "0.0.0.9000",
+    months = data.frame(
+      year = c(2024L, 2024L),
+      month = c(7L, 8L)
+    ),
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
   expect_equal(manifest$schema_version, slcflights:::slc_schema_version)
-  expect_equal(manifest$package_version, "0.0.0.9000")
-  expect_equal(manifest$bundled_start, "1987-10")
-  expect_equal(manifest$bundled_end, "2024-06")
+  expect_equal(manifest$package_version, "0.1.2")
   expect_equal(manifest$cached_start, "2024-07")
-  expect_equal(manifest$cached_end, "2024-07")
+  expect_equal(manifest$cached_end, "2024-08")
   expect_equal(manifest$created_at, "2026-05-01T00:00:00Z")
-  expect_equal(length(manifest$months), 1L)
-  expect_equal(manifest$months[[1]]$status, "complete")
+  expect_equal(length(manifest$months), 2L)
 })
 
 test_that("manifest validation rejects missing fields", {
   manifest <- slcflights:::new_cache_manifest(
     months = data.frame(year = 2024L, month = 7L),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -262,7 +271,7 @@ test_that("manifest validation rejects missing fields", {
 test_that("manifest validation rejects incompatible schema versions", {
   manifest <- slcflights:::new_cache_manifest(
     months = data.frame(year = 2024L, month = 7L),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -277,7 +286,7 @@ test_that("manifest validation rejects incompatible schema versions", {
 test_that("manifest validation rejects inconsistent cache endpoint", {
   manifest <- slcflights:::new_cache_manifest(
     months = data.frame(year = 2024L, month = 7L),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -295,7 +304,7 @@ test_that("cache months can be extracted from manifest", {
       year = c(2024L, 2024L, 2024L),
       month = c(7L, 8L, 9L)
     ),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -314,7 +323,7 @@ test_that("cache endpoint can be extracted from manifest", {
       year = c(2024L, 2024L, 2024L),
       month = c(7L, 8L, 9L)
     ),
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -330,7 +339,7 @@ test_that("cache manifest round-trips through JSON", {
   manifest <- slcflights:::write_cache_manifest(
     months = data.frame(year = 2024L, month = 7L),
     root = root,
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -358,7 +367,7 @@ test_that("cache completeness is false when files are missing", {
   slcflights:::write_cache_manifest(
     months = data.frame(year = 2024L, month = 7L),
     root = root,
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -378,7 +387,7 @@ test_that("cache completeness is true when required files exist", {
   slcflights:::write_cache_manifest(
     months = data.frame(year = 2024L, month = 7L),
     root = root,
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -415,7 +424,7 @@ test_that("cache completeness requires reduced Airline ID lookup", {
   slcflights:::write_cache_manifest(
     months = data.frame(year = 2024L, month = 7L),
     root = root,
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -453,7 +462,7 @@ test_that("database manifest can be written and read", {
       month = c(10L, 11L, 12L)
     ),
     root = root,
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -487,7 +496,7 @@ test_that("database completeness requires expected files", {
   slcflights:::write_db_manifest(
     months = data.frame(year = 1987L, month = 10L),
     root = root,
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -525,7 +534,7 @@ test_that("database file validation reports missing files", {
   slcflights:::write_db_manifest(
     months = data.frame(year = 1987L, month = 10L),
     root = root,
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 
@@ -543,7 +552,7 @@ test_that("database file validation accepts complete files", {
   slcflights:::write_db_manifest(
     months = data.frame(year = 1987L, month = 10L),
     root = root,
-    package_version = "0.0.0.9000",
+    package_version = "0.1.2",
     created_at = "2026-05-01T00:00:00Z"
   )
 

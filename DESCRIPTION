@@ -1,19 +1,19 @@
 Package: slcflights
 Title: Salt Lake City Flight Records and Supporting Metadata
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: 
     person("Aleksey", "Kulyukin", , "A02291810@usu.edu", 
     role = c("aut", "cre"),
     comment = c(ORCID = "0009-0009-4396-9878"))
-Description: Provides tools for building and reading Salt Lake City-focused
-    subsets of the Bureau of Transportation Statistics (BTS) TranStats On-Time:
-    Reporting Carrier On-Time Performance data. The package builds a local
-    BTS-sourced database from monthly BTS files, beginning with October 1987
-    and extending through a user-selected endpoint. It includes reader
-    functions for scheduled origin/destination records, diversion-only records,
-    reduced airport coordinate metadata, airline lookup metadata, and a field
-    dictionary describing retained data columns. It also includes functions for
-    updating, inspecting, and deleting the local database.
+Description: Provides tools for building and reading a local Salt Lake
+    City-focused database from Bureau of Transportation Statistics (BTS)
+    TranStats On-Time: Reporting Carrier On-Time Performance data. The package
+    builds a BTS-sourced database from monthly BTS files, beginning with
+    October 1987 and extending through a user-selected endpoint. It provides
+    reader functions for scheduled origin/destination records, diversion-only
+    records, reduced airport coordinate metadata, airline lookup metadata, and
+    a field dictionary describing retained data columns. It also provides
+    functions for updating, inspecting, and deleting the local database.
 URL: https://github.com/AlKulAK/slcflights
 BugReports: https://github.com/AlKulAK/slcflights/issues
 License: GPL (>= 3)
@@ -21,7 +21,6 @@ Encoding: UTF-8
 Depends:
     R (>= 4.1.0)
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Imports: 
     arrow,
     DBI,
@@ -41,3 +40,4 @@ Suggests:
     withr
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+Config/roxygen2/version: 8.0.0

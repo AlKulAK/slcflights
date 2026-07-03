@@ -13,8 +13,9 @@ of the form \code{"YYYY-MM"}, or \code{c(year, month)}.}
 \item{overwrite}{If \code{TRUE}, re-downloads raw BTS source files already
 present in the local raw-data cache.}
 
-\item{confirm}{If \code{TRUE}, allows operations that download and process more
-than 24 monthly BTS files.}
+\item{confirm}{If \code{TRUE}, allows non-interactive operations that download
+and process more than 24 monthly BTS files. Interactive users are prompted
+to type \code{y} or \code{yes}.}
 }
 \value{
 Invisibly, a list describing the active local database.

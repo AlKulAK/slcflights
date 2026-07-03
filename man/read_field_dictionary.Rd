@@ -7,20 +7,24 @@
 read_field_dictionary()
 }
 \value{
-A data frame describing retained fields in the flight-record Parquet files
-and the airport coordinate table.
+A data frame describing fields that slcflights writes to built local
+database outputs.
 }
 \description{
-Reads the field dictionary installed with the package.
+Reads the built-in slcflights field dictionary.
 }
 \details{
-The field dictionary includes the field name, field group, source table,
-description, presence in main records, presence in diversion-only records,
-presence in the coordinate table, and additional notes.
+The field dictionary is a schema reference for the columns written by
+slcflights when it builds a local database from BTS source files.
+
+The dictionary includes the field name, field group, BTS source table,
+description, expected presence in main records, expected presence in
+diversion-only records, expected presence in the coordinate table, and
+additional notes.
 
 Values of \code{main_presence}, \code{div_presence}, and \code{coords_presence} use
-\code{"always"}, \code{"sometimes"}, or \code{"never"} to describe whether a field appears
-in that data grouping.
+\code{"always"}, \code{"sometimes"}, or \code{"never"} to describe whether a field is
+expected in that built data grouping.
 
 Unlike the flight-record readers, the field dictionary is available without
 building a local database.

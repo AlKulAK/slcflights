@@ -1,17 +1,3 @@
-test_that("installed CSV extdata paths exist", {
-  field_dict <- system.file(
-    "extdata",
-    "csv",
-    "field_dictionary.csv",
-    package = "slcflights",
-    mustWork = TRUE
-  )
-
-  expect_true(dir.exists(slcflights:::slc_installed_extdata_root()))
-  expect_true(dir.exists(slcflights:::slc_installed_csv_root()))
-  expect_true(file.exists(field_dict))
-})
-
 test_that("cached years are empty without a manifest", {
   root <- tempfile("slc-data-paths-")
 

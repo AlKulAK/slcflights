@@ -195,20 +195,18 @@ cache_build_reduce_coords_csv <- function(
   )
 }
 
-#' List Parquet files available for coordinate reduction
+#' List cached Parquet files available for coordinate reduction
 #'
-#' Lists cached Parquet files for the requested years, optionally combined
-#' with installed package Parquet files. The combined file set is used to
-#' reduce the coordinate table to all airports referenced by installed and
-#' cached data.
+#' Lists cached main Parquet files for the requested years. This helper is used
+#' only by legacy cache workflows; local database builds pass the relevant
+#' staged main and diversion-only Parquet files directly to
+#' `cache_build_reduce_coords_csv()`.
 #'
 #' @param years Integer vector of years to inspect.
 #' @param root Optional cache root. Uses the active cache root when `NULL`.
-#' @param include_installed If `TRUE`, include installed package Parquet files
-#'   in addition to cached Parquet files.
 #'
 #' @returns
-#' Character vector of existing Parquet file paths.
+#' Character vector of existing cached Parquet file paths.
 #'
 #' @noRd
 cache_build_avail_pq_files <- function(
