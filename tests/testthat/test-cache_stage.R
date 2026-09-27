@@ -187,7 +187,11 @@ test_that("database staging build creates files and manifest", {
   coords <- tempfile("slc-stage-coords-", fileext = ".csv")
   airlines <- tempfile("slc-stage-airlines-", fileext = ".csv")
 
-  make_stage_bts_csv(csv)
+  make_stage_bts_csv(
+    csv,
+    year = 1987L,
+    month = 10L
+  )
   make_stage_coords_csv(coords)
   make_stage_airlines_csv(airlines)
 
@@ -334,7 +338,13 @@ test_that("database staging promotion activates staged database", {
     create = TRUE
   )
 
-  writeLines("main", main)
+  arrow::write_parquet(
+    data.frame(
+      Year = 1987L,
+      Month = 10L
+    ),
+    main
+  )
   writeLines("coords", coords)
   writeLines("airlines", airlines)
 
@@ -359,8 +369,18 @@ test_that("database staging extension rebuilds affected years", {
   coords <- tempfile("slc-stage-coords-", fileext = ".csv")
   airlines <- tempfile("slc-stage-airlines-", fileext = ".csv")
 
-  make_stage_bts_csv(csv_oct)
-  make_stage_bts_csv(csv_nov)
+  make_stage_bts_csv(
+    csv_oct,
+    year = 1987L,
+    month = 10L
+  )
+
+  make_stage_bts_csv(
+    csv_nov,
+    year = 1987L,
+    month = 11L
+  )
+
   make_stage_coords_csv(coords)
   make_stage_airlines_csv(airlines)
 

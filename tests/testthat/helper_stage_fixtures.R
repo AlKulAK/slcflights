@@ -40,9 +40,19 @@ make_stage_airlines_csv <- function(path) {
   path
 }
 
-make_stage_bts_csv <- function(path) {
+make_stage_bts_csv <- function(path, year = 2024L, month = 7L) {
+  year <- as.integer(year)
+  month <- as.integer(month)
+
   rows <- data.frame(
-    FlightDate = c("2024-07-02", "2024-07-01", "2024-07-03"),
+    Year = rep(year, 3L),
+    Month = rep(month, 3L),
+    FlightDate = sprintf(
+      "%04d-%02d-%02d",
+      year,
+      month,
+      c(2L, 1L, 3L)
+    ),
     CRSDepTime = c(900L, 800L, 700L),
     DOT_ID_Reporting_Airline = c(20001L, 20002L, 20003L),
     OriginAirportID = c(14869L, 11111L, 22222L),

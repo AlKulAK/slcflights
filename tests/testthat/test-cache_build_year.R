@@ -124,6 +124,49 @@ test_that("year file paths preserve annual cache layout", {
   )
 })
 
+test_that("year CSV discovery fails when a requested month is missing", {
+  root <- withr::local_tempdir()
+  withr::local_envvar(SLCFLIGHTS_TEST_CACHE_ROOT = root)
+
+  for (month in 1:7) {
+    slcflights:::slc_cache_raw_ontime_month_dir(
+      year = 2026,
+      month = month,
+      create = TRUE
+    )
+  }
+
+  for (month in 3:7) {
+    month_dir <- slcflights:::slc_cache_raw_ontime_month_dir(
+      year = 2026,
+      month = month,
+      create = FALSE
+    )
+
+    csv <- file.path(
+      month_dir,
+      sprintf("2026_%02d.csv", month)
+    )
+
+    writeLines(
+      c(
+        "Year,Month",
+        sprintf("2026,%d", month)
+      ),
+      csv
+    )
+  }
+
+  expect_error(
+    slcflights:::cache_build_year_csvs(
+      year = 2026,
+      months = 1:7
+    ),
+    "Raw BTS on-time CSV data are missing for 2026-01.",
+    fixed = TRUE
+  )
+})
+
 test_that("annual cache builder writes main file", {
   root <- tempfile("slc-cache-year-")
   csv <- tempfile("slc-cache-year-", fileext = ".csv")

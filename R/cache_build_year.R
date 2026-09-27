@@ -113,22 +113,44 @@ cache_build_any_equals_clause <- function(con, cols, value) {
 #'
 #' @noRd
 cache_build_year_csvs <- function(year, months) {
-  csvs <- cache_raw_ontime_csvs(
-    year = year,
-    months = months
+  year <- normalize_cache_year(year)
+  months <- normalize_cache_months(months)
+
+  csvs <- unlist(
+    lapply(
+      months,
+      function(month) {
+        files <- cache_raw_ontime_csvs(
+          year = year,
+          months = month
+        )
+
+        if (!length(files)) {
+          stop(
+            sprintf(
+              paste(
+                "Raw BTS on-time CSV data are missing for %04d-%02d.",
+                "The annual database file was not rebuilt."
+              ),
+              year,
+              month
+            ),
+            call. = FALSE
+          )
+        }
+
+        vapply(
+          files,
+          bts_validate_csv_file,
+          character(1),
+          label = "Raw BTS on-time CSV file"
+        )
+      }
+    ),
+    use.names = FALSE
   )
 
-  if (!length(csvs)) {
-    stop(
-      sprintf(
-        "No raw BTS on-time CSV files were found for %s.",
-        normalize_cache_year(year)
-      ),
-      call. = FALSE
-    )
-  }
-
-  csvs
+  sort(csvs)
 }
 
 #' Resolve cached annual Parquet output paths

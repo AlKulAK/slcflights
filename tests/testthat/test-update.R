@@ -403,7 +403,13 @@ test_that("database info reports present database", {
     create = TRUE
   )
 
-  writeLines("main", main)
+  arrow::write_parquet(
+    data.frame(
+      Year = 1987L,
+      Month = 10L
+    ),
+    main
+  )
   writeLines("coords", coords)
   writeLines("airlines", airlines)
 
@@ -471,7 +477,11 @@ test_that("database build creates one-month active database", {
       )
 
       path <- file.path(month_dir, "bts_ontime.csv")
-      make_stage_bts_csv(path)
+      make_stage_bts_csv(
+        path,
+        year = year,
+        month = month
+      )
     },
     download_bts_master_coords = function(destfile, overwrite = FALSE) {
       expect_equal(
@@ -692,6 +702,158 @@ test_that("update_slcflights_db delegates to database engine", {
   expect_equal(out, list(ok = TRUE))
 
   unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("failed same-year update preserves active annual database", {
+  root <- withr::local_tempdir()
+  withr::local_envvar(SLCFLIGHTS_TEST_CACHE_ROOT = root)
+
+  active <- slcflights:::slc_db_root(create = TRUE)
+
+  active_months <- slcflights:::db_months_for_until("2026-02")
+
+  slcflights:::write_db_manifest(
+    months = active_months,
+    root = active,
+    package_version = "0.0.0.9000",
+    created_at = "2026-09-27T00:00:00Z"
+  )
+
+  main <- slcflights:::slc_db_parquet_path(
+    "main",
+    2026,
+    root = active,
+    create = TRUE
+  )
+
+  arrow::write_parquet(
+    data.frame(
+      Year = c(2026L, 2026L),
+      Month = c(1L, 2L),
+      Record = c("January", "February")
+    ),
+    main
+  )
+
+  manifest <- slcflights:::slc_db_manifest_path(
+    root = active,
+    create = FALSE
+  )
+
+  main_before <- unname(tools::md5sum(main))
+  manifest_before <- unname(tools::md5sum(manifest))
+
+  retained_zips <- character(2L)
+
+  for (month in 1:2) {
+    month_dir <- slcflights:::slc_cache_raw_ontime_month_dir(
+      year = 2026,
+      month = month,
+      create = TRUE
+    )
+
+    zip <- file.path(
+      month_dir,
+      slcflights:::bts_ontime_zip_name(2026, month)
+    )
+
+    writeBin(charToRaw("retained"), zip)
+    retained_zips[[month]] <- zip
+  }
+
+  expect_true(all(file.exists(retained_zips)))
+
+  expect_length(
+    slcflights:::cache_raw_ontime_csvs(
+      year = 2026,
+      months = 1:2
+    ),
+    0L
+  )
+
+  downloaded <- integer()
+
+  testthat::local_mocked_bindings(
+    download_bts_ontime_month = function(year,
+                                         month,
+                                         overwrite = FALSE,
+                                         keep_zip = TRUE) {
+      expect_equal(year, 2026L)
+      expect_true(month %in% 3:7)
+      expect_false(overwrite)
+      expect_true(keep_zip)
+
+      downloaded <<- c(downloaded, month)
+
+      month_dir <- slcflights:::slc_cache_raw_ontime_month_dir(
+        year = year,
+        month = month,
+        create = TRUE
+      )
+
+      path <- file.path(
+        month_dir,
+        "bts_ontime.csv"
+      )
+
+      make_stage_bts_csv(
+        path,
+        year = year,
+        month = month
+      )
+    },
+    download_bts_master_coords = function(
+      destfile,
+      overwrite = FALSE
+    ) {
+      expect_false(overwrite)
+      make_stage_coords_csv(destfile)
+    },
+    download_bts_airline_id = function(
+      destfile,
+      overwrite = FALSE
+    ) {
+      expect_false(overwrite)
+      make_stage_airlines_csv(destfile)
+    },
+    .package = "slcflights"
+  )
+
+  expect_error(
+    suppressMessages(
+      slcflights::update_slcflights_db(
+        until = "2026-07",
+        confirm = TRUE
+      )
+    ),
+    "Raw BTS on-time CSV data are missing for 2026-01.",
+    fixed = TRUE
+  )
+
+  expect_equal(downloaded, 3:7)
+
+  expect_identical(
+    unname(tools::md5sum(main)),
+    main_before
+  )
+
+  expect_identical(
+    unname(tools::md5sum(manifest)),
+    manifest_before
+  )
+
+  active_data <- arrow::read_parquet(main)
+
+  expect_equal(
+    sort(unique(active_data$Month)),
+    c(1L, 2L)
+  )
+
+  active_manifest <- slcflights:::read_db_manifest_if_active(
+    root = active
+  )
+
+  expect_equal(active_manifest$db_end, "2026-02")
 })
 
 test_that("status_slcflights_db reports database info", {

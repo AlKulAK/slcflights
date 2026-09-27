@@ -1,6 +1,6 @@
 Package: slcflights
 Title: Salt Lake City Flight Records and Supporting Metadata
-Version: 0.1.2
+Version: 0.1.3
 Authors@R: 
     person("Aleksey", "Kulyukin", , "A02291810@usu.edu", 
     role = c("aut", "cre"),

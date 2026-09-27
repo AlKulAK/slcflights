@@ -519,7 +519,13 @@ test_that("database completeness requires expected files", {
     create = TRUE
   )
 
-  writeLines("main", main)
+  arrow::write_parquet(
+    data.frame(
+      Year = 1987L,
+      Month = 10L
+    ),
+    main
+  )
   writeLines("coords", coords)
   writeLines("airlines", airlines)
 
@@ -541,6 +547,60 @@ test_that("database file validation reports missing files", {
   expect_error(
     slcflights:::validate_db_files(root = root),
     "database appears incomplete"
+  )
+
+  unlink(root, recursive = TRUE, force = TRUE)
+})
+
+test_that("database validation rejects manifest month mismatch", {
+  root <- tempfile("slc-db-manifest-")
+
+  slcflights:::write_db_manifest(
+    months = data.frame(
+      year = c(1987L, 1987L, 1987L),
+      month = c(10L, 11L, 12L)
+    ),
+    root = root,
+    package_version = "0.1.2",
+    created_at = "2026-05-01T00:00:00Z"
+  )
+
+  main <- slcflights:::slc_db_parquet_path(
+    "main",
+    1987,
+    root = root,
+    create = TRUE
+  )
+
+  coords <- slcflights:::slc_db_coords_path(
+    root = root,
+    create = TRUE
+  )
+
+  airlines <- slcflights:::slc_db_airlines_path(
+    root = root,
+    create = TRUE
+  )
+
+  arrow::write_parquet(
+    data.frame(
+      Year = c(1987L, 1987L),
+      Month = c(11L, 12L)
+    ),
+    main
+  )
+
+  writeLines("coords", coords)
+  writeLines("airlines", airlines)
+
+  expect_false(
+    slcflights:::db_months_are_complete(root = root)
+  )
+
+  expect_error(
+    slcflights:::validate_db_files(root = root),
+    "Annual main data for 1987 do not match the database manifest.",
+    fixed = TRUE
   )
 
   unlink(root, recursive = TRUE, force = TRUE)
@@ -573,7 +633,13 @@ test_that("database file validation accepts complete files", {
     create = TRUE
   )
 
-  writeLines("main", main)
+  arrow::write_parquet(
+    data.frame(
+      Year = 1987L,
+      Month = 10L
+    ),
+    main
+  )
   writeLines("coords", coords)
   writeLines("airlines", airlines)
 

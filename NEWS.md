@@ -1,3 +1,19 @@
+# slcflights 0.1.3
+
+## Bug fixes
+
+* Prevented same-year database updates from silently rebuilding an annual main
+  Parquet file with incomplete month coverage when required raw monthly CSV
+  files are missing. Annual rebuilds now fail before writing the affected file
+  unless every requested month has usable raw CSV input.
+
+* Added validation that compares the months present in each annual main
+  Parquet file with the months recorded in the database manifest. Incomplete
+  staged databases are no longer treated as complete or promoted.
+
+* Added regression tests for missing monthly raw inputs and
+  manifest-to-Parquet month-coverage mismatches.
+
 # slcflights 0.1.2
 
 ## User-facing changes

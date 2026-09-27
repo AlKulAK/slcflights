@@ -661,16 +661,60 @@ cache_months_are_complete <- function(root = NULL) {
   TRUE
 }
 
+#' Check annual database month coverage
+#'
+#' Checks whether an annual main Parquet file contains exactly the year-month
+#' pairs recorded for that year in the database manifest.
+#'
+#' @param path Annual main Parquet path.
+#' @param months Validated database month table.
+#' @param year Calendar year to check.
+#'
+#' @returns
+#' `TRUE` when Parquet and manifest month coverage agree; otherwise `FALSE`.
+#'
+#' @noRd
+db_year_months_match <- function(path, months, year) {
+  expected <- months[
+    months$year == year,
+    c("year", "month"),
+    drop = FALSE
+  ]
+  row.names(expected) <- NULL
+
+  actual <- arrow::read_parquet(
+    path,
+    col_select = c("Year", "Month")
+  )
+
+  actual <- unique(
+    data.frame(
+      year = as.integer(actual$Year),
+      month = as.integer(actual$Month)
+    )
+  )
+
+  actual <- actual[
+    order(actual$year, actual$month), ,
+    drop = FALSE
+  ]
+  row.names(actual) <- NULL
+
+  identical(actual, expected)
+}
+
 #' Check whether local database month files are complete
 #'
 #' Checks whether the database root has a manifest, expected annual main
-#' Parquet files, coordinate CSV, and airline CSV.
+#' Parquet files whose month coverage agrees with that manifest, coordinate
+#' CSV, and airline CSV.
 #'
 #' @param root Optional database root. Uses the active database root when
 #'   `NULL`.
 #'
 #' @returns
-#' `TRUE` if expected database files are present; otherwise `FALSE`.
+#' `TRUE` if expected database files and month coverage are present; otherwise
+#' `FALSE`.
 #'
 #' @noRd
 db_months_are_complete <- function(root = NULL) {
@@ -692,6 +736,10 @@ db_months_are_complete <- function(root = NULL) {
     )
 
     if (!file.exists(main)) {
+      return(FALSE)
+    }
+
+    if (!db_year_months_match(main, months, year)) {
       return(FALSE)
     }
   }
@@ -776,8 +824,9 @@ validate_cache_files <- function(root = NULL) {
 
 #' Validate local database files
 #'
-#' Checks that the database root contains all files required by its manifest and
-#' errors if the database appears incomplete.
+#' Checks that the database root contains all files required by its manifest,
+#' verifies annual main Parquet month coverage against the manifest, and errors
+#' if the database appears incomplete.
 #'
 #' @param root Optional database root. Uses the active database root when
 #'   `NULL`.
@@ -797,6 +846,7 @@ validate_db_files <- function(root = NULL) {
   months <- db_months_from_manifest(manifest)
   years <- sort(unique(months$year))
   missing <- character()
+  coverage_mismatch <- integer()
 
   for (year in years) {
     main <- slc_db_parquet_path(
@@ -808,6 +858,11 @@ validate_db_files <- function(root = NULL) {
 
     if (!file.exists(main)) {
       missing <- c(missing, main)
+      next
+    }
+
+    if (!db_year_months_match(main, months, year)) {
+      coverage_mismatch <- c(coverage_mismatch, year)
     }
   }
 
@@ -830,6 +885,19 @@ validate_db_files <- function(root = NULL) {
         "Rebuild or clear the local database.",
         "Missing file:",
         missing[[1]]
+      ),
+      call. = FALSE
+    )
+  }
+
+  if (length(coverage_mismatch)) {
+    stop(
+      paste(
+        "The slcflights database appears incomplete.",
+        sprintf(
+          "Annual main data for %s do not match the database manifest.",
+          coverage_mismatch[[1]]
+        )
       ),
       call. = FALSE
     )
